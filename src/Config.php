@@ -1,0 +1,98 @@
+<?php
+
+namespace Lukraak\MollieIncasso;
+
+final class Config
+{
+    public function settings(): array
+    {
+        return wp_parse_args(get_option('mi_settings', []), ['mode' => 'test', 'organization' => '', 'address' => '', 'contact' => '', 'privacy_url' => '', 'notifications' => 1, 'cleanup' => 0, 'retention_days' => 2555, 'webhook_url' => '']);
+    }
+    public function mode(): string
+    {
+        return $this->settings()['mode'] === 'live' ? 'live' : 'test';
+    }
+    public function assertRun(string $mode, bool $write = false): void
+    {
+        if (!in_array($mode, ['test', 'live'], true) || $mode !== $this->mode()) {
+            throw new Failure('environment_mismatch');
+        }
+        if (defined('MOLLIE_INCASSO_DISABLED') && MOLLIE_INCASSO_DISABLED) {
+            throw new Failure('automation_disabled');
+        }
+        if (!hash_equals((string) get_option('mi_site_binding', ''), $this->binding())) {
+            throw new Failure('site_copy_blocked');
+        }
+        if ($mode === 'live' && (wp_get_environment_type() !== 'production' || !defined('MOLLIE_INCASSO_ALLOW_LIVE') || MOLLIE_INCASSO_ALLOW_LIVE !== true || !$this->settingSecret('MOLLIE_INCASSO_LIVE_SITE') || rtrim($this->settingSecret('MOLLIE_INCASSO_LIVE_SITE'), '/') !== rtrim(home_url(), '/'))) {
+            throw new Failure('live_disabled');
+        }
+        if ($write && $mode === 'live' && !is_ssl() && PHP_SAPI !== 'cli') {
+            throw new Failure('https_required');
+        }
+    }
+    public function binding(): string
+    {
+        return hash('sha256', home_url() . '|' . ABSPATH);
+    }
+    public function settingSecret(string $name): string
+    {
+        return defined($name) ? (string) constant($name) : (string) (getenv($name) ?: '');
+    }
+    public function key(string $mode): string
+    {
+        if (!in_array($mode, ['test', 'live'], true)) {
+            throw new Failure('invalid_mode');
+        }
+        $key = $this->settingSecret('MOLLIE_INCASSO_' . strtoupper($mode) . '_KEY');
+        if (!$key && get_option('mi_secret_' . $mode)) {
+            $key = $this->decrypt((string) get_option('mi_secret_' . $mode));
+        }
+        if (!preg_match('/^' . $mode . '_[a-zA-Z0-9]{30,100}$/D', $key)) {
+            throw new Failure('api_key_missing');
+        }
+        return $key;
+    }
+    public function fingerprint(string $mode): string
+    {
+        return hash('sha256', $this->key($mode));
+    }
+    public function encryptionKey(): string
+    {
+        $key = base64_decode($this->settingSecret('MOLLIE_INCASSO_ENCRYPTION_KEY'), true);
+        if (!is_string($key) || strlen($key) !== 32) {
+            throw new Failure('encryption_key_missing');
+        }
+        return $key;
+    }
+    public function encrypt(string $secret): string
+    {
+        $iv = random_bytes(12);
+        $tag = '';
+        $data = openssl_encrypt($secret, 'aes-256-gcm', $this->encryptionKey(), OPENSSL_RAW_DATA, $iv, $tag);
+        if ($data === false) {
+            throw new Failure('encryption_failed');
+        }
+        return base64_encode($iv . $tag . $data);
+    }
+    public function decrypt(string $secret): string
+    {
+        $raw = base64_decode($secret, true);
+        if (!$raw || strlen($raw) < 29) {
+            throw new Failure('decryption_failed');
+        }
+        $value = openssl_decrypt(substr($raw, 28), 'aes-256-gcm', $this->encryptionKey(), OPENSSL_RAW_DATA, substr($raw, 0, 12), substr($raw, 12, 16));
+        if ($value === false) {
+            throw new Failure('decryption_failed');
+        }
+        return $value;
+    }
+    public function webhook(string $mode): string
+    {
+        $custom = trim((string) $this->settings()['webhook_url']);
+        $url = $custom ?: rest_url('mollie-incasso/v1/payment/' . $mode);
+        if (!str_starts_with($url, 'https://') || !wp_http_validate_url($url)) {
+            throw new Failure('webhook_https_required');
+        }
+        return $custom ? add_query_arg('mi_mode', $mode, $url) : $url;
+    }
+}

@@ -1,0 +1,7 @@
+{
+  "name": "lukraak/mollie-incasso",
+  "description": "Standalone WordPress recurring SEPA payments",
+  "license": "GPL-2.0-or-later",
+  "require": {"php": ">=8.2", "mollie/mollie-api-php": "^3.0"},
+  "config": {"platform": {"php": "8.2.29"}, "sort-packages": true, "allow-plugins": false}
+}

@@ -1,0 +1,9 @@
+/vendor/
+/dependencies/
+/.build/
+/tools/vendor/
+*.zip
+
+/dist/
+/artifacts/
+.DS_Store
