@@ -1,0 +1,70 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint:
+    name: PHP ${{ matrix.php }} syntax
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: ['8.2', '8.3', '8.4']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Lint plugin and tests
+        run: find . -name '*.php' -not -path './vendor/*' -not -path './tools/vendor/*' -print0 | xargs -0 -n1 php -l
+
+  suites:
+    name: WordPress ${{ matrix.wp }} / WooCommerce ${{ matrix.wc }} / ${{ matrix.db }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { wp: '6.8.1', wc: '9.9.5', db: 'mysql:8.0' }
+          - { wp: 'latest', wc: 'latest', db: 'mariadb:10.6' }
+    services:
+      db:
+        image: ${{ matrix.db }}
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wordpress
+          MARIADB_ROOT_PASSWORD: root
+          MARIADB_DATABASE: wordpress
+        ports: ['3306:3306']
+        options: --health-cmd="mysqladmin ping -h 127.0.0.1 -proot" --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      WP_PATH: /tmp/wordpress
+      MI_WP_ROOT: /tmp/wordpress/wp-load.php
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli, zip, curl, openssl
+          tools: composer, wp-cli
+          coverage: none
+      - name: Build scoped dependencies from the lock files
+        run: php tools/build.php composer /tmp/mollie-incasso-ci.zip
+      - name: Install WordPress and WooCommerce
+        run: |
+          wp core download --path="$WP_PATH" --version="${{ matrix.wp }}"
+          wp config create --path="$WP_PATH" --dbname=wordpress --dbuser=root --dbpass=root --dbhost=127.0.0.1 --skip-check
+          wp core install --path="$WP_PATH" --url=http://localhost --title=CI --admin_user=admin --admin_password=ci-only-password --admin_email=admin@example.org --skip-email
+          if [ "${{ matrix.wc }}" = latest ]; then wp plugin install woocommerce --activate --path="$WP_PATH"; else wp plugin install woocommerce --version="${{ matrix.wc }}" --activate --path="$WP_PATH"; fi
+      - name: Integration
+        run: php tests/integration.php
+      - name: Official SDK
+        run: php tests/sdk.php
+      - name: Secret storage
+        run: php tests/secrets.php
+      - name: WooCommerce (posts storage)
+        run: php tests/woocommerce.php
+      - name: WooCommerce (HPOS)
+        run: MI_WOO_HPOS=1 php tests/woocommerce.php

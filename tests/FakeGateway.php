@@ -101,7 +101,7 @@ final class FakeGateway implements Gateway
         $this->subs[$id]['status'] = 'canceled';
         return $this->subs[$id];
     }
-    public function find(string $kind, string $customer, string $reference, string $instance): ?array
+    public function find(string $kind, string $customer, string $reference, string $instance, ?string $since = null): ?array
     {
         if ($this->hideFind) {
             return null;

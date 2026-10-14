@@ -207,6 +207,11 @@ final class Admin
                     $this->p->queue->recover($id, $mode);
                     $view = 'diagnostics';
                     break;
+                case 'mail_retry':
+                case 'mail_sent':
+                    $this->p->mail->resolve($id, $mode, $operation === 'mail_sent');
+                    $view = 'diagnostics';
+                    break;
                 case 'export':
                     $this->csv($mode);
                     exit;
@@ -631,7 +636,8 @@ final class Admin
             echo '<p>' . esc_html(Plugin::message($error['reason'])) . ' — ' . esc_html($error['at']) . '</p>';
         }
         echo '<h2>' . esc_html__('Taken', 'mollie-incasso') . '</h2><div class="mi-scroll"><table class="widefat striped"><thead><tr><th>ID</th><th>' . esc_html__('Type / status', 'mollie-incasso') . '</th><th>' . esc_html__('Pogingen / eerstvolgende run', 'mollie-incasso') . '</th><th>' . esc_html__('Fout / herstel', 'mollie-incasso') . '</th></tr></thead><tbody>';
-        foreach ($this->p->store->rows('jobs', $mode) as $job) {
+        $jobs = $this->p->store->select('SELECT * FROM ' . $this->p->store->table('jobs') . ' WHERE mode=%s ORDER BY state="failed" DESC, id DESC LIMIT 100', [$mode]);
+        foreach ($jobs as $job) {
             echo '<tr><td>' . (int) $job['id'] . '</td><td>' . esc_html(Plugin::kind($job['kind']) . ' / ' . Plugin::status($job['state'])) . '</td><td>' . (int) $job['attempts'] . ' / ' . esc_html($job['run_at']) . ' UTC</td><td>';
             if ($job['error']) {
                 echo esc_html(Plugin::message($job['error']));
@@ -641,11 +647,19 @@ final class Admin
             }
             echo '</td></tr>';
         }
-        echo '</tbody></table></div><h2>' . esc_html__('Meldingen en mailstatus', 'mollie-incasso') . '</h2><div class="mi-scroll"><table class="widefat striped"><thead><tr><th>' . esc_html__('Gebeurtenis', 'mollie-incasso') . '</th><th>' . esc_html__('Status', 'mollie-incasso') . '</th><th>' . esc_html__('Fout', 'mollie-incasso') . '</th></tr></thead><tbody>';
-        foreach ($this->p->store->rows('notifications', $mode) as $mail) {
-            echo '<tr><td>' . esc_html($mail['event_key']) . '</td><td>' . esc_html(Plugin::status($mail['state'])) . '</td><td>' . esc_html($mail['error'] ? Plugin::message($mail['error']) : '') . '</td></tr>';
+        echo '</tbody></table></div><h2>' . esc_html__('Meldingen en mailstatus', 'mollie-incasso') . '</h2><div class="mi-scroll"><table class="widefat striped"><thead><tr><th>' . esc_html__('Gebeurtenis', 'mollie-incasso') . '</th><th>' . esc_html__('Status', 'mollie-incasso') . '</th><th>' . esc_html__('Fout', 'mollie-incasso') . '</th><th>' . esc_html__('Afhandelen', 'mollie-incasso') . '</th></tr></thead><tbody>';
+        $mails = $this->p->store->select('SELECT * FROM ' . $this->p->store->table('notifications') . ' WHERE mode=%s ORDER BY state IN ("unknown","failed") DESC, id DESC LIMIT 100', [$mode]);
+        foreach ($mails as $mail) {
+            echo '<tr><td>' . esc_html($mail['event_key']) . '</td><td>' . esc_html(Plugin::status($mail['state'])) . '</td><td>' . esc_html($mail['error'] ? Plugin::message($mail['error']) : '') . '</td><td>';
+            if (in_array($mail['state'], ['unknown', 'failed'], true)) {
+                $this->quick('mail_retry', (int) $mail['id'], 'Opnieuw versturen');
+                if ($mail['state'] === 'unknown') {
+                    $this->quick('mail_sent', (int) $mail['id'], 'Markeer als verzonden');
+                }
+            }
+            echo '</td></tr>';
         }
-        echo '</tbody></table></div><p>' . esc_html__('Door wp_mail geaccepteerd betekent geen gegarandeerde aflevering. Een onbekende verzenduitkomst wordt niet automatisch opnieuw verstuurd.', 'mollie-incasso') . '</p>';
+        echo '</tbody></table></div><p>' . esc_html__('Door wp_mail geaccepteerd betekent geen gegarandeerde aflevering. Een onbekende verzenduitkomst wordt niet automatisch opnieuw verstuurd: controleer uw mailserverlog. Kies "Markeer als verzonden" alleen als de mail aantoonbaar is verstuurd; anders "Opnieuw versturen". Een wachtende incasso gaat pas door als de vooraankondiging als verzonden geldt.', 'mollie-incasso') . '</p>';
     }
     private function csv(string $mode): void
     {

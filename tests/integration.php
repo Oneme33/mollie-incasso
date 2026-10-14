@@ -403,6 +403,128 @@ try {
     }
     check(count($caseIds) === 2 && $store->find('customers', 'remote_id', 'cst_CaseSensitive', 'test')['id'] !== $store->find('customers', 'remote_id', 'cst_casesensitive', 'test')['id'], 'case-sensitive provider IDs stay distinct');
     $schemeInput=$schemes->get($manual,'test');$schemeInput['amount']='25.00';$schemeInput['times']='0';rejects(fn()=>$schemes->save($schemeInput,'test'),'invalid_scheme');$schemeInput['times']='3abc';rejects(fn()=>$schemes->save($schemeInput,'test'),'invalid_scheme');
+    // 1.0 reliability: queue priority, polling that never resurrects failures, and bounded maintenance.
+    $jobs = $store->table('jobs');
+    $store->query('DELETE FROM ' . $jobs);
+    $queue->put('test', 'mandate', 'test:background', [], gmdate('Y-m-d H:i:s', time() - 600), false);
+    $queue->put('test', 'mail', 'test:urgent', [], null);
+    $order = [];
+    $queue->work(function ($kind) use (&$order) {
+        $order[] = $kind;
+    });
+    check($order === ['mail', 'mandate'], 'urgent jobs run before older background polling');
+    $queue->put('test', 'mandate', 'test:failed', []);
+    $store->query('UPDATE ' . $jobs . ' SET state="failed",attempts=8 WHERE dedup="test:failed"');
+    $queue->put('test', 'mandate', 'test:failed', [], null, false);
+    check($store->find('jobs', 'dedup', 'test:failed', 'test')['state'] === 'failed', 'periodic polling keeps a failed job visible instead of silently resetting it');
+    $queue->put('test', 'mandate', 'test:failed', []);
+    $revived = $store->find('jobs', 'dedup', 'test:failed', 'test');
+    check($revived['state'] === 'pending' && (int) $revived['attempts'] === 0, 'a new event revives a failed job');
+    $store->query('DELETE FROM ' . $jobs);
+    $many = 0;
+    for ($i = 0; $i < 40; $i++) {
+        $queue->put('test', 'bulk', 'test:bulk:' . $i, []);
+    }
+    $many = $queue->work(fn() => null);
+    check($many === 40 && !$store->select('SELECT id FROM ' . $jobs . ' WHERE state="pending"'), 'one run keeps working through more than one batch within its budget');
+    $fresh = activate(signup($manual, 'fresh@example.invalid'));
+    $freshId = (int) $fresh['id'];
+    $abandoned = signup($manual, 'abandoned@example.invalid');
+    $abandonedId = (int) $abandoned['customer']['id'];
+    $fake->payments[$abandoned['payment']['remote_id']]['status'] = 'expired';
+    $service->syncPayment($abandoned['payment']['remote_id'], 'test');
+    $open = signup($manual, 'open@example.invalid');
+    $openId = (int) $open['customer']['id'];
+    $store->query('DELETE FROM ' . $jobs);
+    $service->maintenance(($freshId + 1) % 24);
+    check(!$store->find('jobs', 'dedup', 'mandate:' . $freshId, 'test'), 'active customers are not mandate-polled every hour');
+    $service->maintenance($freshId % 24);
+    check($store->find('jobs', 'dedup', 'mandate:' . $freshId, 'test') !== null, 'active customer mandate is checked once a day in its own hour');
+    $polled = array_column($store->select('SELECT dedup FROM ' . $jobs), 'dedup');
+    check(!array_filter($polled, fn($d) => in_array($d, ['mandate:' . $abandonedId, 'mandate:' . $openId], true)), 'abandoned or unpaid signups are never mandate-polled');
+    check(in_array('payment:' . $open['payment']['remote_id'], $polled, true), 'open verification payments are still checked');
+    $store->query('DELETE FROM ' . $jobs);
+    $bulkCustomers = $store->table('customers');
+    for ($i = 0; $i < 240; $i++) {
+        $store->insert('customers', ['mode' => 'test', 'reference' => wp_generate_uuid4(), 'remote_id' => 'cst_load_' . $i, 'name' => 'Load', 'email' => 'load@example.invalid', 'scheme_id' => $manual, 'status' => $i < 200 ? 'active' : 'verification_failed', 'created_at' => Store::now(), 'updated_at' => Store::now()]);
+    }
+    $service->maintenance(5);
+    $mandateJobs = (int) $store->select('SELECT COUNT(*) AS n FROM ' . $jobs . ' WHERE kind="mandate"')[0]['n'];
+    check($mandateJobs > 0 && $mandateJobs <= 20, 'maintenance for 200+ customers enqueues only one day-slice of mandate checks (' . $mandateJobs . ')');
+    $store->query('DELETE FROM ' . $bulkCustomers . ' WHERE email="load@example.invalid"');
+    $store->query('DELETE FROM ' . $jobs);
+    $service->refreshMandate($freshId, 'test');
+    check(!$store->find('jobs', 'dedup', 'checkout:' . $freshId, 'test') && !$store->find('jobs', 'dedup', 'auto-subscription:' . $freshId, 'test'), 'routine mandate check queues no follow-up work that is already done');
+    // Stop completes immediately when Mollie confirms, without leaving the customer blocked.
+    $stopper = activate(signup($fixed, 'stopper@example.invalid'));
+    $stopCommand = $service->prepare((int) $stopper['id'], 'test', 'subscription', 2500, 'Stoppen', $date, wp_generate_uuid4());
+    $service->confirm((int) $stopCommand['id'], 'test');
+    sendPre((int) $stopCommand['id']);
+    $service->execute((int) $stopCommand['id'], 'test');
+    $stopSub = $store->select('SELECT * FROM ' . $store->table('subscriptions') . ' WHERE customer_id=%d', [(int) $stopper['id']])[0];
+    $service->stop((int) $stopSub['id'], 'test');
+    check($service->customer((int) $stopper['id'], 'test')['status'] === 'active', 'successful stop does not leave the customer in stop_pending');
+    // Subscription payments refresh the subscription so the next pre-notification is planned promptly.
+    $store->query('DELETE FROM ' . $jobs);
+    $subPay = 'tr_subscription_refresh';
+    $fake->subs[$stopSub['remote_id']]['status'] = 'active';
+    $store->update('subscriptions', ['status' => 'active'], (int) $stopSub['id'], 'test');
+    $fake->payments[$subPay] = ['id' => $subPay, 'mode' => 'test', 'status' => 'pending', 'customerId' => $stopper['remote_id'], 'subscriptionId' => $stopSub['remote_id'], 'amount' => Money::api(2500), 'sequenceType' => 'recurring', 'method' => 'directdebit', 'amountRefunded' => Money::api(0), 'amountChargedBack' => Money::api(0)];
+    $service->syncPayment($subPay, 'test');
+    check($store->find('jobs', 'dedup', 'subscription:' . $stopSub['id'], 'test') !== null, 'subscription payment webhook schedules a subscription sync');
+    // Mails with an unknown outcome can be resolved by an administrator.
+    $mailId = $mail->schedule('test', $freshId, 'access', 'access:resolve-test');
+    $store->update('notifications', ['state' => 'unknown', 'error' => 'mail_outcome_unknown'], $mailId, 'test');
+    $mail->resolve($mailId, 'test', false);
+    check($store->one('notifications', $mailId, 'test')['state'] === 'pending', 'admin can resend a mail with unknown outcome');
+    $store->update('notifications', ['state' => 'unknown'], $mailId, 'test');
+    $mail->resolve($mailId, 'test', true);
+    check($mail->sent('test', 'access:resolve-test'), 'admin can record a verified mail as sent');
+    rejects(fn() => $mail->resolve($mailId, 'test', true), 'mail_not_resolvable');
+    // Failed collections and chargebacks alert the administrator without a customer access link.
+    $alert = $store->select('SELECT * FROM ' . $store->table('notifications') . ' WHERE kind="admin_alert" AND event_key LIKE %s', ['admin:' . $pid . ':%']);
+    check(count($alert) === 2, 'failed debit and chargeback each create one admin alert');
+    $sentBefore = count($mails);
+    $mail->send((int) $alert[0]['id'], 'test');
+    $last = end($mails);
+    check(count($mails) === $sentBefore + 1 && $last['to'] === get_option('admin_email') && !str_contains($last['message'], 'mi_access'), 'admin alert goes to the site admin without a personal link');
+    check(!str_contains(Notifications::date('2026-10-28'), '2026-10-28') && str_contains(Notifications::date('2026-10-28'), '2026'), 'mails show readable dates');
+    // A monthly plan cannot have a notice period longer than one term allows.
+    $long = $schemes->get($fixed, 'test');
+    $long['amount'] = '25.00';
+    $long['notice_days'] = 28;
+    $long['notice_agreed'] = 1;
+    $long['interval'] = '1 month';
+    rejects(fn() => $schemes->save($long, 'test'), 'notice_too_long');
+    $long['interval'] = '12 months';
+    check($schemes->save($long, 'test') > 0, 'yearly plan accepts a longer agreed notice period');
+    // Returning from iDEAL checks Mollie server-side and activates without waiting for cron.
+    $returning = signup($manual, 'return@example.invalid');
+    $returnId = (int) $returning['customer']['id'];
+    $fake->payments[$returning['payment']['remote_id']]['status'] = 'paid';
+    $fake->mandateRows['mdt_return'] = ['id' => 'mdt_return', 'customerId' => $returning['customer']['remote_id'], 'status' => 'valid', 'method' => 'directdebit'];
+    check($service->verifiedFirstPayment($returnId, 'test', true) && $service->customer($returnId, 'test')['status'] === 'active', 'return page verifies at Mollie and activates immediately');
+    // Rate limits use the real visitor only behind explicitly trusted proxies.
+    $server = $_SERVER;
+    $_SERVER['REMOTE_ADDR'] = '10.0.0.5';
+    $_SERVER['HTTP_X_FORWARDED_FOR'] = '203.0.113.9, 10.0.0.4';
+    putenv('MOLLIE_INCASSO_TRUSTED_PROXIES');
+    check($config->clientIp() === '10.0.0.5', 'forwarded headers ignored without trusted proxies');
+    putenv('MOLLIE_INCASSO_TRUSTED_PROXIES=10.0.0.0/8');
+    check($config->clientIp() === '203.0.113.9', 'trusted proxy yields the visitor address');
+    $_SERVER['HTTP_X_FORWARDED_FOR'] = '1.2.3.4, 203.0.113.9';
+    check($config->clientIp() === '203.0.113.9', 'spoofed left-most forwarded address is ignored');
+    $_SERVER['REMOTE_ADDR'] = '198.51.100.7';
+    check($config->clientIp() === '198.51.100.7', 'untrusted sender cannot choose its rate-limit bucket');
+    check(Config::inRanges('2001:db8::1', ['2001:db8::/32']) && !Config::inRanges('2001:db9::1', ['2001:db8::/32']), 'IPv6 proxy ranges');
+    putenv('MOLLIE_INCASSO_TRUSTED_PROXIES');
+    $_SERVER = $server;
+    // Without the form cookie (page builders, templates) the shortcode offers a safe way to start.
+    $savedCookie = $_COOKIE['mi_form'];
+    unset($_COOKIE['mi_form']);
+    $fallback = $front->shortcode(['regeling' => $manual]);
+    check(str_contains($fallback, 'mi_form_init') && !str_contains($fallback, 'form_token'), 'shortcode without cookie shows a start button instead of an unusable form');
+    $_COOKIE['mi_form'] = $savedCookie;
     echo 'RESULT ' . $checks . " checks passed. No Mollie network requests, no real emails.\n";
 } finally {
     foreach (['customers', 'consents', 'schemes', 'mandates', 'commands', 'payments', 'subscriptions', 'tokens', 'jobs', 'notifications', 'limits', 'checkouts'] as $name) {

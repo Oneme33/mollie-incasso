@@ -38,6 +38,15 @@ final class Frontend
             $this->privatePage();
             exit;
         }
+        // Fallback for builders/templates where the shortcode is not in post_content: set the cookie, then return.
+        if (isset($_GET['mi_form_init'])) {
+            nocache_headers();
+            if (!preg_match('/^[a-f0-9]{64}$/D', (string) ($_COOKIE['mi_form'] ?? ''))) {
+                $this->cookie('mi_form', bin2hex(random_bytes(32)), DAY_IN_SECONDS);
+            }
+            wp_safe_redirect(remove_query_arg('mi_form_init'), 303);
+            exit;
+        }
         global $post;
         if (is_singular() && $post && has_shortcode($post->post_content, 'mollie_incasso')) {
             if (!preg_match('/^[a-f0-9]{64}$/D', (string) ($_COOKIE['mi_form'] ?? ''))) {
@@ -72,10 +81,16 @@ final class Frontend
                 $id = (int) ($rows[0]['id'] ?? 0);
             }
             $scheme = $this->schemes->get($id, $mode);
-            if (empty($_COOKIE['mi_form'])) {
-                throw new Failure('cookies_unavailable');
+            if (empty($_COOKIE['mi_form']) && !headers_sent()) {
+                $this->cookie('mi_form', bin2hex(random_bytes(32)), DAY_IN_SECONDS);
             }
-            $this->store->limit('form:' . ($_SERVER['REMOTE_ADDR'] ?? ''), 60, 600);
+            if (empty($_COOKIE['mi_form'])) {
+                if (!defined('DONOTCACHEPAGE')) {
+                    define('DONOTCACHEPAGE', true);
+                }
+                return '<div class="mi-panel"><h2>' . esc_html($scheme['name']) . '</h2><p>' . esc_html__('Open het beveiligde aanmeldformulier om toestemming te geven.', 'mollie-incasso') . '</p><p><a class="mi-button" rel="nofollow" href="' . esc_url(add_query_arg('mi_form_init', '1')) . '">' . esc_html__('Aanmeldformulier openen', 'mollie-incasso') . '</a></p></div>';
+            }
+            $this->store->limit('form:' . $this->config->clientIp(), 60, 600);
             $token = $this->tokens->issue($mode, 'signup', 0, ['scheme_id' => $id, 'disclosure' => $this->schemes->disclosure($scheme)], $this->binding(), HOUR_IN_SECONDS);
             $uid = 'mi-' . substr(hash('sha256', $token), 0, 10);
         } catch (Failure $e) {
@@ -179,7 +194,7 @@ final class Frontend
             if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !wp_verify_nonce($this->field($_POST, 'mi_nonce'), 'mi_signup') || $this->field($_POST, 'website') !== '') {
                 throw new Failure('csrf_failed');
             }
-            $this->store->limit('signup:' . ($_SERVER['REMOTE_ADDR'] ?? ''), 10, 600);
+            $this->store->limit('signup:' . $this->config->clientIp(), 10, 600);
             $this->tokens->resolve($mode, $raw, 'signup', $this->binding());
             $result = $this->service->signup($mode, $raw, $this->binding(), $this->field($_POST, 'name', 190), $this->field($_POST, 'email', 190), $this->field($_POST, 'consent') === '1', get_current_user_id());
             $this->accessCookie((int) $result['customer']['id'], $mode);
@@ -266,7 +281,7 @@ final class Frontend
             }
         }
         $args = ['mi_mode' => $auth['mode'], 'mi_customer' => $auth['customer']['id']];
-        if ($auth['raw']) {
+        if ($auth['raw'] && $this->field($_COOKIE, 'mi_access_' . $auth['mode'], 64) !== $auth['raw']) {
             $args['mi_access'] = $auth['raw'];
         }
         wp_safe_redirect(add_query_arg($args, home_url('/')), 303);
@@ -313,12 +328,29 @@ final class Frontend
         header('X-Robots-Tag: noindex, nofollow');
         try {
             $auth = $this->authorize($_GET);
-            $this->store->limit('status:' . $auth['customer']['id'], 30, 600);
+            $this->store->limit('status:' . $auth['customer']['id'], 60, 600);
         } catch (Failure $e) {
-            wp_die(esc_html__('Deze persoonlijke link is ongeldig, verlopen of hoort niet bij uw account. Vraag de organisatie om een nieuwe link.', 'mollie-incasso'), esc_html__('Geen toegang', 'mollie-incasso'), ['response' => 403]);
+            $message = isset($_GET['mi_clean']) ? __('Uw browser heeft de beveiligde cookie niet bewaard. Sta cookies voor deze website toe en open de link uit de e-mail opnieuw.', 'mollie-incasso') : __('Deze persoonlijke link is ongeldig, verlopen of hoort niet bij uw account. Vraag de organisatie om een nieuwe link.', 'mollie-incasso');
+            wp_die(esc_html($message), esc_html__('Geen toegang', 'mollie-incasso'), ['response' => 403]);
+        }
+        // Move the mailed token out of the address bar (and server logs/history) into a private cookie.
+        if (!empty($_GET['mi_access']) && !headers_sent()) {
+            $this->cookie('mi_access_' . $auth['mode'], $auth['raw'], 7 * DAY_IN_SECONDS);
+            wp_safe_redirect(add_query_arg(['mi_customer' => (int) $auth['customer']['id'], 'mi_mode' => $auth['mode'], 'mi_clean' => 1], home_url('/')), 303);
+            exit;
         }
         $customer = $auth['customer'];
         $mode = $auth['mode'];
+        // Returning from iDEAL proves nothing, but it is the moment to ask Mollie server-side.
+        if (in_array($customer['status'], ['pending', 'mandate_pending'], true)) {
+            try {
+                $this->store->limit('return-sync:' . $customer['id'], 10, 600);
+                $this->service->verifiedFirstPayment((int) $customer['id'], $mode, true);
+                $customer = $this->service->customer((int) $customer['id'], $mode);
+            } catch (Failure $e) {
+            }
+        }
+        $waiting = in_array($customer['status'], ['pending', 'mandate_pending', 'revoking', 'stop_pending'], true);
         $payments = $this->store->select('SELECT * FROM ' . $this->store->table('payments') . ' WHERE customer_id=%d AND mode=%s ORDER BY id DESC LIMIT 50', [(int) $customer['id'], $mode]);
         foreach ($payments as $p) {
             if (in_array($p['status'], ['open', 'pending'], true)) {
@@ -326,7 +358,11 @@ final class Frontend
             }
         }
         $subs = $this->store->select('SELECT * FROM ' . $this->store->table('subscriptions') . ' WHERE customer_id=%d AND mode=%s ORDER BY id DESC', [(int) $customer['id'], $mode]);
-        ?><!doctype html><html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title><?php
+        ?><!doctype html><html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><?php
+        if ($waiting) {
+            ?><meta http-equiv="refresh" content="20"><?php
+        }
+        ?><title><?php
         esc_html_e('Uw incassostatus', 'mollie-incasso');
         ?></title><link rel="stylesheet" href="<?php
         echo esc_url(plugins_url('assets/style.css', MOLLIE_INCASSO_FILE));
@@ -344,6 +380,11 @@ final class Frontend
         echo esc_html(Plugin::status($customer['status']));
         ?></p></div>
         <?php
+        if (in_array($customer['status'], ['pending', 'mandate_pending'], true)) {
+            ?><p><?php
+            esc_html_e('Wij controleren uw verificatie bij Mollie. Deze pagina ververst automatisch.', 'mollie-incasso');
+            ?></p><?php
+        }
         if (in_array($customer['status'], ['revoking', 'stop_pending'], true)) {
             ?><p><?php
             esc_html_e('Uw verzoek is ontvangen. Externe verwerking is nog niet voltooid; nieuwe lokale incasso’s zijn geblokkeerd.', 'mollie-incasso');
@@ -353,6 +394,10 @@ final class Frontend
         <h2><?php
         esc_html_e('Betalingen', 'mollie-incasso');
         ?></h2><div class="mi-scroll"><table><thead><tr><th><?php
+        esc_html_e('Datum', 'mollie-incasso');
+        ?></th><th><?php
+        esc_html_e('Soort', 'mollie-incasso');
+        ?></th><th><?php
         esc_html_e('Bedrag', 'mollie-incasso');
         ?></th><th><?php
         esc_html_e('Status', 'mollie-incasso');
@@ -362,6 +407,10 @@ final class Frontend
         <?php
         foreach ($payments as $p) {
             ?><tr><td><?php
+            echo esc_html(Notifications::date($p['created_at'], true));
+            ?></td><td><?php
+            echo esc_html(Plugin::kind($p['kind']));
+            ?></td><td><?php
             echo esc_html(Money::eur((int) $p['amount']));
             ?></td><td><?php
             echo esc_html(Plugin::status($p['status']));

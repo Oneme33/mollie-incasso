@@ -15,5 +15,6 @@ interface Gateway
     public function subscription(string $customer, string $id): array;
     public function subscriptions(string $customer): array;
     public function cancel(string $customer, string $id): array;
-    public function find(string $kind, string $customer, string $reference, string $instance): ?array;
+    /** Lists are newest first; $since (UTC) lets the search stop once older resources follow. */
+    public function find(string $kind, string $customer, string $reference, string $instance, ?string $since = null): ?array;
 }

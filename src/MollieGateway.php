@@ -153,9 +153,11 @@ final class MollieGateway implements Gateway
     {
         return $this->call(fn() => $this->subscriptionData($this->client->subscriptions->cancelForId($customer, $id)), true);
     }
-    public function find(string $kind, string $customer, string $reference, string $instance): ?array
+    public function find(string $kind, string $customer, string $reference, string $instance, ?string $since = null): ?array
     {
-        return $this->call(function () use ($kind, $customer, $reference, $instance) {
+        // An hour of margin covers clock skew; anything older cannot be the uncertain create.
+        $cutoff = $since ? strtotime($since . ' UTC') - HOUR_IN_SECONDS : null;
+        return $this->call(function () use ($kind, $customer, $reference, $instance, $cutoff) {
             $items = match ($kind) {
                 'customer' => $this->client->customers->iterator(null, 100),
                 'subscription' => $this->client->subscriptions->iteratorForId($customer, null, 100),
@@ -164,6 +166,9 @@ final class MollieGateway implements Gateway
             $count = 0;
             $found = null;
             foreach ($items as $r) {
+                if ($cutoff && !empty($r->createdAt) && strtotime((string) $r->createdAt) < $cutoff) {
+                    break;
+                }
                 if (++$count > 2000) {
                     throw new Failure('reconciliation_limit');
                 }

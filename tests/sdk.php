@@ -68,6 +68,11 @@ try {
             expect($e->reason === $reason, 'HTTP ' . $status . ' maps to safe failure');
         }
     }
+    // Newest first: an unrelated recent customer, then a much older one that happens to carry the metadata.
+    $older = MollieApiClient::fake([$prefix . 'GetPaginatedCustomerRequest' => $list('customers', [['resource' => 'customer', 'id' => 'cst_new00001', 'createdAt' => gmdate('c'), 'metadata' => []], ['resource' => 'customer', 'id' => 'cst_old00001', 'createdAt' => '2020-01-01T00:00:00+00:00', 'metadata' => $metadata]])]);
+    expect((new MollieGateway($config, 'test', $older))->find('customer', '', 'ref', 'instance', gmdate('Y-m-d H:i:s')) === null, 'reconciliation stops at resources older than the uncertain create');
+    $older = MollieApiClient::fake([$prefix . 'GetPaginatedCustomerRequest' => $list('customers', [['resource' => 'customer', 'id' => 'cst_new00001', 'createdAt' => gmdate('c'), 'metadata' => $metadata]])]);
+    expect((new MollieGateway($config, 'test', $older))->find('customer', '', 'ref', 'instance', gmdate('Y-m-d H:i:s', time() - 60))['id'] === 'cst_new00001', 'reconciliation still finds the recent uncertain create');
     $bad = MollieApiClient::fake([$prefix . 'CreatePaymentRequest' => MockResponse::error(503, 'Error', 'Mock failure')]);
     $gateway = new MollieGateway($config, 'test', $bad);
     try {

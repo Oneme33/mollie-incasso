@@ -27,6 +27,10 @@ final class Schemes
         if (in_array('', array_intersect_key($data, array_flip(['name', 'purpose', 'calculation', 'frequency', 'withdrawal', 'consent'])), true) || $data['times'] !== null && ($data['times'] < 1 || $data['times'] > 10000)) {
             throw new Failure('invalid_scheme');
         }
+        // The next pre-notification is planned once Mollie moves nextPaymentDate, so it must fit inside one term.
+        if ($type === 'fixed' && $data['interval'] === '1 month' && $data['notice_days'] > 21) {
+            throw new Failure('notice_too_long');
+        }
         if ($data['notice_days'] !== 14 && empty($input['notice_agreed'])) {
             throw new Failure('notice_agreement_required');
         }
