@@ -126,7 +126,7 @@ final class Frontend
         esc_html_e('Uw incassoafspraak', 'mollie-incasso');
         ?></h3>
             <div class="mi-disclosure"><?php
-        echo nl2br(esc_html($this->schemes->disclosure($scheme)));
+        echo nl2br(esc_html($this->schemes->displayText($scheme)));
         ?></div>
             <form action="<?php
         echo esc_url(admin_url('admin-post.php'));

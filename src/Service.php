@@ -130,6 +130,25 @@ final class Service
         $hash = hash('sha256', 'automatic-subscription|' . $customer['reference']);
         return substr($hash, 0, 8) . '-' . substr($hash, 8, 4) . '-' . substr($hash, 12, 4) . '-' . substr($hash, 16, 4) . '-' . substr($hash, 20, 12);
     }
+    /**
+     * Retry a fixed subscription whose create Mollie rejected. A new business reference and a new,
+     * properly announced start date are used; the failed command stays as history.
+     */
+    public function retrySubscription(int $commandId, string $mode): array
+    {
+        $this->config->assertRun($mode, true);
+        $failed = $this->store->one('commands', $commandId, $mode);
+        if (!$failed || $failed['kind'] !== 'subscription' || $failed['state'] !== 'failed') {
+            throw new Failure('invalid_command');
+        }
+        $customer = $this->customer((int) $failed['customer_id'], $mode);
+        $scheme = $this->consent($customer);
+        $payload = json_decode($failed['payload'], true);
+        $date = wp_date('Y-m-d', time() + (max(1, (int) $scheme['notice_days']) + 1) * DAY_IN_SECONDS, new \DateTimeZone('Europe/Amsterdam'));
+        $command = $this->prepare((int) $customer['id'], $mode, 'subscription', (int) $failed['amount'], (string) $payload['description'], $date, wp_generate_uuid4());
+        $this->confirm((int) $command['id'], $mode);
+        return $this->store->one('commands', (int) $command['id'], $mode);
+    }
     public function customer(int $id, string $mode): array
     {
         $row = $this->store->one('customers', $id, $mode);
@@ -314,7 +333,7 @@ final class Service
                     default => $api->createPayment($body, $command['idempotency_key']),
                 };
             } catch (Failure $e) {
-                $this->store->update('commands', ['state' => $e->unknown ? 'unknown' : ($e->temporary ? 'scheduled' : 'failed'), 'error' => $e->reason, 'updated_at' => Store::now()], $id, $mode);
+                $this->store->update('commands', ['state' => $e->unknown ? 'unknown' : ($e->temporary ? 'scheduled' : 'failed'), 'error' => $e->reason, 'error_detail' => $e->detail, 'updated_at' => Store::now()], $id, $mode);
                 if ($e->temporary || $e->unknown) {
                     $this->queue->put($mode, 'command', 'command:' . $id, ['id' => $id], gmdate('Y-m-d H:i:s', time() + 60));
                 }
@@ -329,7 +348,7 @@ final class Service
             } else {
                 $this->storePayment($customer, $command, $remote, null);
             }
-            $this->store->update('commands', ['state' => 'completed', 'remote_id' => $remote['id'], 'error' => '', 'updated_at' => Store::now()], $id, $mode);
+            $this->store->update('commands', ['state' => 'completed', 'remote_id' => $remote['id'], 'error' => '', 'error_detail' => '', 'updated_at' => Store::now()], $id, $mode);
         });
         if ($kind === 'first') {
             $this->queue->put($mode, 'payment', 'payment:' . $remote['id'], ['id' => $remote['id']]);
@@ -500,7 +519,10 @@ final class Service
                 if ($subscription) {
                     $this->queue->put($mode, 'subscription', 'subscription:' . $subscription['id'], ['id' => (int) $subscription['id']]);
                 }
-                $this->queue->put($mode, 'mandate', 'mandate:' . $customer['id'], ['id' => (int) $customer['id']]);
+                // A failed verification has no mandate to re-check; that job could only fail.
+                if (!$command || $command['kind'] !== 'first') {
+                    $this->queue->put($mode, 'mandate', 'mandate:' . $customer['id'], ['id' => (int) $customer['id']]);
+                }
             }
         });
     }

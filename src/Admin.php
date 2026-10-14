@@ -25,16 +25,42 @@ final class Admin
                 wp_enqueue_style('mi-admin', plugins_url('assets/admin.css', MOLLIE_INCASSO_FILE), [], MOLLIE_INCASSO_VERSION . '.' . filemtime(dirname(MOLLIE_INCASSO_FILE) . '/assets/admin.css'));
             }
         });
+        // Other plugins' admin notices are hidden on our own screens only; they remain everywhere else.
+        add_action('in_admin_header', function () {
+            if (!str_starts_with((string) ($_GET['page'] ?? ''), 'mollie-incasso')) {
+                return;
+            }
+            global $wp_filter;
+            foreach (['admin_notices', 'all_admin_notices', 'user_admin_notices', 'network_admin_notices'] as $hook) {
+                if (!isset($wp_filter[$hook])) {
+                    continue;
+                }
+                foreach ($wp_filter[$hook]->callbacks as $priority => $callbacks) {
+                    foreach ($callbacks as $key => $callback) {
+                        if (empty($callback['function']) || !($callback['function'] instanceof \Closure) || !self::own($callback['function'])) {
+                            remove_action($hook, $callback['function'], $priority);
+                        }
+                    }
+                }
+            }
+        }, PHP_INT_MAX);
         add_action('admin_notices', function () {
             if (!current_user_can('manage_mollie_incasso') || !str_contains((string) ($_GET['page'] ?? ''), 'mollie-incasso')) {
                 return;
             }
             if (isset($_GET['mi_error'])) {
                 echo '<div class="notice notice-error"><p>' . esc_html(Plugin::message(sanitize_key($_GET['mi_error']))) . '</p></div>';
+            } elseif (isset($_GET['mi_saved']) && ($_GET['page'] ?? '') === 'mollie-incasso-diagnostics' && ($m = get_option('mi_methods_' . $this->p->config->mode(), [])) && !empty($m['checked_at']) && strtotime($m['checked_at'] . ' UTC') > time() - 120) {
+                echo '<div class="notice notice-success"><p>' . esc_html(sprintf(__('Betaalmethodes gecontroleerd: iDEAL voor de eerste betaling en SEPA-incasso voor vervolgbetalingen zijn beschikbaar (%1$s / %2$s).', 'mollie-incasso'), implode(', ', $m['first']), implode(', ', $m['recurring']))) . '</p></div>';
             } elseif (isset($_GET['mi_saved'])) {
                 echo '<div class="notice notice-success"><p>' . esc_html__('Actie opgeslagen. Controleer de actuele status hieronder.', 'mollie-incasso') . '</p></div>';
             }
         });
+    }
+    private static function own(\Closure $callback): bool
+    {
+        $file = (new \ReflectionFunction($callback))->getFileName();
+        return is_string($file) && str_starts_with(wp_normalize_path($file), trailingslashit(wp_normalize_path(__DIR__)));
     }
     private function url(string $view = 'overview', array $args = []): string
     {
@@ -171,6 +197,10 @@ final class Admin
                     break;
                 case 'confirm':
                     $this->p->service->confirm($id, $mode);
+                    $view = 'commands';
+                    break;
+                case 'retry_subscription':
+                    $this->p->service->retrySubscription($id, $mode);
                     $view = 'commands';
                     break;
                 case 'reconcile':
@@ -359,7 +389,7 @@ final class Admin
         if(!preg_match('/^[a-f0-9-]{36}$/D',$reference))throw new Failure('invalid_scheme');
         $interval=$this->field('interval',12);
         if(!in_array($interval,['1 month','3 months','12 months'],true))throw new Failure('invalid_scheme');
-        $data=['slug'=>'wizard-'.$reference,'type'=>'fixed','auto_start'=>'1','name'=>$this->field('name',190),'amount'=>$this->field('amount',24),'interval'=>$interval,'purpose'=>$this->field('purpose'),'calculation'=>__('Het vaste bedrag voor dit abonnement. De verificatiebetaling van € 0,01 staat hier los van.','mollie-incasso'),'frequency'=>Plugin::interval($interval),'withdrawal'=>$this->field('withdrawal'),'consent'=>$this->field('consent'),'notice_days'=>14,'times'=>''];
+        $data=['slug'=>'wizard-'.$reference,'type'=>'fixed','auto_start'=>'1','name'=>$this->field('name',190),'amount'=>$this->field('amount',24),'interval'=>$interval,'purpose'=>$this->field('purpose'),'calculation'=>__('Het vaste bedrag voor dit abonnement. De verificatiebetaling van € 0,01 staat hier los van.','mollie-incasso'),'frequency'=>Plugin::frequency($interval),'withdrawal'=>$this->field('withdrawal'),'consent'=>$this->field('consent'),'notice_days'=>14,'times'=>''];
         return $this->p->store->lock('wizard-plan:'.$mode.':'.$reference,function()use($data,$mode,$reference){
             $option='mi_wizard_plan_'.$mode.'_'.$reference;$hash=hash('sha256',wp_json_encode($data));$previous=get_option($option,[]);
             if(is_array($previous)&&($previous['hash']??'')===$hash&&$this->p->store->one('schemes',(int)$previous['id'],$mode))return (int)$previous['id'];
@@ -531,6 +561,12 @@ final class Admin
             echo '<tr><td>' . esc_html($c['reference']) . '<br>' . esc_html(Plugin::kind($c['kind'])) . '</td><td>' . esc_html($customer['name'] ?? '') . '</td><td>' . esc_html(Money::eur((int) $c['amount'])) . '</td><td>' . esc_html($c['due_at']) . ' UTC</td><td>' . esc_html(Plugin::status($c['state']));
             if ($c['error']) {
                 echo '<br>' . esc_html(Plugin::message($c['error']));
+                if (!empty($c['error_detail'])) {
+                    echo '<br><small>' . esc_html__('Melding van Mollie:', 'mollie-incasso') . ' ' . esc_html($c['error_detail']) . '</small>';
+                }
+                if ($c['kind'] === 'subscription' && $c['state'] === 'failed') {
+                    $this->quick('retry_subscription', (int) $c['id'], 'Opnieuw proberen met nieuwe startdatum');
+                }
             }
             echo '</td><td>';
             if ($c['state'] === 'draft') {
@@ -629,6 +665,10 @@ final class Admin
             echo '<p>' . esc_html(Plugin::message($e->reason)) . '</p>';
         }
         echo '<p>' . esc_html__('Deze URL moet extern via HTTPS bereikbaar zijn zonder login, caching of firewallblokkade. Alleen een geslaagde echte Mollie-test bevestigt bereikbaarheid.', 'mollie-incasso') . '</p><p>' . esc_html__('Laatste webhook:', 'mollie-incasso') . ' ' . esc_html((string) get_option('mi_last_webhook_' . $mode, '—')) . ' UTC</p><p>' . esc_html__('Laatste queue-run:', 'mollie-incasso') . ' ' . esc_html((string) get_option('mi_last_tick', '—')) . ' UTC</p>';
+        $methods = get_option('mi_methods_' . $mode, []);
+        if (!empty($methods['checked_at'])) {
+            echo '<p>' . esc_html(sprintf(__('Laatste methodecontrole (%1$s): eerste betaling %2$s; terugkerende incasso %3$s.', 'mollie-incasso'), Notifications::date($methods['checked_at'], true), implode(', ', $methods['first']), implode(', ', $methods['recurring']))) . '</p>';
+        }
         $this->quick('diagnose', 0, 'Beschikbare iDEAL- en directdebit-methodes controleren');
         $this->quick('queue', 0, 'Achtergrondwerk nu uitvoeren');
         $error = get_option('mi_cron_error', []);

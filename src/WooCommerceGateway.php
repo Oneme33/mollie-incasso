@@ -20,9 +20,9 @@ final class WooCommerceGateway extends \WC_Payment_Gateway
     }
     public function payment_fields()
     {
-        try{$bridge=WooCommerceBridge::instance();$scheme=$bridge->contextScheme();$text=$bridge->plugin()->schemes->disclosure($scheme);}
+        try{$bridge=WooCommerceBridge::instance();$scheme=$bridge->contextScheme();$text=$bridge->plugin()->schemes->disclosure($scheme);$shown=$bridge->plugin()->schemes->displayText($scheme);}
         catch(Failure $e){echo '<p>'.esc_html(Plugin::message($e->reason)).'</p>';return;}
-        echo '<div class="mi-woo-disclosure">'.nl2br(esc_html($text)).'</div><input type="hidden" name="mi_disclosure_hash" value="'.esc_attr(hash('sha256',$text)).'"><p><label for="mi-woo-consent"><input type="checkbox" id="mi-woo-consent" name="mi_consent" value="1" required> '.esc_html($scheme['consent']).'</label></p>';
+        echo '<div class="mi-woo-disclosure">'.nl2br(esc_html($shown)).'</div><input type="hidden" name="mi_disclosure_hash" value="'.esc_attr(hash('sha256',$text)).'"><p><label for="mi-woo-consent"><input type="checkbox" id="mi-woo-consent" name="mi_consent" value="1" required> '.esc_html($scheme['consent']).'</label></p>';
     }
     public function validate_fields()
     {

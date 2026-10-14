@@ -19,7 +19,13 @@ final class Notifications
         } catch (\Exception $e) {
             return sanitize_text_field($value);
         }
-        return wp_date($utc ? 'j F Y H:i' : 'j F Y', $date->getTimestamp(), $zone);
+        // Dates follow the language of the plugin texts: the Dutch source until a translation is loaded.
+        if (is_textdomain_loaded('mollie-incasso') && !str_starts_with(determine_locale(), 'nl')) {
+            return wp_date($utc ? 'j F Y H:i' : 'j F Y', $date->getTimestamp(), $zone);
+        }
+        $local = $date->setTimezone($zone);
+        $months = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
+        return $local->format('j') . ' ' . $months[(int) $local->format('n') - 1] . ' ' . $local->format('Y') . ($utc ? ' ' . $local->format('H:i') : '');
     }
     public function schedule(string $mode, int $customer, string $kind, string $event, array $data = [], ?string $at = null): int
     {
@@ -51,6 +57,18 @@ final class Notifications
             $this->store->update('notifications', ['state' => 'pending', 'error' => '', 'updated_at' => Store::now()], $id, $mode);
             $this->queue->put($mode, 'mail', 'mail:' . $id, ['id' => $id]);
         });
+    }
+    /** wp_mail with the organisation as sender name, for these mails only. */
+    private function mail(string $to, string $subject, string $text, array $headers): bool
+    {
+        $name = trim((string) $this->config->settings()['organization']);
+        $filter = static fn($current) => $name !== '' ? $name : $current;
+        add_filter('wp_mail_from_name', $filter, 20);
+        try {
+            return (bool) wp_mail($to, $subject, $text, $headers);
+        } finally {
+            remove_filter('wp_mail_from_name', $filter, 20);
+        }
     }
     /** Replies go to the organisation's contact address when one is configured. */
     private function headers(): array
@@ -150,7 +168,7 @@ final class Notifications
                 $text = "[TESTMODUS]\n" . $text;
             }
             try {
-                $sent = wp_mail($customer['email'], ($mode === 'test' ? '[TEST] ' : '') . ($subjects[$row['kind']] ?? __('Mollie Incasso', 'mollie-incasso')), $text, $this->headers());
+                $sent = $this->mail($customer['email'], ($mode === 'test' ? '[TEST] ' : '') . ($subjects[$row['kind']] ?? __('Mollie Incasso', 'mollie-incasso')), $text, $this->headers());
             } catch (\Throwable $e) {
                 $this->store->update('notifications', ['state' => 'unknown', 'error' => 'mail_outcome_unknown', 'updated_at' => Store::now()], $id, $mode);
                 throw new Failure('mail_outcome_unknown');

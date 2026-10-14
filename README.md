@@ -1,4 +1,4 @@
-# Mollie Incasso — testversie 0.3.0
+# Mollie Incasso — testversie 0.3.1
 
 Zelfstandige WordPress-plugin voor één organisatie en één Mollie-profiel. Nederlandse, vertaalbare interface, werkt zelfstandig, met een optionele WooCommerce-checkout; geen WooCommerce Subscriptions of externe abonnementendienst nodig. Eerste iDEAL-betaling: **€ 0,01**, expliciet `sequenceType=first` bij een nieuwe, lokaal gekoppelde Mollie Customer. Alleen een betaald verificatieverzoek en een geldig `directdebit`-mandaat activeren toestemming. De eurocent blijft bij de organisatie, is geen abonnementsperiode en wordt niet stilzwijgend verrekend of terugbetaald.
 
@@ -15,7 +15,7 @@ Zelfstandige WordPress-plugin voor één organisatie en één Mollie-profiel. Ne
 
 ## Installeren
 
-1. Upload `mollie-incasso-0.3.0.zip` via **Plugins → Nieuwe plugin → Plugin uploaden**. Bij een update kiest u de bestaande plugin te vervangen; verwijderen is niet nodig.
+1. Upload `mollie-incasso-0.3.1.zip` via **Plugins → Nieuwe plugin → Plugin uploaden**. Bij een update kiest u de bestaande plugin te vervangen; verwijderen is niet nodig.
 2. Open **Mollie Incasso → Installatiehulp**. Stap 1: organisatie en contactgegevens. Stap 2: plak uw eigen `test_…` API-key uit Mollie Dashboard → Developers → API keys, sla op en controleer de betaalmethodes. Extra serverconfiguratie is voor normale opslag niet nodig; zie hieronder.
 3. Stap 3: geef het eerste abonnement een naam (bijvoorbeeld ‘GCC doorlopend abonnement’), bedrag en maand/kwartaal/jaar. Controleer de zichtbare voorbeeldtekst van de incassoafspraak en pas die aan. De wizard kiest automatisch starten met 14 dagen vooraankondiging. U kunt meerdere abonnementen toevoegen; bestaande afspraken blijven aan hun eigen versie gekoppeld.
 4. Stap 4: kies **aanmelden op een gewone pagina** of **via een WooCommerce-product**. Voor een pagina kunt u de shortcode kopiëren of een conceptpagina maken. Voor de winkel kunt u per regeling een eenvoudig virtueel product als concept klaarzetten. Herhaald klikken opent dezelfde pagina/product. Controleer het concept en publiceer het daarna.
@@ -30,6 +30,8 @@ WooCommerce is uitsluitend nodig als u de winkelroute kiest. WooCommerce Subscri
 - In de checkout staan de incassoafspraak, het bedrag, de frequentie, het opzeggen en een expliciete niet aangevinkte toestemming. Eén checkout is voldoende; geen tweede aanmeldformulier. Een gewone iDEAL-productbetaling of alleen de productnaam bewijst geen machtiging. De eigen gateway maakt de vereiste `first`-betaling bij de juiste Customer; API-controle en een geldig directdebit-mandaat zijn vereist.
 - Ondersteunt de klassieke checkout en Checkout Blocks (officiële Payment Method Type + legacy Store API-verwerking), met WooCommerce-objectgetters/CRUD voor klassieke opslag en HPOS. De betaalmethode verschijnt alleen voor gekoppelde aanmeldproducten. Een eigen product koppelen kan bij Productgegevens → Algemeen via afzonderlijke test-/liveregelingen; gebruik een eenvoudig virtueel product. Test- en livekoppelingen worden niet onderling vervangen.
 - Een duurzame `checkouts`-koppeling met unieke WooCommerce-order-ID voorkomt dubbele registratie bij retries. Bedrag, identiteit, regelingsversie en toestemming worden server-side gecontroleerd. Een onzekere API-uitkomst gaat naar de statuspagina en de lokale queue; er wordt niet gevraagd een tweede bestelling te plaatsen. Bij een nog open betaling staat op die pagina de gecontroleerde Mollie-checkoutlink.
+- Een betaalde verificatieorder gaat direct naar **Voltooid** (niets te verzenden). Bij terugkeer op de bedankpagina controleert de plugin eerst bij Mollie, zodat WooCommerce de juiste status of zijn ‘betaling mislukt’-tekst toont. Een mislukte verificatieorder biedt geen ‘opnieuw betalen’; de klant plaatst een nieuwe bestelling, wat een nieuwe aanmelding start.
+- Wijst Mollie het aanmaken van een abonnement af, dan staat Mollies uitleg (veld en reden, zonder persoonsgegevens) bij de opdracht onder Incasso’s, met de knop **Opnieuw proberen met nieuwe startdatum**; de klant krijgt dan een nieuwe vooraankondiging.
 - WooCommerce annuleert onbetaalde aanmeldorders van deze gateway niet automatisch (voorraadreservering), zodat een vertraagde webhook of cron nooit een betaalde aanmelding intrekt. Bij handmatig annuleren controleert de plugin eerst bij Mollie of de € 0,01 toch betaald is; dan blijft de toestemming staan en volgt een ordernotitie.
 - De WooCommerce-order wordt pas betaald gemeld na een via Mollie gecontroleerde betaalstatus. Toestemming/machtiging kan dan nog in behandeling zijn. Een geannuleerde onbetaalde aanmelding blokkeert de toestemming en plant intrekking; een latere betaalmelding start geen abonnement meer. Een eerder al betaalde verificatieorder annuleren is geen opzegging van het lopende abonnement: gebruik daarvoor Mollie Incasso.
 - Vaste abonnementen met `auto_start` worden na geldig mandaat automatisch voorbereid en bevestigd met één vaste zakelijke opdrachtreferentie. De eerste incassodatum ligt veilig na de afgesproken vooraankondiging; de eerste vooraankondiging moet door de mailserver geaccepteerd zijn voordat de Subscription wordt aangemaakt. Mollie plant daarna de termijnen. Dezelfde automatische start werkt via het gewone websiteformulier. Bestaande regelingen zonder deze optie veranderen niet.
@@ -120,6 +122,8 @@ Het uurlijkse onderhoud is een vangnet naast de webhooks en spreidt het werk ove
 
 ## Mail en vooraankondiging
 
+Plugin-mails gebruiken de organisatienaam als afzendernaam. Datums volgen de taal van de plugin-teksten: Nederlands zolang er geen vertaling is geladen. Voor betrouwbare aflevering is geauthenticeerde SMTP (SPF/DKIM voor het afzenderdomein) sterk aanbevolen; zonder die instelling kunnen bevestigingen in spam belanden, zoals in de online test van 14 oktober 2026.
+
 Toestemming, abonnement, beëindiging en vooraankondigingen gebruiken een duurzame outbox met unieke gebeurtenissleutels. Betaalstatusmails zijn optioneel. Standaard termijn: **14 kalenderdagen**; een andere termijn vraagt een expliciete bevestiging van een afwijkende klantafspraak in de regeling. Beoordeel teksten, termijn, SEPA-verplichtingen en consumentenrechten vóór livegang. De voorbeeldtekst is geen verklaring van juridische geschiktheid.
 
 De eerste vooraankondiging moet door `wp_mail` zijn geaccepteerd vóór een financiële opdracht wordt verzonden. Vervolgvooraankondigingen volgen Mollies `nextPaymentDate`, verminderd met de regelingstermijn. Te late cronruns en ongewone externe wijzigingen vragen operationele opvolging: de plugin kan reeds bij Mollie lopende termijnen niet door een vertraagde mail automatisch tegenhouden. Gebruik betrouwbare SMTP, monitoring en tijdige profielinstellingen.
@@ -161,10 +165,10 @@ Ontwikkelmachine: PHP 8.2+, curl/openssl/zip, Composer. Hosting heeft **geen Com
 
 ```sh
 cd mollie-incasso
-php tools/build.php /absoluut/pad/composer.phar ../artifacts/mollie-incasso-0.3.0.zip
+php tools/build.php /absoluut/pad/composer.phar ../artifacts/mollie-incasso-0.3.1.zip
 ```
 
-Met Composer op PATH: `php tools/build.php composer` (standaarduitvoer: `dist/mollie-incasso-0.3.0.zip`). De build gebruikt uitsluitend locks (`install`, geen `update`), scoped alle productiecode, controleert de SDK/CA-bundle en PHP-syntax en maakt een ZIP met gesorteerde bestanden en vaste tijdstempels/rechten. De ZIP bevat geen devtools, eigen testfixtures, secrets of ongescopete autoloaders. Zelfde bron, locks en toolomgeving produceren dezelfde ZIP. Dependencies en `.build/` zijn gegenereerd en staan niet in Git.
+Met Composer op PATH: `php tools/build.php composer` (standaarduitvoer: `dist/mollie-incasso-0.3.1.zip`). De build gebruikt uitsluitend locks (`install`, geen `update`), scoped alle productiecode, controleert de SDK/CA-bundle en PHP-syntax en maakt een ZIP met gesorteerde bestanden en vaste tijdstempels/rechten. De ZIP bevat geen devtools, eigen testfixtures, secrets of ongescopete autoloaders. Zelfde bron, locks en toolomgeving produceren dezelfde ZIP. Dependencies en `.build/` zijn gegenereerd en staan niet in Git.
 
 In dit repository is de build getest in de bestaande PHP 8.2.29 Docker-omgeving. Kopieer de pluginbron naar een tijdelijke map onder de lokaal gemounte `plugins/`, voer daar het bovenstaande PHP-buildcommando uit en kopieer de ZIP terug naar `artifacts/`. Composer 2.10.3 is daarvoor lokaal gebruikt. De bronmap buiten `plugins/` is leidend.
 

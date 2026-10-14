@@ -546,6 +546,54 @@ try {
     $fallback = $front->shortcode(['regeling' => $manual]);
     check(str_contains($fallback, 'mi_form_init') && !str_contains($fallback, 'form_token'), 'shortcode without cookie shows a start button instead of an unusable form');
     $_COOKIE['mi_form'] = $savedCookie;
+    // 0.3.1, found in the live WooCommerce test: rejected subscriptions are explained and can be retried.
+    $retry = activate(signup($fixed, 'retry@example.invalid'));
+    $retryCommand = $service->prepare((int) $retry['id'], 'test', 'subscription', 2500, 'Herstart', $date, wp_generate_uuid4());
+    $service->confirm((int) $retryCommand['id'], 'test');
+    sendPre((int) $retryCommand['id']);
+    $fake->rejectSubscription = true;
+    rejects(fn() => $service->execute((int) $retryCommand['id'], 'test'), 'mollie_rejected');
+    $rejected = $store->one('commands', (int) $retryCommand['id'], 'test');
+    check($rejected['state'] === 'failed' && str_contains($rejected['error_detail'], 'startDate'), 'rejected subscription stores Mollie\'s explanation');
+    $fake->rejectSubscription = false;
+    $again = $service->retrySubscription((int) $retryCommand['id'], 'test');
+    check($again['id'] !== $rejected['id'] && $again['state'] === 'scheduled' && $store->find('notifications', 'event_key', 'pre:command:' . $again['id'], 'test') !== null, 'retry prepares a new subscription with its own pre-notification');
+    sendPre((int) $again['id']);
+    $service->execute((int) $again['id'], 'test');
+    check($store->one('commands', (int) $again['id'], 'test')['state'] === 'completed', 'retried subscription is created at Mollie');
+    rejects(fn() => $service->retrySubscription((int) $again['id'], 'test'), 'invalid_command');
+    // A failed verification does not queue a mandate check that can only fail.
+    $failedFirst = signup($manual, 'failedfirst@example.invalid');
+    $store->query('DELETE FROM ' . $store->table('jobs'));
+    $fake->payments[$failedFirst['payment']['remote_id']]['status'] = 'failed';
+    $service->syncPayment($failedFirst['payment']['remote_id'], 'test');
+    check(!$store->find('jobs', 'dedup', 'mandate:' . $failedFirst['customer']['id'], 'test'), 'failed verification queues no mandate check');
+    // Texts: consent sentence shown once, readable frequency, Dutch dates while the texts are Dutch.
+    $shownScheme = $schemes->get($fixed, 'test');
+    check(str_contains($schemes->disclosure($shownScheme), $shownScheme['consent']) && !str_contains($schemes->displayText($shownScheme), $shownScheme['consent']), 'agreement shown without repeating the checkbox sentence; stored text keeps it');
+    check(Plugin::frequency('1 month') === 'Maandelijks' && Plugin::frequency('12 months') === 'Jaarlijks', 'wizard plans describe the frequency readably');
+    check(Notifications::date('2026-10-29') === '29 oktober 2026', 'dates use Dutch month names with the Dutch texts');
+    // Other plugins' admin notices are hidden on our screens only.
+    $foreign = static function () {
+        echo 'foreign';
+    };
+    add_action('admin_notices', 'wp_admin_bar_render');
+    add_action('admin_notices', $foreign);
+    $savedGet = $_GET;
+    $_GET = ['page' => 'wc-admin'];
+    do_action('in_admin_header');
+    check(has_action('admin_notices', $foreign) !== false, 'other screens keep all admin notices');
+    $_GET = ['page' => 'mollie-incasso-diagnostics'];
+    do_action('in_admin_header');
+    check(has_action('admin_notices', $foreign) === false && has_action('admin_notices', 'wp_admin_bar_render') === false, 'plugin screens hide notices from other code');
+    $own = false;
+    foreach ($GLOBALS['wp_filter']['admin_notices']->callbacks as $callbacks) {
+        foreach ($callbacks as $callback) {
+            $own = $own || ($callback['function'] instanceof \Closure && str_contains((string) (new ReflectionFunction($callback['function']))->getFileName(), '/src/Admin.php'));
+        }
+    }
+    check($own, 'plugin screens keep their own notices');
+    $_GET = $savedGet;
     echo 'RESULT ' . $checks . " checks passed. No Mollie network requests, no real emails.\n";
 } finally {
     foreach (['customers', 'consents', 'schemes', 'mandates', 'commands', 'payments', 'subscriptions', 'tokens', 'jobs', 'notifications', 'limits', 'checkouts'] as $name) {

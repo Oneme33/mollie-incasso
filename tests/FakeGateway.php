@@ -6,7 +6,7 @@ use Lukraak\MollieIncasso\{Gateway, Failure};
 final class FakeGateway implements Gateway
 {
     public array $customers = [], $payments = [], $subs = [], $mandateRows = [], $keys = [], $calls = [];
-    public bool $timeout = false, $cancelFails = false, $revokeFails = false, $hideFind = false, $readFails = false;
+    public bool $timeout = false, $cancelFails = false, $revokeFails = false, $hideFind = false, $readFails = false, $rejectSubscription = false;
     public ?\Closure $duringCreate = null;
     public function methods(string $sequence, int $cents = 1): array
     {
@@ -86,6 +86,9 @@ final class FakeGateway implements Gateway
     }
     public function createSubscription(string $customer, array $payload, string $key): array
     {
+        if ($this->rejectSubscription) {
+            throw new Failure('mollie_rejected', false, false, 'Veld: startDate — Unprocessable Entity: The start date is invalid');
+        }
         return $this->create('subscription', $payload + ['customerId' => $customer], $key);
     }
     public function subscription(string $customer, string $id): array

@@ -146,6 +146,9 @@ final class Plugin
             'withdraw' => __('Toestemming intrekken', 'mollie-incasso'),
             'stop' => __('Abonnement beëindigen', 'mollie-incasso'),
             'cancel_checkout' => __('Geannuleerde webshopaanmelding controleren', 'mollie-incasso'),
+            'command' => __('Opdracht naar Mollie sturen', 'mollie-incasso'),
+            'checkout' => __('Webshopbestelling bijwerken', 'mollie-incasso'),
+            'auto_subscription' => __('Abonnement automatisch starten', 'mollie-incasso'),
             default => sanitize_text_field($value),
         };
     }
@@ -155,6 +158,15 @@ final class Plugin
             '1 month' => __('maand', 'mollie-incasso'),
             '3 months' => __('kwartaal', 'mollie-incasso'),
             '12 months' => __('jaar', 'mollie-incasso'),
+            default => sanitize_text_field($value),
+        };
+    }
+    public static function frequency(string $value): string
+    {
+        return match ($value) {
+            '1 month' => __('Maandelijks', 'mollie-incasso'),
+            '3 months' => __('Elk kwartaal', 'mollie-incasso'),
+            '12 months' => __('Jaarlijks', 'mollie-incasso'),
             default => sanitize_text_field($value),
         };
     }

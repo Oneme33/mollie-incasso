@@ -43,11 +43,17 @@ final class Schemes
             return $this->store->insert('schemes', ['mode' => $mode, 'slug' => $slug, 'version' => $version, 'data' => wp_json_encode($data), 'active' => 1, 'created_at' => Store::now()]);
         });
     }
-    public function disclosure(array $scheme): string
+    /** The agreement as shown above the checkbox; the checkbox itself carries the consent sentence. */
+    public function displayText(array $scheme): string
+    {
+        return $this->disclosure($scheme, false);
+    }
+    /** The full stored agreement, including the consent sentence. Its hash binds forms and checkouts. */
+    public function disclosure(array $scheme, bool $withConsent = true): string
     {
         $settings = $this->config->settings();
         $amount = $scheme['type'] === 'fixed' ? Money::eur($scheme['amount']) : sprintf(__('maximaal %s per incasso', 'mollie-incasso'), Money::eur($scheme['amount']));
         $automatic = !empty($scheme['auto_start']) ? sprintf(__('Na de verificatie en een geldige machtiging start uw vaste abonnement automatisch. De eerste incasso vindt ten minste %d kalenderdagen na bevestiging plaats; u ontvangt het bedrag en de exacte datum vooraf per e-mail.', 'mollie-incasso'), max(1, (int) $scheme['notice_days'])) : '';
-        return implode("\n\n", [sprintf(__('Organisatie: %s — %s', 'mollie-incasso'), $settings['organization'], $settings['address']), $scheme['purpose'], sprintf(__('Bedrag: %s. %s', 'mollie-incasso'), $amount, $scheme['calculation']), sprintf(__('Frequentie / aanleiding: %s', 'mollie-incasso'), $scheme['frequency']), sprintf(__('Vooraankondiging: %d kalenderdagen vóór het aanbieden van de incasso.', 'mollie-incasso'), $scheme['notice_days']), $scheme['withdrawal'], $automatic, sprintf(__('Contact: %s', 'mollie-incasso'), $settings['contact']), __('De eerste iDEAL-betaling van € 0,01 is uitsluitend een verificatiebetaling. Dit bedrag blijft bij de organisatie, telt niet als abonnementsperiode en wordt niet automatisch verrekend of terugbetaald.', 'mollie-incasso'), $scheme['consent']]);
+        return implode("\n\n", array_filter([sprintf(__('Organisatie: %s — %s', 'mollie-incasso'), $settings['organization'], $settings['address']), $scheme['purpose'], sprintf(__('Bedrag: %s. %s', 'mollie-incasso'), $amount, $scheme['calculation']), sprintf(__('Frequentie / aanleiding: %s', 'mollie-incasso'), $scheme['frequency']), sprintf(__('Vooraankondiging: %d kalenderdagen vóór het aanbieden van de incasso.', 'mollie-incasso'), $scheme['notice_days']), $scheme['withdrawal'], $automatic, sprintf(__('Contact: %s', 'mollie-incasso'), $settings['contact']), __('De eerste iDEAL-betaling van € 0,01 is uitsluitend een verificatiebetaling. Dit bedrag blijft bij de organisatie, telt niet als abonnementsperiode en wordt niet automatisch verrekend of terugbetaald.', 'mollie-incasso'), $withConsent ? $scheme['consent'] : ''], fn($part) => trim((string) $part) !== ''));
     }
 }
