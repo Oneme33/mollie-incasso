@@ -1,4 +1,4 @@
-# Mollie Incasso — testversie 0.1.0
+# Mollie Incasso — testversie 0.1.1
 
 Zelfstandige WordPress-plugin voor één organisatie en één Mollie-profiel. Nederlandse, vertaalbare interface, geen WooCommerce of abonnementendienst. Eerste iDEAL-betaling: **€ 0,01**, expliciet `sequenceType=first` bij een nieuwe, lokaal gekoppelde Mollie Customer. Alleen een betaald verificatieverzoek en een geldig `directdebit`-mandaat activeren toestemming. De eurocent blijft bij de organisatie, is geen abonnementsperiode en wordt niet stilzwijgend verrekend of terugbetaald.
 
@@ -15,7 +15,7 @@ Zelfstandige WordPress-plugin voor één organisatie en één Mollie-profiel. Ne
 
 ## Installeren
 
-1. Upload `mollie-incasso-0.1.0.zip` via **Plugins → Nieuwe plugin → Plugin uploaden** en activeer.
+1. Upload `mollie-incasso-0.1.1.zip` via **Plugins → Nieuwe plugin → Plugin uploaden** en activeer.
 2. Stel een **testkey** buiten de database in, bij voorkeur in `wp-config.php` vóór het laden van WordPress:
 
    ```php
@@ -33,13 +33,11 @@ Het beheer heeft een subtiele groene zijbalk met eigen logo, native dropdowns me
 
 ### Secrets via instellingen
 
-Zonder constante/omgevingskey kan een beheerder de key via instellingen versleuteld opslaan. Hiervoor is een **andere, willekeurige 32-byte sleutel** buiten de database nodig:
+**Normaal gebruik: geen serverwerk nodig.** Kopieer de test-API-key uit Mollie Dashboard → Developers → API keys. Plak hem onder Instellingen of Installatiehulp en sla op. Controleer daarna de betaalmethodes met de controleknop. De plugin versleutelt de key automatisch met een afgeleide sleutel uit de bestaande `AUTH_KEY`, `SECURE_AUTH_KEY`, `AUTH_SALT` en `SECURE_AUTH_SALT` in `wp-config.php`. Er wordt geen nieuw bestand aangemaakt en de plugin wijzigt `wp-config.php` niet. Ontbrekende/onveilige WordPress-sleutels blokkeren opslag met een duidelijke melding.
 
-```php
-define('MOLLIE_INCASSO_ENCRYPTION_KEY', getenv('MOLLIE_INCASSO_ENCRYPTION_KEY'));
-```
+**Optioneel voor beheerders:** API-keys rechtstreeks via constante/omgeving instellen blijft mogelijk en heeft voorrang. Een afzonderlijke base64-gecodeerde 32-byte `MOLLIE_INCASSO_ENCRYPTION_KEY` buiten de database blijft eveneens ondersteund. Deze extra encryptiesleutel is niet nodig voor normaal gebruik. Nieuwe opslag gebruikt deze sleutel wanneer hij is ingesteld; bestaande daarmee versleutelde keys blijven leesbaar. Bewaar hem buiten de database en maak veilig een back-up.
 
-Genereer deze eenmalig met `php -r 'echo base64_encode(random_bytes(32)), PHP_EOL;'`. Bewaar hem veilig en maak een afzonderlijke back-up. Verlies of wijziging maakt opgeslagen keys onleesbaar. AES-256-GCM beschermt de databasekopie; een aanvaller met toegang tot zowel PHP-configuratie als database kan de key ontsleutelen. Instellingsoptions staan niet op autoload. Het keyveld blijft leeg/gemaskeerd bij uitlezen. Constantes/omgeving hebben voorrang. Toegang: `manage_options`; betaalbeheer: eigen capability `manage_mollie_incasso`, standaard alleen administrators.
+De opslag gebruikt AES-256-GCM. De `wp1:`-markering onderscheidt WordPress-versleuteling van de bestaande externe versleuteling, zodat later instellen van een extra encryptiesleutel bestaande opslag niet breekt. Bewaar `wp-config.php` veilig bij back-ups. Bij gewijzigde WordPress-beveiligingssleutels moet de API-key opnieuw worden ingevoerd of de oorspronkelijke configuratie worden hersteld; externe versleuteling vereist de oorspronkelijke externe sleutel. Een databasekopie alleen bevat de decryptiesleutel niet; iemand met toegang tot configuratie én database kan de API-key wel ontsleutelen. Er worden geen sleutels gegenereerd in de database. Instellingsoptions staan niet op autoload. Het keyveld blijft leeg/gemaskeerd bij uitlezen. Toegang: `manage_options`; betaalbeheer: eigen capability `manage_mollie_incasso`, standaard alleen administrators.
 
 ## Flows en bediening
 
@@ -133,10 +131,10 @@ Ontwikkelmachine: PHP 8.2+, curl/openssl/zip, Composer. Hosting heeft **geen Com
 
 ```sh
 cd mollie-incasso
-php tools/build.php /absoluut/pad/composer.phar ../artifacts/mollie-incasso-0.1.0.zip
+php tools/build.php /absoluut/pad/composer.phar ../artifacts/mollie-incasso-0.1.1.zip
 ```
 
-Met Composer op PATH: `php tools/build.php composer` (standaarduitvoer: `dist/mollie-incasso-0.1.0.zip`). De build gebruikt uitsluitend locks (`install`, geen `update`), scoped alle productiecode, controleert de SDK/CA-bundle en PHP-syntax en maakt een ZIP met gesorteerde bestanden en vaste tijdstempels/rechten. De ZIP bevat geen devtools, eigen testfixtures, secrets of ongescopete autoloaders. Zelfde bron, locks en toolomgeving produceren dezelfde ZIP. Dependencies en `.build/` zijn gegenereerd en staan niet in Git.
+Met Composer op PATH: `php tools/build.php composer` (standaarduitvoer: `dist/mollie-incasso-0.1.1.zip`). De build gebruikt uitsluitend locks (`install`, geen `update`), scoped alle productiecode, controleert de SDK/CA-bundle en PHP-syntax en maakt een ZIP met gesorteerde bestanden en vaste tijdstempels/rechten. De ZIP bevat geen devtools, eigen testfixtures, secrets of ongescopete autoloaders. Zelfde bron, locks en toolomgeving produceren dezelfde ZIP. Dependencies en `.build/` zijn gegenereerd en staan niet in Git.
 
 In dit repository is de build getest in de bestaande PHP 8.2.29 Docker-omgeving. Kopieer de pluginbron naar een tijdelijke map onder de lokaal gemounte `plugins/`, voer daar het bovenstaande PHP-buildcommando uit en kopieer de ZIP terug naar `artifacts/`. Composer 2.10.3 is daarvoor lokaal gebruikt. De bronmap buiten `plugins/` is leidend.
 
@@ -147,6 +145,7 @@ Zie [TESTING.md](TESTING.md) voor het daadwerkelijke testrapport en reproduceerb
 ```sh
 MI_WP_ROOT=/pad/naar/wordpress/wp-load.php php tests/integration.php
 MI_WP_ROOT=/pad/naar/wordpress/wp-load.php php tests/sdk.php
+MI_WP_ROOT=/pad/naar/wordpress/wp-load.php php tests/secrets.php
 ```
 
 De tests gebruiken geïsoleerde tabellen en proceslokale instellingen, maar een onderbreking kan testtabellen achterlaten. Een expliciet aangemaakte test-conceptpagina wordt na de controle verwijderd. Ze gebruiken een fake gateway/SDK-HTTP-adapter en onderscheppen `wp_mail`; geen echte incasso’s of mails. De SDK-test mag een reeds aanwezige ongescopete SDK laden voor conflictcontrole.
@@ -166,4 +165,4 @@ Velden/signatures en het gedrag van de vastgelegde SDK zijn tijdens implementati
 
 ## Bestaande WooCommerce-abonnementen
 
-Versie 0.1.0 bevat nog geen importfunctie. Identificeer eerst de gebruikte abonnementenplugin en de beschikbare export. WooCommerce Subscriptions beheert termijnen op de WordPress-site; deze zijn niet automatisch Mollie Subscriptions. Een migratie moet klanten, machtigingen, toestemming, bedragen en volgende incassodatums controleren en de oude incasso-opdrachten gecontroleerd stoppen, zodat beide systemen niet dezelfde termijn innen.
+Versie 0.1.1 bevat nog geen importfunctie. Identificeer eerst de gebruikte abonnementenplugin en de beschikbare export. WooCommerce Subscriptions beheert termijnen op de WordPress-site; deze zijn niet automatisch Mollie Subscriptions. Een migratie moet klanten, machtigingen, toestemming, bedragen en volgende incassodatums controleren en de oude incasso-opdrachten gecontroleerd stoppen, zodat beide systemen niet dezelfde termijn innen.

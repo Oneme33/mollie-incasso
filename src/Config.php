@@ -64,23 +64,40 @@ final class Config
         }
         return $key;
     }
+    private function wordpressEncryptionKey(): string
+    {
+        $parts = [];
+        foreach (['AUTH_KEY', 'SECURE_AUTH_KEY', 'AUTH_SALT', 'SECURE_AUTH_SALT'] as $name) {
+            $value = defined($name) ? (string) constant($name) : '';
+            if (strlen($value) < 32 || str_contains($value, 'put your unique phrase here')) {
+                throw new Failure('wordpress_keys_missing');
+            }
+            $parts[] = $value;
+        }
+        // Use config constants directly: wp_salt() can fall back to database values.
+        return hash_hmac('sha256', 'mollie-incasso:api-key:v1', implode("\0", $parts), true);
+    }
     public function encrypt(string $secret): string
     {
+        $wordpress = $this->settingSecret('MOLLIE_INCASSO_ENCRYPTION_KEY') === '';
+        $key = $wordpress ? $this->wordpressEncryptionKey() : $this->encryptionKey();
         $iv = random_bytes(12);
         $tag = '';
-        $data = openssl_encrypt($secret, 'aes-256-gcm', $this->encryptionKey(), OPENSSL_RAW_DATA, $iv, $tag);
+        $data = openssl_encrypt($secret, 'aes-256-gcm', $key, OPENSSL_RAW_DATA, $iv, $tag);
         if ($data === false) {
             throw new Failure('encryption_failed');
         }
-        return base64_encode($iv . $tag . $data);
+        return ($wordpress ? 'wp1:' : '') . base64_encode($iv . $tag . $data);
     }
     public function decrypt(string $secret): string
     {
-        $raw = base64_decode($secret, true);
+        $wordpress = str_starts_with($secret, 'wp1:');
+        $key = $wordpress ? $this->wordpressEncryptionKey() : $this->encryptionKey();
+        $raw = base64_decode($wordpress ? substr($secret, 4) : $secret, true);
         if (!$raw || strlen($raw) < 29) {
             throw new Failure('decryption_failed');
         }
-        $value = openssl_decrypt(substr($raw, 28), 'aes-256-gcm', $this->encryptionKey(), OPENSSL_RAW_DATA, substr($raw, 0, 12), substr($raw, 12, 16));
+        $value = openssl_decrypt(substr($raw, 28), 'aes-256-gcm', $key, OPENSSL_RAW_DATA, substr($raw, 0, 12), substr($raw, 12, 16));
         if ($value === false) {
             throw new Failure('decryption_failed');
         }

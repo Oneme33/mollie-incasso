@@ -333,6 +333,11 @@ final class Admin
             return (int) $id;
         });
     }
+    private function keyHelp(): void
+    {
+        $this->help(__('Uw Mollie-API-key is nodig om uw account te verbinden. Plak de key in het veld en klik op Opslaan. De plugin versleutelt hem automatisch met de bestaande WordPress-beveiligingssleutels. U hoeft geen bestand aan te maken of serverinstellingen te wijzigen.', 'mollie-incasso'));
+        echo '<details><summary>' . esc_html__('Waar vind ik mijn key? En wat is de extra beveiligingsoptie?', 'mollie-incasso') . '</summary><ol><li>' . esc_html__('Open uw Mollie Dashboard en ga naar Developers → API keys.', 'mollie-incasso') . '</li><li>' . esc_html__('Kopieer eerst de testkey (begint met test_). Hiermee test u zonder echt geld.', 'mollie-incasso') . '</li><li>' . esc_html__('Plak de key hierboven en sla op. Controleer daarna iDEAL en SEPA-incasso met de controleknop. Deze controle test de verbinding en betaalmethodes, niet de volledige betaling.', 'mollie-incasso') . '</li></ol><p><a href="https://my.mollie.com/">' . esc_html__('Mollie Dashboard openen', 'mollie-incasso') . '</a></p><p>' . esc_html__('Optioneel voor uw beheerder: de API-key rechtstreeks op de server instellen of een aparte encryptiesleutel gebruiken via wp-config.php, het bestaande configuratiebestand van WordPress. Dit is niet nodig voor normaal opslaan via WordPress. Een op de server ingestelde API-key heeft voorrang op dit formulier.', 'mollie-incasso') . '</p><p>' . esc_html__('Bewaar bij back-ups ook wp-config.php veilig. Als de WordPress-beveiligingssleutels veranderen, moet u de via WordPress versleutelde API-key opnieuw invoeren. Een livekey invoeren geeft livebetalingen nog niet vrij.', 'mollie-incasso') . '</p></details>';
+    }
     private function setup(): void
     {
         $step = max(1, min(4, (int) ($_GET['step'] ?? 1)));
@@ -368,7 +373,7 @@ final class Admin
                 if ($mode === 'test') {
                     $this->start('setup_key');
                     echo '<label>' . esc_html__('Mollie test-API-key', 'mollie-incasso') . '<input type="password" name="key_test" value="" autocomplete="new-password" required></label>';
-                    $this->help(__('Opslaan kan alleen met de externe encryptiesleutel op de server. Uw beheerder kan ook de API-key rechtstreeks veilig op de server instellen.', 'mollie-incasso'));
+                    $this->keyHelp();
                     $this->end('Testkey opslaan', true);
                 } else {
                     $this->help(__('Beheer de livekey via Instellingen. Deze installatiehulp schakelt zelf geen echte betalingen in.', 'mollie-incasso'));
@@ -543,7 +548,7 @@ final class Admin
             $configured = $this->p->config->settingSecret('MOLLIE_INCASSO_' . strtoupper($mode) . '_KEY') || get_option('mi_secret_' . $mode);
             echo '<label>' . esc_html(sprintf(__('Nieuwe %s API-key (leeg = behouden)', 'mollie-incasso'), $mode)) . '<input type="password" name="key_' . esc_attr($mode) . '" value="" autocomplete="new-password" placeholder="' . esc_attr($configured ? '•••••••• — ' . __('ingesteld', 'mollie-incasso') : __('niet ingesteld', 'mollie-incasso')) . '"></label><label><input type="checkbox" name="delete_' . $mode . '" value="1">' . esc_html(sprintf(__('Opgeslagen %s-key verwijderen (omgeving/config blijft leidend)', 'mollie-incasso'), $mode)) . '</label>';
         }
-        echo '<p>' . esc_html__('De API-key verbindt deze website met uw Mollie-account. Laat uw beheerder de key bij voorkeur veilig op de server instellen. Opslaan via dit formulier werkt alleen wanneer uw beheerder ook de externe encryptiesleutel heeft ingesteld.', 'mollie-incasso') . '</p>';
+        $this->keyHelp();
         foreach (['notifications' => 'Statusmails voor betalingen', 'cleanup' => 'Bij uninstall opruimen, uitsluitend wanneer extern veilig en bewaarbeleid dit toestaat'] as $key => $label) {
             echo '<label><input type="checkbox" name="' . $key . '" value="1" ' . checked((bool) $s[$key], true, false) . '>' . esc_html__($label, 'mollie-incasso') . '</label>';
         }
