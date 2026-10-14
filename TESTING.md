@@ -1,4 +1,4 @@
-# Testrapport — Mollie Incasso 0.1.2
+# Testrapport — Mollie Incasso 0.2.0
 
 Lokaal uitgevoerd op 13 en 14 oktober 2026: PHP 8.2.29, WordPress 6.8.1, bestaande Docker MySQL/InnoDB. Geen live geld, echte incasso of echte klantmail gebruikt. Dit rapport is geen productiecertificering.
 
@@ -42,6 +42,16 @@ Daarnaast: PHP-syntax van eigen bron en alle gebundelde PHP-code; ZIP-structuur 
 ## Sleutelopslag 0.1.2
 
 `tests/secrets.php`: **23 controles geslaagd**: automatische WordPress-versleuteling en normaal uitlezen, willekeurige nonce, detectie van gewijzigde/beschadigde ciphertext, bestaande externe-key-opslag, later toevoegen/wijzigen van een externe key, blokkeren van een ongeldige expliciete encryptiesleutel, en automatische fallback bij ontbrekende/voorbeeld-WordPress-sleutels. Verder: duurzame willekeurige bestandssleutel, privébestandsrechten, rechtstreeks uitvoeren geeft geen sleutel terug, gelijktijdig initialiseren levert één sleutel op, corrupte bestanden worden niet overschreven, ontbrekende bestanden worden bij decryptie niet opnieuw gegenereerd, symlinks worden geweigerd en onbeschikbare opslag valt niet terug op plaintext. Geen API-calls of blijvende instellingen; ontbrekende/onveilige salts worden in aparte PHP-processen getest. Instellingen tonen eenvoudige plak-en-opslaan-uitleg met inklapbare stappen en optionele serverconfiguratie.
+
+## WooCommerce en automatische abonnementstart (0.2.0)
+
+`tests/woocommerce.php`: **60 controles geslaagd met klassieke orderopslag en dezelfde 60 met HPOS**, met echte WooCommerce **9.9.5** product-/order-CRUD, winkelwagen, gateway en de daadwerkelijke Store API Legacy-processor. De Mollie-gateway is nagebootst; alle mail is onderschept. Geen WooCommerce Subscriptions geïnstalleerd. Eigen fixtureproducten/orders worden exact op ID opgeruimd; alle pluginrecords staan in tijdelijke InnoDB-tabellen en instellingen blijven proceslokaal.
+
+Getest: meerdere onafhankelijke plannen en producten; idempotente product-/wizardhulp; virtueel product en verificatieprijs; losse winkelwagen; uitsluiten van gewone gateways; dezelfde toestemmingstekst/hash in klassieke en Blocks-checkout; ontbrekende toestemming/stale hash/afwijkend bedrag/gateway/gewijzigde identiteit blokkeren; één Customer en first Payment bij herhalen; browserreturn is geen betaalbewijs; WooCommerce-order pas betaald na API-status; pending machtiging blokkeert abonnement; één automatische Subscription met juiste bedrag/interval/toekomstige datum na geaccepteerde vooraankondiging; Store API-retries; orderkey/eigenaarscontrole; timeout met reconciliatie; geen e-mailkoppeling; zelfstandige website-route en jaarplan; mislukte verificatie; test/live-isolatie; annulering vóór verificatie met late webhook; privacy-export/-verwijdering van nog ongekoppelde checkoutgegevens. Normale WordPress-bootstrap registreert zowel klassieke als Blocks-gateway en migreert schema naar 3.
+
+Browsercontrole op 1440px en 390px: klassieke checkoutvelden en het echte React-component van de Blocks-integratie tonen bedrag/termijn/verificatie, onbevestigde toestemming en geen pagina-overflow. Het Blocks-component weigert zonder toestemming en levert na bevestiging de verwachte payment-data aan de server. De browserfixture gebruikt een nagebootste Blocks-eventregistry; dit is geen volledige browseraankoop via de echte winkel/Store API. Die serverroute is apart met de echte Legacy-processor getest. De wizard en beheerschermen zijn eveneens op desktop/mobiel gecontroleerd.
+
+De volledige gehoste checkout met echte Mollie-testkey/webhook, de exacte bronsitecombinatie met Mollie Payments for WooCommerce 8.1.11/Flexible Shipping en daadwerkelijke SMTP/cron moeten nog getest worden. Er is geen volledige WooCommerce Subscriptions-import, periodieke WooCommerce-ordergeneratie of algemene productiegeschiktheid aangetoond.
 
 ## Nog nodig met credentials en bereikbare hosting
 

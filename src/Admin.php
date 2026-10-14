@@ -142,11 +142,20 @@ final class Admin
                     $view = 'setup';
                     $args = ['mi_saved' => 1, 'step' => 2];
                     break;
+                case 'setup_plan':
+                    $this->wizardPlan($_POST, $mode);
+                    $view='setup';$args=['mi_saved'=>1,'step'=>4];
+                    break;
                 case 'setup_check':
                     $this->checkMethods($mode);
                     $view = 'setup';
                     $args = ['mi_saved' => 1, 'step' => 2];
                     break;
+                case 'setup_product':
+                    if (!class_exists('WC_Product_Simple')) throw new Failure('woocommerce_unavailable');
+                    $product=(new WooCommerceBridge($this->p))->createProduct((int)$this->field('scheme',20));
+                    wp_safe_redirect(get_edit_post_link($product,'raw'),303);
+                    exit;
                 case 'setup_page':
                     if (!current_user_can('manage_options') || !current_user_can('edit_pages')) {
                         throw new Failure('access_denied');
@@ -207,7 +216,7 @@ final class Admin
         } catch (Failure $e) {
             $args = ['mi_error' => $e->reason];
             if ($view === 'setup') {
-                $args['step'] = $operation === 'setup_profile' ? 1 : ($operation === 'setup_page' ? 4 : 2);
+                $args['step'] = $operation === 'setup_profile' ? 1 : ($operation === 'setup_plan' ? 3 : (in_array($operation,['setup_page','setup_product'],true) ? 4 : 2));
             }
         }
         wp_safe_redirect($this->url($view, $args), 303);
@@ -338,13 +347,36 @@ final class Admin
         $this->help(__('Uw Mollie-API-key is nodig om uw account te verbinden. Plak de key in het veld en klik op Opslaan. De plugin regelt de versleuteling automatisch. U hoeft geen bestand aan te maken of serverinstellingen te wijzigen.', 'mollie-incasso'));
         echo '<details><summary>' . esc_html__('Waar vind ik mijn key? En wat is de extra beveiligingsoptie?', 'mollie-incasso') . '</summary><ol><li>' . esc_html__('Open uw Mollie Dashboard en ga naar Developers → API keys.', 'mollie-incasso') . '</li><li>' . esc_html__('Kopieer eerst de testkey (begint met test_). Hiermee test u zonder echt geld.', 'mollie-incasso') . '</li><li>' . esc_html__('Plak de key hierboven en sla op. Controleer daarna iDEAL en SEPA-incasso met de controleknop. Deze controle test de verbinding en betaalmethodes, niet de volledige betaling.', 'mollie-incasso') . '</li></ol><p><a href="https://my.mollie.com/">' . esc_html__('Mollie Dashboard openen', 'mollie-incasso') . '</a></p><p>' . esc_html__('Optioneel voor uw beheerder: de API-key rechtstreeks op de server instellen of een aparte encryptiesleutel gebruiken via wp-config.php, het bestaande configuratiebestand van WordPress. Dit is niet nodig voor normaal opslaan via WordPress. Een op de server ingestelde API-key heeft voorrang op dit formulier.', 'mollie-incasso') . '</p><p>' . esc_html__('Meestal gebruikt de plugin de bestaande WordPress-beveiligingssleutels. Zijn die niet bruikbaar, dan maakt hij bij het opslaan zelf een afgeschermd sleutelbestand in wp-content/.mollie-incasso-keys. Bewaar bij back-ups daarom ook wp-config.php en deze map veilig. Verlies van de gebruikte sleutel maakt opgeslagen API-keys onleesbaar. Een livekey invoeren geeft livebetalingen nog niet vrij.', 'mollie-incasso') . '</p></details>';
     }
+    private function wizardPlan(array $input, string $mode): int
+    {
+        if(!current_user_can('manage_options'))throw new Failure('access_denied');
+        $reference=$this->field('plan_reference',36);
+        if(!preg_match('/^[a-f0-9-]{36}$/D',$reference))throw new Failure('invalid_scheme');
+        $interval=$this->field('interval',12);
+        if(!in_array($interval,['1 month','3 months','12 months'],true))throw new Failure('invalid_scheme');
+        $data=['slug'=>'wizard-'.$reference,'type'=>'fixed','auto_start'=>'1','name'=>$this->field('name',190),'amount'=>$this->field('amount',24),'interval'=>$interval,'purpose'=>$this->field('purpose'),'calculation'=>__('Het vaste bedrag voor dit abonnement. De verificatiebetaling van € 0,01 staat hier los van.','mollie-incasso'),'frequency'=>Plugin::interval($interval),'withdrawal'=>$this->field('withdrawal'),'consent'=>$this->field('consent'),'notice_days'=>14,'times'=>''];
+        return $this->p->store->lock('wizard-plan:'.$mode.':'.$reference,function()use($data,$mode,$reference){
+            $option='mi_wizard_plan_'.$mode.'_'.$reference;$hash=hash('sha256',wp_json_encode($data));$previous=get_option($option,[]);
+            if(is_array($previous)&&($previous['hash']??'')===$hash&&$this->p->store->one('schemes',(int)$previous['id'],$mode))return (int)$previous['id'];
+            $id=$this->p->schemes->save($data,$mode);update_option($option,['id'=>$id,'hash'=>$hash],false);return $id;
+        });
+    }
+    private function wooProductHelp(): void
+    {
+        echo '<h3>'.esc_html__('Of aanmelden via uw webshop','mollie-incasso').'</h3><p>'.esc_html__('Een gewoon virtueel product kan de aanmelding starten. De klant rekent eenmalig € 0,01 af en accepteert de incassoafspraak in dezelfde checkout. Vervolgbetalingen lopen via Mollie Incasso; WooCommerce Subscriptions is niet nodig.','mollie-incasso').'</p>';
+        if(!class_exists('WC_Product_Simple')){echo '<p class="mi-help">'.esc_html__('WooCommerce is hier niet actief. De website-aanmelding hierboven werkt zonder webshop.','mollie-incasso').'</p>';return;}
+        $schemes=[];foreach($this->p->store->rows('schemes',$this->p->config->mode(),500)as$row){$data=json_decode($row['data'],true);if($row['active']&&$data['type']==='fixed'&&!empty($data['auto_start']))$schemes[]=$row+['name'=>$data['name']];}
+        if(!$schemes){echo '<p class="mi-help">'.esc_html__('Maak eerst een vaste regeling met automatisch starten ingeschakeld. Daarna kunt u hier het product klaarzetten.','mollie-incasso').'</p>';return;}
+        $this->start('setup_product');echo '<label>'.esc_html__('Abonnement voor het product','mollie-incasso').'<select name="scheme">';foreach($schemes as$scheme)echo '<option value="'.esc_attr((string)$scheme['id']).'">'.esc_html($scheme['name']).'</option>';echo '</select></label>';$this->end('Virtueel product klaarzetten',true);
+        echo '<p class="mi-help">'.esc_html__('Het product wordt als concept klaargezet: controleer het en publiceer het daarna. De gekoppelde betaalmethode verschijnt alleen voor dit product. Reken abonnementaanmeldingen apart af, zonder andere producten, kortingscodes of toeslagen.','mollie-incasso').'</p>';
+    }
     private function setup(): void
     {
         $step = max(1, min(4, (int) ($_GET['step'] ?? 1)));
         $settings = $this->p->config->settings();
         $mode = $this->p->config->mode();
         echo '<nav class="mi-wizard-steps" aria-label="' . esc_attr__('Installatiestappen', 'mollie-incasso') . '">';
-        foreach ([1 => __('Organisatie', 'mollie-incasso'), 2 => __('Mollie koppelen', 'mollie-incasso'), 3 => __('Incassoafspraken', 'mollie-incasso'), 4 => __('Formulier plaatsen', 'mollie-incasso')] as $number => $title) {
+        foreach ([1 => __('Organisatie', 'mollie-incasso'), 2 => __('Mollie koppelen', 'mollie-incasso'), 3 => __('Abonnement instellen', 'mollie-incasso'), 4 => __('Aanmelding plaatsen', 'mollie-incasso')] as $number => $title) {
             echo '<a ' . ($number === $step ? 'aria-current="step" ' : '') . 'href="' . esc_url($this->url('setup', ['step' => $number])) . '"><span>' . $number . '</span>' . esc_html($title) . '</a>';
         }
         echo '</nav><section class="mi-wizard-card">';
@@ -388,16 +420,18 @@ final class Admin
             }
             echo '<p><a href="https://my.mollie.com/dashboard" target="_blank" rel="noopener noreferrer">' . esc_html__('Mollie Dashboard openen', 'mollie-incasso') . '</a></p>';
         } elseif ($step === 3) {
-            echo '<h2>' . esc_html__('Waarmee gaat de klant akkoord?', 'mollie-incasso') . '</h2>';
-            $this->help(__('Een regeling beschrijft het doel, bedrag en moment van incasseren. Voor losse incasso’s stelt u een maximum in; voor abonnementen een vast bedrag en frequentie.', 'mollie-incasso'));
-            $schemes = $this->p->store->select('SELECT id FROM ' . $this->p->store->table('schemes') . ' WHERE mode=%s AND active=1', [$mode]);
-            if ($schemes) {
-                echo '<p class="mi-setup-status">' . esc_html(sprintf(__('%d actieve regeling(en) ingesteld.', 'mollie-incasso'), count($schemes))) . '</p>';
-            }
-            $this->help(__('Standaard krijgt de klant 14 dagen vooraf bericht. Een andere termijn moet expliciet afgesproken zijn. Beoordeel de voorbeeldteksten voor uw eigen organisatie.', 'mollie-incasso'));
-            echo '<a class="button button-primary" href="' . esc_url($this->url('settings')) . '#mi-regelingen">' . esc_html__('Regeling instellen', 'mollie-incasso') . '</a>';
+            $hasPlans=false;foreach($this->p->store->rows('schemes',$mode,500) as $plan){$planData=json_decode($plan['data'],true);if($plan['active']&&$planData['type']==='fixed')$hasPlans=true;}
+            echo '<h2>'.esc_html($hasPlans?__('Nog een abonnement toevoegen','mollie-incasso'):__('Stel uw eerste abonnement in','mollie-incasso')).'</h2>';
+            $this->help(__('U kunt meerdere abonnementen aanbieden. Deze stap voegt een nieuw abonnement toe; bestaande afspraken blijven bewaard. Klanten kunnen na hun verificatie automatisch starten.','mollie-incasso'));
+            $this->start('setup_plan');
+            echo '<input type="hidden" name="plan_reference" value="'.esc_attr(wp_generate_uuid4()).'"><label>'.esc_html__('Naam van het abonnement','mollie-incasso').'<input name="name" maxlength="190" placeholder="'.esc_attr__('Bijvoorbeeld GCC doorlopend abonnement','mollie-incasso').'" required></label><label>'.esc_html__('Vast bedrag per periode (€)','mollie-incasso').'<input name="amount" inputmode="decimal" placeholder="20.00" required></label><label>'.esc_html__('Hoe vaak incasseren?','mollie-incasso').'<select name="interval"><option value="1 month">'.esc_html__('Elke maand','mollie-incasso').'</option><option value="3 months">'.esc_html__('Elk kwartaal','mollie-incasso').'</option><option value="12 months">'.esc_html__('Elk jaar','mollie-incasso').'</option></select></label>';
+            echo '<details open><summary>'.esc_html__('Controleer de afspraak die uw klant accepteert','mollie-incasso').'</summary>';
+            foreach(['purpose'=>['Waarvoor betaalt de klant?','Betaling voor het gekozen lidmaatschap.'],'withdrawal'=>['Hoe kan de klant stoppen?','Via de persoonlijke statuslink of door contact op te nemen met de organisatie.'],'consent'=>['Toestemmingstekst','Ik geef deze organisatie toestemming om het hierboven genoemde bedrag met de gekozen frequentie via SEPA Direct Debit van mijn rekening te incasseren.']]as$key=>[$label,$default])echo '<label>'.esc_html__($label,'mollie-incasso').'<textarea name="'.$key.'" rows="2" required>'.esc_textarea(__($default,'mollie-incasso')).'</textarea></label>';
+            echo '</details><p class="mi-help">'.esc_html__('De klant betaalt eerst € 0,01 ter verificatie. Na een geldige machtiging plannen we de eerste incasso met minimaal 14 dagen vooraankondiging. Pas de voorbeeldteksten aan uw eigen afspraken aan.','mollie-incasso').'</p>';
+            $this->end('Abonnement opslaan en verder',true);
+            echo '<p><a href="'.esc_url($this->url('settings')).'#mi-regelingen">'.esc_html__('Geavanceerde regelingen en losse incasso’s','mollie-incasso').'</a></p>';
         } else {
-            echo '<h2>' . esc_html__('Zet het aanmeldformulier op uw website', 'mollie-incasso') . '</h2>';
+            echo '<h2>' . esc_html__('Kies hoe klanten zich aanmelden', 'mollie-incasso') . '</h2>';
             $this->help(__('Plaats de shortcode in een WordPress-pagina. Een klant ziet uw afspraken en kan expliciet toestemming geven via de eerste iDEAL-betaling van € 0,01.', 'mollie-incasso'));
             $schemes = $this->p->store->select('SELECT id FROM ' . $this->p->store->table('schemes') . ' WHERE mode=%s AND active=1 ORDER BY id DESC LIMIT 10', [$mode]);
             if (!$schemes) {
@@ -415,6 +449,7 @@ final class Admin
             }
             $this->help(__('Een conceptpagina wordt niet gepubliceerd. Controleer het formulier en doorloop daarna een echte Mollie-testbetaling, webhook en mail. Pas na die controles beoordeelt u livegang.', 'mollie-incasso'));
         }
+        if ($step === 4) $this->wooProductHelp();
         echo '</section><div class="mi-wizard-footer">';
         if ($step > 1) {
             echo '<a class="button" href="' . esc_url($this->url('setup', ['step' => $step - 1])) . '">' . esc_html__('Vorige', 'mollie-incasso') . '</a>';
@@ -573,6 +608,7 @@ final class Admin
             }
             echo '</label>';
         }
+        echo '<label><input type="checkbox" name="auto_start" value="1" checked> ' . esc_html__('Vast abonnement automatisch starten na verificatie en geldige machtiging (alleen bij vast bedrag).', 'mollie-incasso') . '</label>';
         echo '<label>' . esc_html__('Type', 'mollie-incasso') . '<select name="type"><option value="manual">' . esc_html__('Losse incasso’s', 'mollie-incasso') . '</option><option value="fixed">' . esc_html__('Vast abonnement', 'mollie-incasso') . '</option></select></label><label>' . esc_html__('Vaste frequentie', 'mollie-incasso') . '<select name="interval"><option value="1 month">' . esc_html__('Maand', 'mollie-incasso') . '</option><option value="3 months">' . esc_html__('Kwartaal', 'mollie-incasso') . '</option><option value="12 months">' . esc_html__('Jaar', 'mollie-incasso') . '</option></select></label><label><input type="checkbox" name="notice_agreed" value="1">' . esc_html__('Een afwijkende vooraankondigingstermijn is expliciet met de klant afgesproken en opgenomen in deze regeling.', 'mollie-incasso') . '</label>';
         $this->end('Regeling opslaan', true);
     }

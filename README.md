@@ -1,6 +1,6 @@
-# Mollie Incasso — testversie 0.1.2
+# Mollie Incasso — testversie 0.2.0
 
-Zelfstandige WordPress-plugin voor één organisatie en één Mollie-profiel. Nederlandse, vertaalbare interface, geen WooCommerce of abonnementendienst. Eerste iDEAL-betaling: **€ 0,01**, expliciet `sequenceType=first` bij een nieuwe, lokaal gekoppelde Mollie Customer. Alleen een betaald verificatieverzoek en een geldig `directdebit`-mandaat activeren toestemming. De eurocent blijft bij de organisatie, is geen abonnementsperiode en wordt niet stilzwijgend verrekend of terugbetaald.
+Zelfstandige WordPress-plugin voor één organisatie en één Mollie-profiel. Nederlandse, vertaalbare interface, werkt zelfstandig, met een optionele WooCommerce-checkout; geen WooCommerce Subscriptions of externe abonnementendienst nodig. Eerste iDEAL-betaling: **€ 0,01**, expliciet `sequenceType=first` bij een nieuwe, lokaal gekoppelde Mollie Customer. Alleen een betaald verificatieverzoek en een geldig `directdebit`-mandaat activeren toestemming. De eurocent blijft bij de organisatie, is geen abonnementsperiode en wordt niet stilzwijgend verrekend of terugbetaald.
 
 **Dit is een eerste testversie.** De lokale mocktests bewijzen niet dat uw profiel, hosting, bankverwerking of juridische afspraken geschikt zijn voor livegebruik. Er zijn tijdens ontwikkeling geen live betalingen of echte incasso’s uitgevoerd. Een Mollie-testkey en publiek bereikbaar HTTPS-adres waren niet beschikbaar voor een volledige externe test.
 
@@ -15,21 +15,28 @@ Zelfstandige WordPress-plugin voor één organisatie en één Mollie-profiel. Ne
 
 ## Installeren
 
-1. Upload `mollie-incasso-0.1.2.zip` via **Plugins → Nieuwe plugin → Plugin uploaden** en activeer.
-2. Stel een **testkey** buiten de database in, bij voorkeur in `wp-config.php` vóór het laden van WordPress:
+1. Upload `mollie-incasso-0.2.0.zip` via **Plugins → Nieuwe plugin → Plugin uploaden**. Bij een update kiest u de bestaande plugin te vervangen; verwijderen is niet nodig.
+2. Open **Mollie Incasso → Installatiehulp**. Stap 1: organisatie en contactgegevens. Stap 2: plak uw eigen `test_…` API-key uit Mollie Dashboard → Developers → API keys, sla op en controleer de betaalmethodes. Extra serverconfiguratie is voor normale opslag niet nodig; zie hieronder.
+3. Stap 3: geef het eerste abonnement een naam (bijvoorbeeld ‘GCC doorlopend abonnement’), bedrag en maand/kwartaal/jaar. Controleer de zichtbare voorbeeldtekst van de incassoafspraak en pas die aan. De wizard kiest automatisch starten met 14 dagen vooraankondiging. U kunt meerdere abonnementen toevoegen; bestaande afspraken blijven aan hun eigen versie gekoppeld.
+4. Stap 4: kies **aanmelden op een gewone pagina** of **via een WooCommerce-product**. Voor een pagina kunt u de shortcode kopiëren of een conceptpagina maken. Voor de winkel kunt u per regeling een eenvoudig virtueel product als concept klaarzetten. Herhaald klikken opent dezelfde pagina/product. Controleer het concept en publiceer het daarna.
+5. Test de gekozen route op HTTPS met de eigen Mollie-testkey, inclusief betaling, machtiging, webhooks, mail, cron en abonnement. De wizard is optioneel: geavanceerde regelingen en losse incasso’s blijven via Instellingen beschikbaar. De wizard publiceert niets en schakelt live niet automatisch in.
 
-   ```php
-   define('MOLLIE_INCASSO_TEST_KEY', getenv('MOLLIE_INCASSO_TEST_KEY'));
-   ```
+### Aanmelden via WooCommerce
 
-   Gebruik de echte `test_…` key van dit profiel; zet deze nooit in Git, browsercode of exports.
-3. Vul onder **Mollie Incasso → Instellingen en regelingen** de organisatie, adresgegevens, contact/intrekken, privacyverklaring en bewaartermijn in. Maak een regeling voor losse incasso’s of een vast abonnement.
-4. Plaats `[mollie_incasso regeling="123"]` in een normale WordPress-pagina. Neem het echte regeling-ID uit het beheer over. `[mollie_incasso]` gebruikt de nieuwste actieve regeling in de huidige omgeving. Een WordPress-account is niet nodig.
-5. Controleer de methodes, HTTPS-webhook, mailverzending en cron. Loop daarna de externe teststappen hieronder door.
+WooCommerce is uitsluitend nodig als u de winkelroute kiest. WooCommerce Subscriptions en de officiële Mollie-betaalplugin zijn hiervoor niet vereist. Mollie Incasso levert een **eigen, geïsoleerde iDEAL-aanmeldgateway** die de al ingestelde Mollie-key gebruikt. Andere winkelproducten kunnen hun bestaande betaalmethodes blijven gebruiken. Beide routes maken verse lokale klanten en Mollie Customers aan; er wordt nooit op alleen een e-mailadres een bestaand mandaat overgenomen.
 
-De hoofdpagina opent een eigen overzicht met aantallen en korte uitleg. Via **Installatiehulp** kunt u optioneel vier stappen doorlopen: organisatie opslaan, testkey instellen/betaalmethodes controleren, regeling vastleggen en het formulier plaatsen. Overslaan is altijd mogelijk. De hulp schakelt geen livebetalingen in en controle van methodes is geen volledige betaaltest. De knop **Conceptpagina maken** maakt een ongepubliceerde pagina met de servergekozen shortcode; herhaald klikken opent dezelfde pagina. Bestaande WordPress-pagina’s worden bij uninstall niet verwijderd.
+- Het virtuele product toont het abonnementsbedrag/frequentie plus de aparte € 0,01 verificatie. De winkelwagen rekent uitsluitend € 0,01 af: geen eerste abonnementsperiode, stilzwijgende verrekening of restitutie. De server corrigeert de verificatieprijs en weigert afwijkende ordertotalen, btw, verzending, kortingscodes/toeslagen of een gemengde winkelwagen.
+- Eén abonnementaanmelding per bestelling, hoeveelheid één; gewone producten en andere abonnementen rekent de klant afzonderlijk af. Meerdere verschillende regelingen en bijbehorende producten worden ondersteund. Het samenvoegen van meerdere contracten op één checkout/mandaat is buiten deze versie.
+- In de checkout staan de incassoafspraak, het bedrag, de frequentie, het opzeggen en een expliciete niet aangevinkte toestemming. Eén checkout is voldoende; geen tweede aanmeldformulier. Een gewone iDEAL-productbetaling of alleen de productnaam bewijst geen machtiging. De eigen gateway maakt de vereiste `first`-betaling bij de juiste Customer; API-controle en een geldig directdebit-mandaat zijn vereist.
+- Ondersteunt de klassieke checkout en Checkout Blocks (officiële Payment Method Type + legacy Store API-verwerking), met WooCommerce-objectgetters/CRUD voor klassieke opslag en HPOS. De betaalmethode verschijnt alleen voor gekoppelde aanmeldproducten. Een eigen product koppelen kan bij Productgegevens → Algemeen via afzonderlijke test-/liveregelingen; gebruik een eenvoudig virtueel product. Test- en livekoppelingen worden niet onderling vervangen.
+- Een duurzame `checkouts`-koppeling met unieke WooCommerce-order-ID voorkomt dubbele registratie bij retries. Bedrag, identiteit, regelingsversie en toestemming worden server-side gecontroleerd. Een onzekere API-uitkomst gaat naar de statuspagina en de lokale queue; er wordt niet gevraagd een tweede bestelling te plaatsen. Bij een nog open betaling staat op die pagina de gecontroleerde Mollie-checkoutlink.
+- De WooCommerce-order wordt pas betaald gemeld na een via Mollie gecontroleerde betaalstatus. Toestemming/machtiging kan dan nog in behandeling zijn. Een geannuleerde onbetaalde aanmelding blokkeert de toestemming en plant intrekking; een latere betaalmelding start geen abonnement meer. Een eerder al betaalde verificatieorder annuleren is geen opzegging van het lopende abonnement: gebruik daarvoor Mollie Incasso.
+- Vaste abonnementen met `auto_start` worden na geldig mandaat automatisch voorbereid en bevestigd met één vaste zakelijke opdrachtreferentie. De eerste incassodatum ligt veilig na de afgesproken vooraankondiging; de eerste vooraankondiging moet door de mailserver geaccepteerd zijn voordat de Subscription wordt aangemaakt. Mollie plant daarna de termijnen. Dezelfde automatische start werkt via het gewone websiteformulier. Bestaande regelingen zonder deze optie veranderen niet.
+- **Vervolgbetalingen verschijnen in Mollie Incasso en Mollie.** Er worden geen periodieke WooCommerce-bestellingen, facturen, verzendopdrachten of Memberships-rechten gegenereerd. Dit vervangt het beschreven vaste incassoabonnement, niet alle product-/verzend-/kortings-/pro-rateringsfuncties van WooCommerce Subscriptions. Lopende bestaande WooCommerce-abonnementen worden niet automatisch gemigreerd.
 
-Het beheer heeft een subtiele groene zijbalk met eigen logo, native dropdowns met een groen pijltje en een compacte kaart voor nieuwe incasso’s. De plugin levert een zelfstandig aanmeldformulier en een persoonlijke statuspagina met een moderne, mobiele vormgeving. CSS wordt uitsluitend geladen bij eigen formulieren, statuspagina’s en beheerschermen. Er zijn geen externe fonts, frontend-API-keys of JavaScript-afhankelijkheden.
+Een WooCommerce- of Mollie-update kan integratiegedrag beïnvloeden. Lokaal getest met WooCommerce 9.9.5; de eigen checkout vereist geen Mollie Payments for WooCommerce-code. De exacte combinatie met de opgegeven 8.1.11, Flexible Shipping en andere bronsiteplugins is niet op die hosting getest. Maak een back-up en gebruik eerst testmodus.
+
+Het beheer heeft een subtiele groene zijbalk met eigen logo, native dropdowns met een groen pijltje en een compacte kaart voor nieuwe incasso’s. De plugin levert een zelfstandig aanmeldformulier en een persoonlijke statuspagina met een moderne, mobiele vormgeving. CSS wordt uitsluitend geladen bij eigen formulieren, statuspagina’s en beheerschermen. Er zijn geen externe fonts, frontend-API-keys of zware JavaScript-afhankelijkheden. Alleen de optionele WooCommerce Blocks-checkout gebruikt een klein script met de bestaande WordPress/WooCommerce React-runtime.
 
 ### Secrets via instellingen
 
@@ -125,16 +132,16 @@ Alleen met expliciet aangevinkte opruimkeuze, verstreken bewaartermijnen en actu
 
 ## Broncode en reproduceerbare build
 
-De bron staat in de root van de eigen GitHub-repository (in het themaproject onder `mollie-incasso/`); eigen records/statussen in elf `wp_mi_*`-tabellen. Schema versie 1 legt de tabellen idempotent aan met `dbDelta`; migratie 2 maakt Mollie-ID’s expliciet hoofdlettergevoelig. Nieuwe schemawijzigingen krijgen een verhoogde migratieversie. De officiële SDK is vastgelegd in `composer.lock` (**v3.15.0**), PHP-Scoper in `tools/composer.lock` (**v0.18.20**). De ZIP bevat alle productieafhankelijkheden onder `Lukraak\MollieIncasso\Vendor`, met een eigen autoloader zonder globale aliases/Composer-registratie. Een bestaande Mollie/WooCommerce-SDK kan daardoor naast deze versie laden.
+De bron staat in de root van de eigen GitHub-repository (in het themaproject onder `mollie-incasso/`); eigen records/statussen in twaalf `wp_mi_*`-tabellen. Schema versie 1 legt de tabellen idempotent aan met `dbDelta`; migratie 2 maakt Mollie-ID’s expliciet hoofdlettergevoelig. Migratie 3 voegt de duurzame WooCommerce-checkoutkoppeling toe. Nieuwe schemawijzigingen krijgen een verhoogde migratieversie. De officiële SDK is vastgelegd in `composer.lock` (**v3.15.0**), PHP-Scoper in `tools/composer.lock` (**v0.18.20**). De ZIP bevat alle productieafhankelijkheden onder `Lukraak\MollieIncasso\Vendor`, met een eigen autoloader zonder globale aliases/Composer-registratie. Een bestaande Mollie/WooCommerce-SDK kan daardoor naast deze versie laden.
 
 Ontwikkelmachine: PHP 8.2+, curl/openssl/zip, Composer. Hosting heeft **geen Composer** nodig.
 
 ```sh
 cd mollie-incasso
-php tools/build.php /absoluut/pad/composer.phar ../artifacts/mollie-incasso-0.1.2.zip
+php tools/build.php /absoluut/pad/composer.phar ../artifacts/mollie-incasso-0.2.0.zip
 ```
 
-Met Composer op PATH: `php tools/build.php composer` (standaarduitvoer: `dist/mollie-incasso-0.1.2.zip`). De build gebruikt uitsluitend locks (`install`, geen `update`), scoped alle productiecode, controleert de SDK/CA-bundle en PHP-syntax en maakt een ZIP met gesorteerde bestanden en vaste tijdstempels/rechten. De ZIP bevat geen devtools, eigen testfixtures, secrets of ongescopete autoloaders. Zelfde bron, locks en toolomgeving produceren dezelfde ZIP. Dependencies en `.build/` zijn gegenereerd en staan niet in Git.
+Met Composer op PATH: `php tools/build.php composer` (standaarduitvoer: `dist/mollie-incasso-0.2.0.zip`). De build gebruikt uitsluitend locks (`install`, geen `update`), scoped alle productiecode, controleert de SDK/CA-bundle en PHP-syntax en maakt een ZIP met gesorteerde bestanden en vaste tijdstempels/rechten. De ZIP bevat geen devtools, eigen testfixtures, secrets of ongescopete autoloaders. Zelfde bron, locks en toolomgeving produceren dezelfde ZIP. Dependencies en `.build/` zijn gegenereerd en staan niet in Git.
 
 In dit repository is de build getest in de bestaande PHP 8.2.29 Docker-omgeving. Kopieer de pluginbron naar een tijdelijke map onder de lokaal gemounte `plugins/`, voer daar het bovenstaande PHP-buildcommando uit en kopieer de ZIP terug naar `artifacts/`. Composer 2.10.3 is daarvoor lokaal gebruikt. De bronmap buiten `plugins/` is leidend.
 
@@ -146,9 +153,11 @@ Zie [TESTING.md](TESTING.md) voor het daadwerkelijke testrapport en reproduceerb
 MI_WP_ROOT=/pad/naar/wordpress/wp-load.php php tests/integration.php
 MI_WP_ROOT=/pad/naar/wordpress/wp-load.php php tests/sdk.php
 MI_WP_ROOT=/pad/naar/wordpress/wp-load.php php tests/secrets.php
+MI_WP_ROOT=/pad/naar/wordpress/wp-load.php php tests/woocommerce.php
+MI_WOO_HPOS=1 MI_WP_ROOT=/pad/naar/wordpress/wp-load.php php tests/woocommerce.php
 ```
 
-De tests gebruiken geïsoleerde tabellen en proceslokale instellingen, maar een onderbreking kan testtabellen achterlaten. Een expliciet aangemaakte test-conceptpagina wordt na de controle verwijderd. Ze gebruiken een fake gateway/SDK-HTTP-adapter en onderscheppen `wp_mail`; geen echte incasso’s of mails. De SDK-test mag een reeds aanwezige ongescopete SDK laden voor conflictcontrole.
+De WooCommerce-test vereist geïnstalleerde WooCommerce-bestanden en gebruikt de echte CRUD/cart/Store API-klassen met nagebootste Mollie-antwoorden. Hij maakt alleen eigen fixtureproducten/orders en verwijdert die weer; gebruik een wegwerpdatabase. De tests gebruiken geïsoleerde tabellen en proceslokale instellingen, maar een onderbreking kan testtabellen achterlaten. Een expliciet aangemaakte test-conceptpagina wordt na de controle verwijderd. Ze gebruiken een fake gateway/SDK-HTTP-adapter en onderscheppen `wp_mail`; geen echte incasso’s of mails. De SDK-test mag een reeds aanwezige ongescopete SDK laden voor conflictcontrole.
 
 Nog uit te voeren op bereikbare HTTPS-testhosting met uw testprofiel: klant aanmelden, iDEAL-testcheckout betaald/mislukt, pending→valid mandaat controleren, echte webhook/retry, losse recurring testincasso, maand/kwartaal/jaar en maximaal aantal, gegenereerde abonnementsbetaling, eventuele mislukking/chargeback, API-stop/intrekken en een echte SMTP/cron-run. Mollie-testabonnementen kunnen door Mollie zelf na tien betalingen worden geannuleerd. Controleer de actuele testbeperkingen. Pas na deze controles, toetsing van toestemmings-/SEPA-afspraken en operationele monitoring kunt u livegang beoordelen.
 

@@ -396,7 +396,7 @@ try {
     FixtureOptions::set('mi_schema', 1);
     $store->query('ALTER TABLE ' . $store->table('customers') . ' MODIFY remote_id varchar(160) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL');
     $store->install();
-    check($before === $store->one('customers', $cid, 'test') && (int) get_option('mi_schema') === 2, 'schema migration preserves existing customer data');
+    check($before === $store->one('customers', $cid, 'test') && (int) get_option('mi_schema') === Store::SCHEMA_VERSION, 'schema migration preserves existing customer data');
     $caseIds = [];
     foreach (['cst_CaseSensitive', 'cst_casesensitive'] as $remote) {
         $caseIds[] = $store->insert('customers', ['mode' => 'test', 'reference' => wp_generate_uuid4(), 'remote_id' => $remote, 'name' => 'Case fixture', 'email' => 'case@example.invalid', 'scheme_id' => $manual, 'created_at' => Store::now(), 'updated_at' => Store::now()]);
@@ -405,7 +405,7 @@ try {
     $schemeInput=$schemes->get($manual,'test');$schemeInput['amount']='25.00';$schemeInput['times']='0';rejects(fn()=>$schemes->save($schemeInput,'test'),'invalid_scheme');$schemeInput['times']='3abc';rejects(fn()=>$schemes->save($schemeInput,'test'),'invalid_scheme');
     echo 'RESULT ' . $checks . " checks passed. No Mollie network requests, no real emails.\n";
 } finally {
-    foreach (['customers', 'consents', 'schemes', 'mandates', 'commands', 'payments', 'subscriptions', 'tokens', 'jobs', 'notifications', 'limits'] as $name) {
+    foreach (['customers', 'consents', 'schemes', 'mandates', 'commands', 'payments', 'subscriptions', 'tokens', 'jobs', 'notifications', 'limits', 'checkouts'] as $name) {
         $store->query('DROP TABLE IF EXISTS ' . $store->table($name));
     }
     foreach ($saved as $name => $value) {

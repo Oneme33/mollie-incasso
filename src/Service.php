@@ -57,11 +57,17 @@ final class Service
                     return $this->customer($id, $mode);
                 });
             }
-            return $this->store->lock('customer:' . $mode . ':' . $customer['id'], function () use ($customer, $mode) {
+            return $this->firstPayment($customer, $mode);
+        });
+    }
+    private function firstPayment(array $customer, string $mode, string $redirect = ''): array
+    {
+        return $this->store->lock('customer:' . $mode . ':' . $customer['id'], function () use ($customer, $mode, $redirect) {
                 $id = (int) $customer['id'];
                 $ref = $customer['reference'];
                 $customerCommand = $this->command($mode, 'customer:' . $ref, $id, 'customer', 0, ['name' => $customer['name'], 'email' => $customer['email'], 'locale' => 'nl_NL'], Store::now(), 'scheduled');
-                $first = $this->command($mode, 'first:' . $ref, $id, 'first', 1, ['description' => 'Verificatie automatische incasso — ' . $this->config->settings()['organization'], 'redirectUrl' => add_query_arg(['mi_return' => $ref, 'mi_mode' => $mode], home_url('/')), 'webhookUrl' => $this->config->webhook($mode), 'locale' => 'nl_NL'], Store::now(), 'scheduled');
+                $first = $this->command($mode, 'first:' . $ref, $id, 'first', 1, ['description' => 'Verificatie automatische incasso — ' . $this->config->settings()['organization'], 'redirectUrl' => $redirect ?: add_query_arg(['mi_return' => $ref, 'mi_mode' => $mode], home_url('/')), 'webhookUrl' => $this->config->webhook($mode), 'locale' => 'nl_NL'], Store::now(), 'scheduled');
+                $this->queue->put($mode, 'command', 'command:' . $customerCommand['id'], ['id'=>(int)$customerCommand['id']]);
                 $this->queue->put($mode, 'command', 'command:' . $first['id'], ['id' => (int) $first['id']], gmdate('Y-m-d H:i:s', time() + 60));
                 $this->execute((int) $customerCommand['id'], $mode, true);
                 $customer = $this->customer($id, $mode);
@@ -72,8 +78,53 @@ final class Service
                 $payments = $this->store->select('SELECT * FROM ' . $this->store->table('payments') . ' WHERE command_id=%d AND mode=%s', [(int) $first['id'], $mode]);
                 return ['customer' => $customer, 'payment' => $payments[0] ?? null, 'command' => $this->store->one('commands', (int) $first['id'], $mode)];
             });
+    }
+
+    /** Called only after the WooCommerce bridge has validated and durably saved the checkout. */
+    public function checkoutSignup(int $checkoutId, string $mode): array
+    {
+        $this->config->assertRun($mode, true);
+        return $this->store->lock('checkout-signup:'.$mode.':'.$checkoutId, function () use ($checkoutId, $mode) {
+            $receipt = $this->store->one('checkouts', $checkoutId, $mode);
+            if (!$receipt) throw new Failure('checkout_not_found');
+            if ($receipt['state'] === 'canceled') throw new Failure('consent_withdrawn');
+            $data = json_decode($receipt['payload'], true);
+            $scheme = $this->schemes->get((int) $receipt['scheme_id'], $mode, false);
+            if (!hash_equals((string) $data['disclosure_hash'], hash('sha256', (string)$data['disclosure']))) throw new Failure('scheme_changed');
+            if (!$receipt['customer_id']) {
+                if (!is_email($data['email']) || $data['name'] === '' || strlen($data['email']) > 190 || mb_strlen($data['name']) > 190) throw new Failure('invalid_signup');
+                $this->methods($mode, $scheme['amount']);
+                $customer = $this->store->transaction(function () use ($receipt, $data, $scheme, $mode) {
+                    $id = $this->store->insert('customers', ['mode'=>$mode, 'reference'=>$receipt['reference'], 'name'=>$data['name'], 'email'=>$data['email'], 'user_id'=>$data['user_id'] ?: null, 'scheme_id'=>$scheme['id'], 'created_at'=>Store::now(), 'updated_at'=>Store::now()]);
+                    $this->store->insert('consents', ['mode'=>$mode, 'customer_id'=>$id, 'scheme_id'=>$scheme['id'], 'version'=>(string)$scheme['version'], 'consent_text'=>$data['disclosure'], 'snapshot'=>wp_json_encode($scheme), 'accepted_at'=>$data['accepted_at']]);
+                    $this->store->update('checkouts', ['customer_id'=>$id, 'updated_at'=>Store::now()], (int)$receipt['id'], $mode);
+                    return $this->customer($id, $mode);
+                });
+            } else {
+                $customer = $this->customer((int)$receipt['customer_id'], $mode);
+                $this->consent($customer);
+            }
+            return $this->firstPayment($customer, $mode, $data['redirect_url']);
         });
     }
+
+    public function startAutomaticSubscription(int $id, string $mode): void
+    {
+        $this->config->assertRun($mode, true);
+        $customer = $this->customer($id, $mode);
+        $scheme = $this->consent($customer);
+        if (empty($scheme['auto_start']) || $scheme['type'] !== 'fixed') return;
+        if ($customer['status'] !== 'active') throw new Failure('customer_not_active');
+        $hash = hash('sha256', 'automatic-subscription|'.$customer['reference']);
+        $reference = substr($hash,0,8).'-'.substr($hash,8,4).'-'.substr($hash,12,4).'-'.substr($hash,16,4).'-'.substr($hash,20,12);
+        $command = $this->store->find('commands', 'reference', $reference, $mode);
+        if (!$command) {
+            $date = wp_date('Y-m-d', time() + (max(1,(int)$scheme['notice_days'])+1)*DAY_IN_SECONDS, new \DateTimeZone('Europe/Amsterdam'));
+            $command = $this->prepare($id, $mode, 'subscription', (int)$scheme['amount'], $scheme['purpose'], $date, $reference);
+        }
+        if ($command['state'] === 'draft') $this->confirm((int)$command['id'], $mode);
+    }
+
     public function customer(int $id, string $mode): array
     {
         $row = $this->store->one('customers', $id, $mode);
@@ -311,6 +362,8 @@ final class Service
         }
         $this->store->update('customers', ['status' => 'active', 'mandate_id' => $valid['remote_id'], 'updated_at' => Store::now()], $id, $mode);
         $this->mail->schedule($mode, $id, 'consent', 'consent:' . $id);
+        if (!empty($this->consent($customer)['auto_start'])) $this->queue->put($mode, 'auto_subscription', 'auto-subscription:'.$id, ['id'=>$id]);
+        $this->queue->put($mode, 'checkout', 'checkout:'.$id, ['id'=>$id]);
         return $valid;
     }
     private function validatePayment(array $customer, ?array $command, array $p, ?array $subscription): void
@@ -409,6 +462,7 @@ final class Service
                     $this->store->update('commands', ['state' => 'completed', 'remote_id' => $p['id'], 'error' => '', 'updated_at' => Store::now()], (int) $command['id'], $mode);
                 }
             });
+            $this->queue->put($mode, 'checkout', 'checkout:'.$customer['id'], ['id'=>(int)$customer['id']]);
             if ($command && $command['kind'] === 'first' && (in_array($p['status'], ['failed', 'canceled', 'expired'], true) || Money::cents((string) ($p['amountChargedBack']['value'] ?? '0.00'), true) > 0 || Money::cents((string) ($p['amountRefunded']['value'] ?? '0.00'), true) > 0) && !in_array($customer['status'], ['revoked', 'revoking'], true)) {
                 $this->store->update('customers', ['status' => 'verification_failed', 'updated_at' => Store::now()], (int) $customer['id'], $mode);
             }
@@ -624,12 +678,15 @@ final class Service
         foreach ($this->store->select('SELECT remote_id FROM ' . $this->store->table('payments') . ' WHERE mode=%s AND (status IN ("open","pending","authorized") OR checked_at<%s)', [$mode, gmdate('Y-m-d H:i:s', time() - 86400)]) as $p) {
             $this->queue->put($mode, 'payment', 'payment:' . $p['remote_id'], ['id' => $p['remote_id']]);
         }
+        foreach ($this->store->select('SELECT customer_id FROM '.$this->store->table('checkouts').' WHERE mode=%s AND customer_id IS NOT NULL AND state!="complete"', [$mode]) as $checkout) $this->queue->put($mode, 'checkout', 'checkout:'.$checkout['customer_id'], ['id'=>(int)$checkout['customer_id']]);
         $this->store->query('DELETE FROM ' . $this->store->table('limits') . ' WHERE expires_at<%s', [Store::now()]);
         $this->store->query('DELETE FROM ' . $this->store->table('tokens') . ' WHERE expires_at<%s', [gmdate('Y-m-d H:i:s', time() - 86400)]);
     }
     public function job(string $kind, array $data, string $mode): void
     {
         match ($kind) {
+            'auto_subscription' => $this->startAutomaticSubscription((int)$data['id'], $mode),
+            'checkout' => do_action('mollie_incasso_sync_checkout', (int)$data['id'], $mode),
             'payment' => $this->syncPayment((string) $data['id'], $mode),
             'mandate' => $this->refreshMandate((int) $data['id'], $mode),
             'subscription' => $this->syncSubscription((int) $data['id'], $mode),

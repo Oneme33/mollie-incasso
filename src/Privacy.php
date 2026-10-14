@@ -11,10 +11,12 @@ final class Privacy
     {
         add_filter('wp_privacy_personal_data_exporters', function ($items) {
             $items['mollie-incasso'] = ['exporter_friendly_name' => __('Mollie Incasso', 'mollie-incasso'), 'callback' => [$this, 'export']];
+            $items['mollie-incasso-checkouts'] = ['exporter_friendly_name' => __('Mollie Incasso — onvoltooide webshopaanmeldingen', 'mollie-incasso'), 'callback' => [$this, 'exportCheckouts']];
             return $items;
         });
         add_filter('wp_privacy_personal_data_erasers', function ($items) {
             $items['mollie-incasso'] = ['eraser_friendly_name' => __('Mollie Incasso', 'mollie-incasso'), 'callback' => [$this, 'erase']];
+            $items['mollie-incasso-checkouts'] = ['eraser_friendly_name' => __('Mollie Incasso — onvoltooide webshopaanmeldingen', 'mollie-incasso'), 'callback' => [$this, 'eraseCheckouts']];
             return $items;
         });
         add_action('admin_init', static function () {
@@ -22,6 +24,20 @@ final class Privacy
                 wp_add_privacy_policy_content('Mollie Incasso', __('Wij bewaren uw naam, e-mail, regeling, vastgelegde toestemming, Mollie-referenties en betaalstatussen. Volledige rekeninggegevens worden niet lokaal bewaard. Standaard bewaartermijn: 7 jaar voor financiële en toestemmingsgegevens; beoordeel dit beleid voor uw organisatie. Persoonlijke toegangstokens worden gehasht en vervallen na 7 dagen. Verwijderen gebeurt pas nadat externe afspraken aantoonbaar zijn beëindigd.', 'mollie-incasso'));
             }
         });
+    }
+    public function exportCheckouts(string $email, int $page=1): array
+    {
+        $rows=$this->plugin->store->select('SELECT * FROM '.$this->plugin->store->table('checkouts').' WHERE customer_id IS NULL AND email=%s ORDER BY id LIMIT 50 OFFSET %d',[strtolower(sanitize_email($email)),max(0,$page-1)*50]);
+        $items=[];
+        foreach($rows as$row){$payload=json_decode($row['payload'],true);$data=[];foreach(['name','email','accepted_at','disclosure']as$key)$data[]=['name'=>$key,'value'=>(string)($payload[$key]??'')];$data[]=['name'=>'order_id','value'=>(string)$row['order_id']];$items[]=['group_id'=>'mollie-incasso-checkouts','group_label'=>__('Onvoltooide webshopaanmeldingen','mollie-incasso'),'item_id'=>'checkout-'.$row['id'],'data'=>$data];}
+        return ['data'=>$items,'done'=>count($rows)<50];
+    }
+    public function eraseCheckouts(string $email, int $page=1): array
+    {
+        $rows=$this->plugin->store->select('SELECT id,mode FROM '.$this->plugin->store->table('checkouts').' WHERE customer_id IS NULL AND email=%s ORDER BY id LIMIT 50',[strtolower(sanitize_email($email))]);
+        $removed=false;$retained=false;
+        foreach($rows as$row){try{$this->plugin->store->lock('checkout-signup:'.$row['mode'].':'.$row['id'],function()use($row,&$removed){$removed=(bool)$this->plugin->store->query('DELETE FROM '.$this->plugin->store->table('checkouts').' WHERE id=%d AND mode=%s AND customer_id IS NULL',[(int)$row['id'],$row['mode']])||$removed;});}catch(Failure $e){$retained=true;}}
+        return ['items_removed'=>$removed,'items_retained'=>$retained,'messages'=>$retained?[__('Aanmelding wordt verwerkt; probeer het verwijderverzoek later opnieuw.','mollie-incasso')]:[],'done'=>count($rows)<50];
     }
     private function customers(string $email, int $page): array
     {
@@ -40,9 +56,9 @@ final class Privacy
             foreach ($consents as $c) {
                 $data[] = ['name' => __('Toestemming', 'mollie-incasso'), 'value' => wp_json_encode($c, JSON_UNESCAPED_UNICODE)];
             }
-            foreach (['payments', 'subscriptions', 'mandates'] as $table) {
+            foreach (['payments', 'subscriptions', 'mandates', 'checkouts'] as $table) {
                 foreach ($this->plugin->store->select('SELECT * FROM ' . $this->plugin->store->table($table) . ' WHERE customer_id=%d AND mode=%s', [(int) $row['id'], $row['mode']]) as $record) {
-                    unset($record['id'], $record['customer_id'], $record['checkout_url'], $record['command_id']);
+                    unset($record['id'], $record['customer_id'], $record['checkout_url'], $record['command_id'], $record['payload']);
                     $data[] = ['name' => $table, 'value' => wp_json_encode($record, JSON_UNESCAPED_UNICODE)];
                 }
             }
@@ -80,7 +96,7 @@ final class Privacy
                 $this->plugin->store->lock('customer:' . $c['mode'] . ':' . $id, function () use ($c, $id) {
                     $this->plugin->service->assertErasure($c);
                     $this->plugin->store->transaction(function () use ($c, $id) {
-                        foreach (['tokens', 'notifications', 'consents', 'payments', 'subscriptions', 'mandates', 'commands'] as $table) {
+                        foreach (['tokens', 'notifications', 'consents', 'payments', 'subscriptions', 'mandates', 'commands', 'checkouts'] as $table) {
                             $this->plugin->store->query('DELETE FROM ' . $this->plugin->store->table($table) . ' WHERE customer_id=%d AND mode=%s', [(int) $id, $c['mode']]);
                         }
                         $this->plugin->store->query('DELETE FROM ' . $this->plugin->store->table('customers') . ' WHERE id=%d AND mode=%s', [(int) $id, $c['mode']]);

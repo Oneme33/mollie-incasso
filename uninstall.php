@@ -24,7 +24,7 @@ try {
     update_option('mi_cleanup_blocked', true, false);
     return;
 }
-foreach (['customers', 'consents', 'schemes', 'mandates', 'commands', 'payments', 'subscriptions', 'tokens', 'jobs', 'notifications', 'limits'] as $table) {
+foreach (['customers', 'consents', 'schemes', 'mandates', 'commands', 'payments', 'subscriptions', 'tokens', 'jobs', 'notifications', 'limits', 'checkouts'] as $table) {
     $plugin->store->query('DROP TABLE IF EXISTS ' . $plugin->store->table($table));
 }
 foreach (['mi_settings', 'mi_schema', 'mi_instance', 'mi_site_binding', 'mi_secret_test', 'mi_secret_live', 'mi_last_tick', 'mi_cron_error', 'mi_cleanup_blocked', 'mi_last_webhook_test', 'mi_last_webhook_live', 'mi_methods_test', 'mi_methods_live'] as $key) {
@@ -32,4 +32,4 @@ foreach (['mi_settings', 'mi_schema', 'mi_instance', 'mi_site_binding', 'mi_secr
 }
 get_role('administrator')?->remove_cap('manage_mollie_incasso');
 global $wpdb;
-$wpdb->query($wpdb->prepare('DELETE FROM ' . $wpdb->options . ' WHERE option_name LIKE %s', $wpdb->esc_like('mi_setup_page_') . '%'));
+$wpdb->query($wpdb->prepare('DELETE FROM ' . $wpdb->options . ' WHERE option_name LIKE %s OR option_name LIKE %s OR option_name LIKE %s', $wpdb->esc_like('mi_setup_page_') . '%', $wpdb->esc_like('mi_wizard_plan_'). '%', $wpdb->esc_like('mi_woo_product_'). '%'));
