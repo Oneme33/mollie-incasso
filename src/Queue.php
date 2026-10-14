@@ -14,7 +14,7 @@ final class Queue
     public static function priority(string $kind): int
     {
         return match ($kind) {
-            'command', 'mail', 'payment', 'withdraw', 'stop', 'checkout', 'auto_subscription' => self::URGENT,
+            'command', 'mail', 'payment', 'withdraw', 'stop', 'checkout', 'cancel_checkout', 'auto_subscription' => self::URGENT,
             default => self::NORMAL,
         };
     }

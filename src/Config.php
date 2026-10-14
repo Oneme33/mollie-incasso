@@ -31,8 +31,10 @@ final class Config
         }
     }
     /**
-     * Visitor IP for rate limits. Forwarded headers count only when REMOTE_ADDR is a proxy listed in
-     * MOLLIE_INCASSO_TRUSTED_PROXIES (comma-separated IPs/CIDRs), so visitors cannot pick their own bucket.
+     * Visitor IP for rate limits. A forwarded header counts only when REMOTE_ADDR is a proxy listed in
+     * MOLLIE_INCASSO_TRUSTED_PROXIES (comma-separated IPs/CIDRs), and only the one header named in
+     * MOLLIE_INCASSO_CLIENT_IP_HEADER (default X-Forwarded-For) is read. Other headers a proxy merely
+     * passes through, such as a client-supplied CF-Connecting-IP, are ignored.
      */
     public function clientIp(): string
     {
@@ -40,11 +42,11 @@ final class Config
         $trusted = array_filter(array_map('trim', explode(',', $this->settingSecret('MOLLIE_INCASSO_TRUSTED_PROXIES'))));
         $ip = $remote;
         if ($trusted && self::inRanges($remote, $trusted)) {
-            if (!empty($_SERVER['HTTP_CF_CONNECTING_IP']) && filter_var($_SERVER['HTTP_CF_CONNECTING_IP'], FILTER_VALIDATE_IP)) {
-                $ip = (string) $_SERVER['HTTP_CF_CONNECTING_IP'];
-            } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+            $header = strtolower(trim($this->settingSecret('MOLLIE_INCASSO_CLIENT_IP_HEADER'))) ?: 'x-forwarded-for';
+            $value = (string) ($_SERVER['HTTP_' . strtoupper(str_replace('-', '_', $header))] ?? '');
+            if ($header === 'x-forwarded-for') {
                 // Walk from the right: the first address that is not one of our proxies is the visitor.
-                foreach (array_reverse(array_map('trim', explode(',', (string) $_SERVER['HTTP_X_FORWARDED_FOR']))) as $hop) {
+                foreach (array_reverse(array_map('trim', explode(',', $value))) as $hop) {
                     if (!filter_var($hop, FILTER_VALIDATE_IP)) {
                         break;
                     }
@@ -53,6 +55,9 @@ final class Config
                         break;
                     }
                 }
+            } elseif (filter_var(trim($value), FILTER_VALIDATE_IP)) {
+                // Single-value headers (CF-Connecting-IP, X-Real-IP) are set by the trusted proxy itself.
+                $ip = trim($value);
             }
         }
         return (string) apply_filters('mollie_incasso_client_ip', $ip, $remote);

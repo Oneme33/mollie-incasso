@@ -517,8 +517,29 @@ try {
     $_SERVER['REMOTE_ADDR'] = '198.51.100.7';
     check($config->clientIp() === '198.51.100.7', 'untrusted sender cannot choose its rate-limit bucket');
     check(Config::inRanges('2001:db8::1', ['2001:db8::/32']) && !Config::inRanges('2001:db9::1', ['2001:db8::/32']), 'IPv6 proxy ranges');
+    // A trusted proxy that passes through a client-supplied CF-Connecting-IP must not let visitors pick a bucket.
+    putenv('MOLLIE_INCASSO_TRUSTED_PROXIES=10.0.0.0/8');
+    $_SERVER['REMOTE_ADDR'] = '10.0.0.5';
+    $_SERVER['HTTP_X_FORWARDED_FOR'] = '203.0.113.9';
+    $_SERVER['HTTP_CF_CONNECTING_IP'] = '192.0.2.123';
+    check($config->clientIp() === '203.0.113.9', 'unconfigured CF-Connecting-IP is ignored even behind a trusted proxy');
+    putenv('MOLLIE_INCASSO_CLIENT_IP_HEADER=CF-Connecting-IP');
+    check($config->clientIp() === '192.0.2.123', 'explicitly configured proxy header is used from a trusted proxy');
+    $_SERVER['REMOTE_ADDR'] = '198.51.100.7';
+    check($config->clientIp() === '198.51.100.7', 'configured header is ignored from an untrusted sender');
+    putenv('MOLLIE_INCASSO_CLIENT_IP_HEADER');
     putenv('MOLLIE_INCASSO_TRUSTED_PROXIES');
     $_SERVER = $server;
+    // Verification state is tri-state: an unreachable Mollie is "unknown", never "unpaid".
+    $outage = signup($manual, 'outage@example.invalid');
+    $fake->payments[$outage['payment']['remote_id']]['status'] = 'paid';
+    $fake->readFails = true;
+    check($service->firstPaymentState((int) $outage['customer']['id'], 'test') === 'unknown', 'Mollie outage yields unknown verification state, not unpaid');
+    $fake->readFails = false;
+    check($service->firstPaymentState((int) $outage['customer']['id'], 'test') === 'paid', 'verification state is paid once Mollie answers');
+    $orphanCustomer = $store->insert('customers', ['mode' => 'test', 'reference' => wp_generate_uuid4(), 'remote_id' => 'cst_orphan', 'name' => 'Orphan', 'email' => 'orphan@example.invalid', 'scheme_id' => $manual, 'created_at' => Store::now(), 'updated_at' => Store::now()]);
+    $store->insert('commands', ['mode' => 'test', 'reference' => 'first:' . wp_generate_uuid4(), 'customer_id' => $orphanCustomer, 'kind' => 'first', 'amount' => 1, 'payload' => '{}', 'payload_hash' => str_repeat('0', 64), 'idempotency_key' => wp_generate_uuid4(), 'state' => 'unknown', 'due_at' => Store::now(), 'attempted_at' => Store::now(), 'created_at' => Store::now(), 'updated_at' => Store::now()]);
+    check($service->firstPaymentState($orphanCustomer, 'test') === 'unknown', 'an attempted first payment without stored result is unknown, not unpaid');
     // Without the form cookie (page builders, templates) the shortcode offers a safe way to start.
     $savedCookie = $_COOKIE['mi_form'];
     unset($_COOKIE['mi_form']);

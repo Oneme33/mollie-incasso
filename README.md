@@ -94,7 +94,13 @@ POST met payment `id`, zonder WordPress-login of nonce. De ontvangen status word
 define('MOLLIE_INCASSO_TRUSTED_PROXIES', '10.0.0.0/8, 2001:db8::/32');
 ```
 
-Alleen als het verzoek van zo’n proxy komt, worden `CF-Connecting-IP` of `X-Forwarded-For` (van rechts gelezen) gebruikt; een bezoeker kan zijn eigen limiet dus niet kiezen. Hostingpartijen kunnen ook het filter `mollie_incasso_client_ip` gebruiken.
+Alleen als het verzoek van zo’n proxy komt, wordt één header gelezen: standaard `X-Forwarded-For` (van rechts naar links, tot het eerste niet-vertrouwde adres). Gebruik voor Cloudflare de Cloudflare-IP-ranges als vertrouwde proxies én kies hun header expliciet:
+
+```php
+define('MOLLIE_INCASSO_CLIENT_IP_HEADER', 'CF-Connecting-IP');
+```
+
+Andere headers worden genegeerd, ook als een proxy ze ongewijzigd doorgeeft; een bezoeker kan zijn eigen limiet dus niet kiezen. Hostingpartijen kunnen ook het filter `mollie_incasso_client_ip` gebruiken.
 
 Sluit formulierpagina’s, persoonlijke `mi_access`/`mi_return`/`mi_customer`-URL’s, `admin-post.php` en webhookroutes uit van caching en CDN/full-page caching. Laat checkout-return, webhooks en Mollie API-verkeer door de firewall. Persoonlijke pagina’s gebruiken no-cache, noindex en no-referrer; upstream caches moeten deze ook respecteren.
 

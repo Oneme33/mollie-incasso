@@ -28,7 +28,9 @@ $oldUser=get_current_user_id();$oldPost=$_POST;$oldGet=$_GET;
 $admins=get_users(['role'=>'administrator','number'=>1]);wp_set_current_user($admins[0]->ID);
 function orderFor($product,string $amount='0.01',string $gateway='mollie_incasso'){
  global $orders;
- $o=wc_create_order(['created_via'=>'mollie_incasso_fixture']);$orders[]=$o->get_id();$o->set_currency('EUR');$o->set_payment_method($gateway);$o->set_billing_first_name('Voorbeeld');$o->set_billing_last_name('Klant');$o->set_billing_email('test@example.invalid');$o->add_product($product,1,['subtotal'=>$amount,'total'=>$amount]);$o->calculate_totals(false);$o->save();return $o;
+ $o=wc_create_order(['created_via'=>'mollie_incasso_fixture']);$orders[]=$o->get_id();$o->set_currency('EUR');$o->set_payment_method($gateway);$o->set_billing_first_name('Voorbeeld');$o->set_billing_last_name('Klant');$o->set_billing_email('test@example.invalid');$o->add_product($product,1,['subtotal'=>$amount,'total'=>$amount]);$o->calculate_totals(false);$o->save();
+ // Fail fast with the real cause instead of a misleading gateway error later on.
+ if(!wc_get_order($o->get_id()))throw new RuntimeException('WooCommerce cannot store orders (missing order tables?)');return $o;
 }
 try{
  ok(!function_exists('wcs_get_subscriptions'),'no WooCommerce Subscriptions dependency');
@@ -117,6 +119,16 @@ try{
  $api->payments[$paidPayment['remote_id']]['status']='paid';$paidOrder->update_status('cancelled');
  ok($service->customer($paidCustomer,'test')['status']!=='revoking'&&$store->find('payments','remote_id',$paidPayment['remote_id'],'test')['status']==='paid','cancelling an order whose verification Mollie already reports paid keeps the consent');
  $notes=wc_get_order_notes(['order_id'=>$paidOrder->get_id()]);ok((bool)array_filter($notes,fn($n)=>str_contains($n->content,'bij Mollie betaald')),'order note explains the consent stays active');
+ // Review scenario: Mollie unreachable while an order is cancelled. Consent may only change after a real answer.
+ $outOrder=orderFor($product);$bridge->checkout($outOrder->get_id(),true,$hash);$outReceipt=$store->select('SELECT * FROM '.$store->table('checkouts').' WHERE order_id=%d',[$outOrder->get_id()])[0];$outCustomer=(int)$outReceipt['customer_id'];$outPayment=$store->select('SELECT * FROM '.$store->table('payments').' WHERE customer_id=%d',[$outCustomer])[0];
+ $api->payments[$outPayment['remote_id']]['status']='paid';$api->readFails=true;$outOrder->update_status('cancelled');
+ ok($service->customer($outCustomer,'test')['status']!=='revoking'&&$store->find('jobs','dedup','cancel-checkout:'.$outOrder->get_id(),'test')!==null,'Mollie outage during cancellation keeps consent and schedules a new check');
+ deny(fn()=>$service->job('cancel_checkout',['order'=>$outOrder->get_id()],'test'),'cancel_outcome_unknown');
+ $api->readFails=false;$service->job('cancel_checkout',['order'=>$outOrder->get_id()],'test');
+ ok($service->customer($outCustomer,'test')['status']!=='revoking','retry after the outage sees the paid verification and keeps consent');
+ $unpaidOrder=orderFor($product);$bridge->checkout($unpaidOrder->get_id(),true,$hash);$unpaidCustomer=(int)$store->select('SELECT * FROM '.$store->table('checkouts').' WHERE order_id=%d',[$unpaidOrder->get_id()])[0]['customer_id'];
+ $api->readFails=true;$unpaidOrder->update_status('cancelled');ok($service->customer($unpaidCustomer,'test')['status']!=='revoking','unknown outcome never withdraws, even for an unpaid verification');
+ $api->readFails=false;$service->job('cancel_checkout',['order'=>$unpaidOrder->get_id()],'test');ok($service->customer($unpaidCustomer,'test')['status']==='revoking','once Mollie confirms it is unpaid, the cancellation withdraws consent');
  $privacy=new Lukraak\MollieIncasso\Privacy($p);$orphan=$store->insert('checkouts',['mode'=>'test','order_id'=>999999999,'reference'=>wp_generate_uuid4(),'scheme_id'=>$schemeId,'email'=>'orphan@example.invalid','payload'=>wp_json_encode(['name'=>'Orphan','email'=>'orphan@example.invalid','accepted_at'=>Store::now(),'disclosure'=>'Afspraken','redirect_url'=>'secret-order-key']),'created_at'=>Store::now(),'updated_at'=>Store::now()]);
  $export=$privacy->exportCheckouts('orphan@example.invalid');ok(count($export['data'])===1&&!str_contains(wp_json_encode($export),'secret-order-key'),'unfinished checkout privacy export excludes private order redirect');
  ok($privacy->eraseCheckouts('orphan@example.invalid')['items_removed']&&!$store->one('checkouts',$orphan,'test'),'unfinished checkout can be safely erased before any customer/API mutation');

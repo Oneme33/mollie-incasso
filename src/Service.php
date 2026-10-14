@@ -506,21 +506,24 @@ final class Service
     }
     /**
      * Server-side check of the newest €0.01 verification at Mollie (never the browser return itself).
-     * Returns true when it is paid; API problems leave the stored status untouched and return the stored answer.
+     * Returns "paid", "unpaid" (Mollie confirms it is not paid) or "unknown" (Mollie could not be asked,
+     * or a create attempt has no stored result yet). Callers must never treat "unknown" as unpaid.
      */
-    public function verifiedFirstPayment(int $customerId, string $mode, bool $activate = false): bool
+    public function firstPaymentState(int $customerId, string $mode, bool $activate = false): string
     {
         $first = fn() => $this->store->select('SELECT * FROM ' . $this->store->table('payments') . ' WHERE customer_id=%d AND mode=%s AND kind="first" ORDER BY id DESC LIMIT 1', [$customerId, $mode])[0] ?? null;
         $payment = $first();
         if (!$payment) {
-            return false;
+            $attempted = $this->store->select('SELECT id FROM ' . $this->store->table('commands') . ' WHERE customer_id=%d AND mode=%s AND kind IN ("customer","first") AND attempted_at IS NOT NULL AND state!="completed" LIMIT 1', [$customerId, $mode]);
+            return $attempted ? 'unknown' : 'unpaid';
         }
         if (in_array($payment['status'], ['open', 'pending', 'authorized'], true)) {
             try {
                 $this->syncPayment($payment['remote_id'], $mode);
-                $payment = $first();
             } catch (Failure $e) {
+                return 'unknown';
             }
+            $payment = $first();
         }
         $paid = $payment['status'] === 'paid' && !(int) $payment['refunded'] && !(int) $payment['charged_back'];
         if ($paid && $activate && in_array($this->customer($customerId, $mode)['status'], ['pending', 'mandate_pending'], true)) {
@@ -530,7 +533,11 @@ final class Service
                 // A pending mandate stays visible; the queued mandate job continues.
             }
         }
-        return $paid;
+        return $paid ? 'paid' : 'unpaid';
+    }
+    public function verifiedFirstPayment(int $customerId, string $mode, bool $activate = false): bool
+    {
+        return $this->firstPaymentState($customerId, $mode, $activate) === 'paid';
     }
     private function storeSubscription(array $customer, array $command, array $s, bool $notify = true): void
     {
@@ -756,6 +763,7 @@ final class Service
         match ($kind) {
             'auto_subscription' => $this->startAutomaticSubscription((int)$data['id'], $mode),
             'checkout' => do_action('mollie_incasso_sync_checkout', (int)$data['id'], $mode),
+            'cancel_checkout' => do_action('mollie_incasso_cancel_checkout', (int) $data['order'], $mode),
             'payment' => $this->syncPayment((string) $data['id'], $mode),
             'mandate' => $this->refreshMandate((int) $data['id'], $mode),
             'subscription' => $this->syncSubscription((int) $data['id'], $mode),

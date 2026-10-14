@@ -25,6 +25,7 @@ final class WooCommerceBridge
         // Stock holding must not withdraw consent while a delayed webhook or cron still has to confirm the €0.01.
         add_filter('woocommerce_cancel_unpaid_order', static fn($cancel,$order)=>is_object($order) && $order->get_payment_method()==='mollie_incasso' ? false : $cancel, 10, 2);
         add_action('mollie_incasso_sync_checkout', static fn($id,$mode)=>self::instance()->sync((int)$id,$mode),10,2);
+        add_action('mollie_incasso_cancel_checkout', static fn($order,$mode)=>self::instance()->cancelPending((int)$order,true),10,2);
         add_filter('woocommerce_available_payment_gateways', static fn($gateways)=>self::instance()->availableGateways($gateways));
         add_filter('woocommerce_add_to_cart_validation', static fn($valid,$id,$quantity)=>self::instance()->addToCart($valid,(int)$id,(int)$quantity),10,3);
         add_action('woocommerce_before_calculate_totals', static fn($cart)=>self::instance()->cartPrices($cart));
@@ -145,7 +146,8 @@ final class WooCommerceBridge
             return ['result'=>'success','redirect'=>$order->get_checkout_order_received_url()];
         });
     }
-    public function cancelPending(int $orderId): void
+    /** $retry: called from the queue; an unknown outcome then throws so the job backs off and stays visible. */
+    public function cancelPending(int $orderId, bool $retry = false): void
     {
         $order=wc_get_order($orderId);
         if(!$order || $order->get_status()!=='cancelled' || $order->get_payment_method()!=='mollie_incasso')return;
@@ -156,8 +158,17 @@ final class WooCommerceBridge
             // A completed verification order is not the ongoing subscription contract.
             if($order->get_date_paid())continue;
             // The local status can lag behind Mollie: ask Mollie before treating the signup as abandoned.
-            if($this->plugin->service->verifiedFirstPayment($cid,$mode)){
+            $state=$this->plugin->service->firstPaymentState($cid,$mode);
+            if($state==='paid'){
                 $order->add_order_note(__('De verificatiebetaling is bij Mollie betaald. De toestemming blijft actief; annuleren van deze bestelling beëindigt geen abonnement. Gebruik daarvoor Mollie Incasso.','mollie-incasso'));
+                continue;
+            }
+            if($state==='unknown'){
+                // Never withdraw on an unverified outcome: keep consent and decide after a new check.
+                $this->plugin->store->update('checkouts',['error'=>'cancel_outcome_unknown','updated_at'=>Store::now()],(int)$row['id'],$mode);
+                if($retry)throw new Failure('cancel_outcome_unknown',true);
+                $order->add_order_note(Plugin::message('cancel_outcome_unknown'));
+                $this->plugin->queue->put($mode,'cancel_checkout','cancel-checkout:'.$orderId,['order'=>$orderId],gmdate('Y-m-d H:i:s',time()+300));
                 continue;
             }
             $this->plugin->store->lock('customer:'.$mode.':'.$cid,function()use($row,$mode,$cid){

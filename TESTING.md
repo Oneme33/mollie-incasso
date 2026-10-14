@@ -55,7 +55,7 @@ De volledige gehoste checkout met echte Mollie-testkey/webhook, de exacte bronsi
 
 ## Betrouwbaarheid en schaal (0.3.0)
 
-Lokaal uitgevoerd op 14 oktober 2026 in dezelfde Docker-omgeving (PHP 8.2.29, WordPress 6.8.1, MySQL 8.0.32, WooCommerce 9.9.5). Resultaat: `integration.php` **115**, `sdk.php` **22**, `secrets.php` **23**, `woocommerce.php` **63 klassiek en 63 HPOS** — alle controles geslaagd. (De SDK-controle op een naast-geladen ongescopete SDK draait alleen als `mollie-incasso-build/vendor` aanwezig is.)
+Lokaal uitgevoerd op 14 oktober 2026 in dezelfde Docker-omgeving (PHP 8.2.29, WordPress 6.8.1, MySQL 8.0.32, WooCommerce 11.2.1 — eerdere rapporten noemden hier abusievelijk 9.9.5; die versie draait nu in CI). Resultaat: `integration.php` **121**, `sdk.php` **22**, `secrets.php` **23**, `woocommerce.php` **68 klassiek en 68 HPOS** — alle controles geslaagd. (De SDK-controle op een naast-geladen ongescopete SDK draait alleen als `mollie-incasso-build/vendor` aanwezig is.)
 
 Nieuw getest:
 
@@ -72,8 +72,11 @@ Nieuw getest:
 - Shortcode zonder formuliercookie toont een startknop in plaats van een onbruikbaar formulier.
 - Reconciliatie via de echte SDK stopt bij resources ouder dan de onzekere aanvraag en vindt de recente nog wel.
 - WooCommerce: voorraadreservering annuleert alleen gewone onbetaalde orders, geen aanmeldorders; annuleren terwijl Mollie de verificatie al betaald meldt, laat de toestemming staan en voegt een ordernotitie toe.
+- Na review van PR #1: is Mollie onbereikbaar tijdens het annuleren, dan is de uitkomst ‘onbekend’ en wordt de toestemming nooit ingetrokken; een queuetaak controleert opnieuw. Bij betaald blijft de toestemming staan, bij door Mollie bevestigd onbetaald volgt intrekken. Een gestarte first-betaling zonder opgeslagen resultaat telt ook als onbekend. Deze test faalt aantoonbaar op de eerdere PR-code.
+- Na review: een door een vertrouwde proxy doorgegeven `CF-Connecting-IP` wordt genegeerd tenzij die header expliciet is ingesteld, en ook dan alleen vanaf vertrouwde proxyadressen.
+- CI maakt de WooCommerce- en HPOS-ordertabellen expliciet aan; de WooCommerce-test stopt direct met een duidelijke melding als orders niet kunnen worden opgeslagen.
 
-Niet getest in deze ronde: de GitHub Actions-workflow zelf (draait pas na een push), een echte Mollie-testkey met bereikbare webhook, en de schaalgedragingen onder echte cron/hosting.
+Niet getest in deze ronde: een echte Mollie-testkey met bereikbare webhook, en de schaalgedragingen onder echte cron/hosting.
 
 ## Nog nodig met credentials en bereikbare hosting
 
