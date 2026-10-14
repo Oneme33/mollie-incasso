@@ -165,4 +165,41 @@ Velden/signatures en het gedrag van de vastgelegde SDK zijn tijdens implementati
 
 ## Bestaande WooCommerce-abonnementen
 
-Versie 0.1.1 bevat nog geen importfunctie. Identificeer eerst de gebruikte abonnementenplugin en de beschikbare export. WooCommerce Subscriptions beheert termijnen op de WordPress-site; deze zijn niet automatisch Mollie Subscriptions. Een migratie moet klanten, machtigingen, toestemming, bedragen en volgende incassodatums controleren en de oude incasso-opdrachten gecontroleerd stoppen, zodat beide systemen niet dezelfde termijn innen.
+**Onderzoek 14 oktober 2026; nog geen geïmplementeerde importfunctie.** De precieze betaal-/abonnementenplugin en versie van de bronsite zijn nog onbekend. De onderstaande route is onderzocht voor WooCommerce Subscriptions met de officiële Mollie Payments for WooCommerce-plugin. Andere abonnementenplugins vragen hun eigen adapter.
+
+### Mogelijke routes
+
+| Route | Toepassing | Beoordeling |
+| --- | --- | --- |
+| Rechtstreeks uitlezen op dezelfde WordPress-site | WooCommerce en Subscriptions staan tijdelijk nog geïnstalleerd | Voorkeur: WooCommerce-objecten gebruiken, bron-ID’s en metadata behouden; geen betaalde exportplugin nodig voor een eigen adapter. |
+| CSV overnemen vanaf een andere site | De nieuwe plugin draait elders | Mogelijk met een afgesproken exportformaat inclusief Mollie-referenties, betaaldata en herkomst. Een gewone klanten-/productexport is onvoldoende. |
+| Klanten opnieuw laten aanmelden | Machtiging, koppeling of bewijs ontbreekt; regeling verandert wezenlijk | Bestaande gegevens hoogstens ter voorbereiding overnemen; klant doorloopt zelf de normale toestemming en eerste betaling. |
+
+### Aantoonbaar aanwezige bronkoppelingen
+
+In de officiële Mollie WooCommerce-bron (onderzocht op `dev/develop`, commit `b2a4fcf06f6c006a48b804d64dedecb2c6a23bb5`) staan `_mollie_customer_id`, `_mollie_mandate_id`, `_mollie_payment_id` en `_mollie_payment_mode`. Koppelingen kunnen op het abonnement of de oorspronkelijke order staan; de handler heeft expliciete fallbacks naar die order. Oude versies kunnen afwijken. De renewal-handler krijgt een WooCommerce-betaalopdracht en maakt een Mollie recurring Payment; een WooCommerce-abonnementsnummer is dus geen Mollie subscriptionId.
+
+Gebruik bij een adapter de WooCommerce/Subscriptions-objecten en `get_meta()`, niet uitsluitend SQL op `wp_postmeta`: HPOS kan abonnementen/orders in eigen tabellen opslaan. Lees klant, betaalgateway, abonnement-ID, totaalbedrag inclusief eventuele kosten/belasting, valuta, interval, volgende betaling in UTC plus sitetijdzone, eind-/proefdatums en openstaande renewal orders uit. E-mail alleen bewijst geen eigenaarschap van een Mollie-klant. API-keys horen niet in een export.
+
+### Aanbevolen toekomstige importflow
+
+1. **Alleen analyseren.** Detecteer exacte pluginversies en opslagtype; lees gepagineerd via ondersteunde bron-API’s. Laat een overzicht zien van geschikt, controle nodig en niet ondersteund. Deze stap maakt geen betalingen, klanten of abonnementen aan en verandert niets in WooCommerce.
+2. **Valideren.** Controleer met dezelfde Mollie-organisatie en juiste test/live-omgeving de customer-, payment- en mandatekoppeling. Alleen een actuele geldige directdebit-machtiging past bij deze versie. Bewaar bewijs van bestaande toestemming en regeling als importherkomst; ontbrekende bewijsvoering niet aanvullen met een verzonnen acceptatie of verificatiebetaling.
+3. **Import voorbereiden.** Kies een passende regeling, bewaar bron-site/abonnement-ID en een onveranderlijke snapshot. Unieke importreferenties moeten dubbel importeren voorkomen. Geïmporteerde records blijven geblokkeerd voor incasso zolang de migratie niet is afgerond.
+4. **Gecontroleerd omschakelen.** Maak een definitieve momentopname. Handel bestaande openstaande betalingen/retries af en blokkeer alleen de relevante oude renewals via de ondersteunde bronplugin-flow. Controleer dat geen worker ze nog kan uitvoeren. Verander of trek het mandaat niet in als het nieuwe abonnement dit moet blijven gebruiken. Deelgebruik door andere abonnementen moet zichtbaar zijn. Geen generieke SQL-delete van Action Scheduler-taken.
+5. **Nieuwe planning aanmaken.** Pas na gecontroleerde blokkering van de bronincasso en bevestiging door de beheerder een Mollie Subscription aanmaken met de juiste toekomstige startdatum. Respecteer de bestaande afspraken en vooraankondigingstermijn; te nabije datums vereisen expliciete afhandeling, geen stilzwijgend verschuiven of dubbel innen. Bij timeouts eerst op de bewaarde importreferentie reconciliëren. Nieuwe planning pas actief melden na bevestiging bij Mollie; falen blijft als onvoltooide migratie zichtbaar.
+
+Een oude geldige machtiging kan technisch herbruikbaar zijn als dezelfde organisatie en afspraken blijven gelden; dit moet per bronrecord worden gecontroleerd. De huidige normale aanmeldflow vereist een eigen gecontroleerde eerste betaling en lokale toestemming. Een importer moet daarom een **afzonderlijke, geteste adoptieflow** toevoegen; alleen records als actief markeren omzeilt bestaande beveiliging. De bestaande grens van één actief abonnement per lokale klant/regeling vraagt eveneens expliciete mapping bij meerdere broncontracten.
+
+Vaste EUR-bedragen per maand, kwartaal of jaar sluiten het beste aan. Creditcards, week-/dagintervallen, variabele bedragen, kortingen die later vervallen, proefperiodes, afwijkende belasting-/verzendlogica, gepauzeerde contracten, einddatums en openstaande incasso’s moeten afzonderlijk worden beoordeeld. Historische WooCommerce-orders blijven als administratie bewaard; een import maakt hiervan geen nieuwe incasso’s of facturen.
+
+De inventarisatie is op documentatie en officiële broncode gebaseerd. Er is geen kopie/export van de werkelijke bronabonnementen onderzocht en er zijn geen externe afspraken veranderd. Eerst de precieze bronplugin/versie of een beveiligde representatieve export controleren; daarna kan de analyzer en bijbehorende adapter worden gebouwd en met fixtures getest.
+
+Bronnen:
+
+- [Mollie WooCommerce subscription-handler, onderzochte commit](https://github.com/mollie/WooCommerce/blob/b2a4fcf06f6c006a48b804d64dedecb2c6a23bb5/src/Subscription/MollieSubscriptionGatewayHandler.php)
+- [Mollie WooCommerce renewal-payload](https://github.com/mollie/WooCommerce/blob/b2a4fcf06f6c006a48b804d64dedecb2c6a23bb5/src/Payment/MollieSubscription.php)
+- [Mollie: WooCommerce-abonnementen](https://docs.mollie.com/docs/woo-set-up-subscriptions), [mandaten](https://docs.mollie.com/reference/mandates-api)
+- [WooCommerce: HPOS en CRUD](https://developer.woocommerce.com/docs/features/orders/high-performance-order-storage/recipe-book/)
+- [WooCommerce: renewals](https://woocommerce.com/document/subscriptions/renewal-process/), [scheduled events](https://woocommerce.com/document/subscriptions/develop/complete-guide-to-scheduled-events-with-subscriptions/)
+- [WooCommerce: migratieoverwegingen](https://woocommerce.com/document/subscriptions/migrating-subscribers-woocommerce-subscriptions/)
