@@ -1,6 +1,6 @@
-# Testrapport — Mollie Incasso 0.1.1
+# Testrapport — Mollie Incasso 0.1.2
 
-Lokaal uitgevoerd op 13 oktober 2026: PHP 8.2.29, WordPress 6.8.1, bestaande Docker MySQL/InnoDB. Geen live geld, echte incasso of echte klantmail gebruikt. Dit rapport is geen productiecertificering.
+Lokaal uitgevoerd op 13 en 14 oktober 2026: PHP 8.2.29, WordPress 6.8.1, bestaande Docker MySQL/InnoDB. Geen live geld, echte incasso of echte klantmail gebruikt. Dit rapport is geen productiecertificering.
 
 ## Wat daadwerkelijk is gecontroleerd
 
@@ -39,9 +39,9 @@ Lokaal uitgevoerd op 13 oktober 2026: PHP 8.2.29, WordPress 6.8.1, bestaande Doc
 
 Daarnaast: PHP-syntax van eigen bron en alle gebundelde PHP-code; ZIP-structuur en installatie/activatie zonder WooCommerce; visuele controle in Chrome op desktop (1440px) en mobiel (390px), gekoppelde labels, stappen, knophoogte van minimaal 44px en afwezigheid van horizontale pagina-overflow. Ook Overzicht, de optionele wizard, Klanten en Instellingen zijn op beide breedtes gecontroleerd: groene zijbalk, actieve navigatie, geladen eigen logo, compacte incassokaart en natuurlijke knopbreedte, subtiele inputs en gelijke padding/line-height voor primaire en outlineknoppen. Een renderfixture gebruikt geen echte profielkey en is niet in de ZIP opgenomen. Servervalidatie blijft leidend; browsercontrols zijn geen incassobeveiliging.
 
-## Sleutelopslag 0.1.1
+## Sleutelopslag 0.1.2
 
-`tests/secrets.php`: **13 controles geslaagd**: automatische WordPress-versleuteling en normaal uitlezen, willekeurige nonce, detectie van gewijzigde/beschadigde ciphertext, bestaande externe-key-opslag, later toevoegen/wijzigen van een externe key, blokkeren van een ongeldige expliciete encryptiesleutel, en ontbrekende/onveilige WordPress-configuratiesleutels. Geen API-calls of blijvende instellingen; ontbrekende/onveilige salts worden in aparte PHP-processen getest. Instellingen tonen eenvoudige plak-en-opslaan-uitleg met inklapbare stappen en optionele serverconfiguratie.
+`tests/secrets.php`: **23 controles geslaagd**: automatische WordPress-versleuteling en normaal uitlezen, willekeurige nonce, detectie van gewijzigde/beschadigde ciphertext, bestaande externe-key-opslag, later toevoegen/wijzigen van een externe key, blokkeren van een ongeldige expliciete encryptiesleutel, en automatische fallback bij ontbrekende/voorbeeld-WordPress-sleutels. Verder: duurzame willekeurige bestandssleutel, privébestandsrechten, rechtstreeks uitvoeren geeft geen sleutel terug, gelijktijdig initialiseren levert één sleutel op, corrupte bestanden worden niet overschreven, ontbrekende bestanden worden bij decryptie niet opnieuw gegenereerd, symlinks worden geweigerd en onbeschikbare opslag valt niet terug op plaintext. Geen API-calls of blijvende instellingen; ontbrekende/onveilige salts worden in aparte PHP-processen getest. Instellingen tonen eenvoudige plak-en-opslaan-uitleg met inklapbare stappen en optionele serverconfiguratie.
 
 ## Nog nodig met credentials en bereikbare hosting
 

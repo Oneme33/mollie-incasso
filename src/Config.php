@@ -80,20 +80,29 @@ final class Config
     public function encrypt(string $secret): string
     {
         $wordpress = $this->settingSecret('MOLLIE_INCASSO_ENCRYPTION_KEY') === '';
-        $key = $wordpress ? $this->wordpressEncryptionKey() : $this->encryptionKey();
+        $prefix = $wordpress ? 'wp1:' : '';
+        if ($wordpress) {
+            try { $key = $this->wordpressEncryptionKey(); }
+            catch (Failure $e) {
+                if ($e->reason !== 'wordpress_keys_missing') throw $e;
+                $key = (new KeyFile())->key(true);
+                $prefix = 'file1:';
+            }
+        } else { $key = $this->encryptionKey(); }
         $iv = random_bytes(12);
         $tag = '';
         $data = openssl_encrypt($secret, 'aes-256-gcm', $key, OPENSSL_RAW_DATA, $iv, $tag);
         if ($data === false) {
             throw new Failure('encryption_failed');
         }
-        return ($wordpress ? 'wp1:' : '') . base64_encode($iv . $tag . $data);
+        return $prefix . base64_encode($iv . $tag . $data);
     }
     public function decrypt(string $secret): string
     {
         $wordpress = str_starts_with($secret, 'wp1:');
-        $key = $wordpress ? $this->wordpressEncryptionKey() : $this->encryptionKey();
-        $raw = base64_decode($wordpress ? substr($secret, 4) : $secret, true);
+        $file = str_starts_with($secret, 'file1:');
+        $key = $file ? (new KeyFile())->key(false) : ($wordpress ? $this->wordpressEncryptionKey() : $this->encryptionKey());
+        $raw = base64_decode($file ? substr($secret, 6) : ($wordpress ? substr($secret, 4) : $secret), true);
         if (!$raw || strlen($raw) < 29) {
             throw new Failure('decryption_failed');
         }

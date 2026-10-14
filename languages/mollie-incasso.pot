@@ -1,6 +1,6 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: Mollie Incasso 0.1.1\n"
+"Project-Id-Version: Mollie Incasso 0.1.2\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Language: nl_NL\n"
@@ -178,10 +178,6 @@ msgstr ""
 msgid "Bevestig een expliciet afgesproken afwijkende vooraankondigingstermijn."
 msgstr ""
 
-#: src/Admin.php:339
-msgid "Bewaar bij back-ups ook wp-config.php veilig. Als de WordPress-beveiligingssleutels veranderen, moet u de via WordPress versleutelde API-key opnieuw invoeren. Een livekey invoeren geeft livebetalingen nog niet vrij."
-msgstr ""
-
 #: src/Admin.php:544
 msgid "Bewaartermijn in dagen"
 msgstr ""
@@ -251,15 +247,15 @@ msgid "Datum:"
 msgstr ""
 
 #: src/Plugin.php:157
-msgid "De WordPress-beveiligingssleutels in wp-config.php ontbreken of zijn onveilig. Laat uw beheerder deze instellen; daarna kunt u de API-key hier opslaan."
-msgstr ""
-
-#: src/Plugin.php:157
 msgid "De abonnementsstartdatum is verstreken. Er is geen nieuw abonnement aangemaakt."
 msgstr ""
 
 #: src/Plugin.php:158
 msgid "De actie kon niet worden voltooid. Controleer de diagnose; er wordt niet blind opnieuw geïncasseerd."
+msgstr ""
+
+#: src/Plugin.php:157
+msgid "De automatische sleutelopslag is niet beschikbaar. Laat uw beheerder de schrijfrechten op wp-content controleren of de API-key rechtstreeks op de server instellen. Bestaande sleutelbestanden niet verwijderen."
 msgstr ""
 
 #: src/Plugin.php:157
@@ -276,6 +272,10 @@ msgstr ""
 
 #: src/Plugin.php:157
 msgid "De directdebit-machtiging is nog niet geldig. Er wordt niet geïncasseerd."
+msgstr ""
+
+#: src/Plugin.php:157
+msgid "De eerder gebruikte WordPress-sleutels zijn gewijzigd of niet beschikbaar. Voer de API-key opnieuw in of herstel de oorspronkelijke configuratie."
 msgstr ""
 
 #: src/Schemes.php:45
@@ -770,6 +770,10 @@ msgstr ""
 msgid "Maximum aantal betalingen (optioneel, maximaal 10000)"
 msgstr ""
 
+#: src/Admin.php:339
+msgid "Meestal gebruikt de plugin de bestaande WordPress-beveiligingssleutels. Zijn die niet bruikbaar, dan maakt hij bij het opslaan zelf een afgeschermd sleutelbestand in wp-content/.mollie-incasso-keys. Bewaar bij back-ups daarom ook wp-config.php en deze map veilig. Verlies van de gebruikte sleutel maakt opgeslagen API-keys onleesbaar. Een livekey invoeren geeft livebetalingen nog niet vrij."
+msgstr ""
+
 #: src/Plugin.php:140
 msgid "Melding verzenden"
 msgstr ""
@@ -1127,7 +1131,7 @@ msgid "Uitkomst onbekend; controle vereist"
 msgstr ""
 
 #: src/Admin.php:338
-msgid "Uw Mollie-API-key is nodig om uw account te verbinden. Plak de key in het veld en klik op Opslaan. De plugin versleutelt hem automatisch met de bestaande WordPress-beveiligingssleutels. U hoeft geen bestand aan te maken of serverinstellingen te wijzigen."
+msgid "Uw Mollie-API-key is nodig om uw account te verbinden. Plak de key in het veld en klik op Opslaan. De plugin regelt de versleuteling automatisch. U hoeft geen bestand aan te maken of serverinstellingen te wijzigen."
 msgstr ""
 
 #: src/Notifications.php:69
