@@ -1,4 +1,6 @@
-# Mollie Incasso — testversie 0.1.1
+# Mollie Incasso — ontwikkeling 0.2.0-alpha.1
+
+Deze branch bevat de eerste **importcontrole** voor WooCommerce Subscriptions en CSV. Hij leest alleen en maakt nog geen klanten, machtigingen, betalingen of abonnementen aan. De daadwerkelijke overname is nog niet geïmplementeerd: daarvoor moet de precieze bronplugin/-versie bevestigd zijn, met een geteste omschakeling van de oude betaalplanning en adoptie van bestaande toestemming. De beschikbare testrelease voor normaal gebruik blijft **0.1.1** op `main`.
 
 Zelfstandige WordPress-plugin voor één organisatie en één Mollie-profiel. Nederlandse, vertaalbare interface, geen WooCommerce of abonnementendienst. Eerste iDEAL-betaling: **€ 0,01**, expliciet `sequenceType=first` bij een nieuwe, lokaal gekoppelde Mollie Customer. Alleen een betaald verificatieverzoek en een geldig `directdebit`-mandaat activeren toestemming. De eurocent blijft bij de organisatie, is geen abonnementsperiode en wordt niet stilzwijgend verrekend of terugbetaald.
 
@@ -146,6 +148,7 @@ Zie [TESTING.md](TESTING.md) voor het daadwerkelijke testrapport en reproduceerb
 MI_WP_ROOT=/pad/naar/wordpress/wp-load.php php tests/integration.php
 MI_WP_ROOT=/pad/naar/wordpress/wp-load.php php tests/sdk.php
 MI_WP_ROOT=/pad/naar/wordpress/wp-load.php php tests/secrets.php
+MI_WP_ROOT=/pad/naar/wordpress/wp-load.php php tests/import.php
 ```
 
 De tests gebruiken geïsoleerde tabellen en proceslokale instellingen, maar een onderbreking kan testtabellen achterlaten. Een expliciet aangemaakte test-conceptpagina wordt na de controle verwijderd. Ze gebruiken een fake gateway/SDK-HTTP-adapter en onderscheppen `wp_mail`; geen echte incasso’s of mails. De SDK-test mag een reeds aanwezige ongescopete SDK laden voor conflictcontrole.
@@ -165,7 +168,9 @@ Velden/signatures en het gedrag van de vastgelegde SDK zijn tijdens implementati
 
 ## Bestaande WooCommerce-abonnementen
 
-**Onderzoek 14 oktober 2026; nog geen geïmplementeerde importfunctie.** De precieze betaal-/abonnementenplugin en versie van de bronsite zijn nog onbekend. De onderstaande route is onderzocht voor WooCommerce Subscriptions met de officiële Mollie Payments for WooCommerce-plugin. Andere abonnementenplugins vragen hun eigen adapter.
+**Onderzoek 14 oktober 2026; alleen importcontrole geïmplementeerd op deze branch.** De knop **Importeren** leest 50 WooCommerce-abonnementen per pagina via objectgetters of maximaal 50 CSV-regels / 1 MB (UTF-8, komma of puntkomma, de getoonde kopregel). CSV-bestanden komen niet in de mediabibliotheek en previewgegevens worden niet blijvend opgeslagen. De optionele knop per kandidaat controleert uitsluitend via API-reads de betaal-/klant-/orderkoppeling en actuele directdebit-machtiging. Ook na een geslaagde controle zijn bestaande toestemming, oude betaalopdrachten en daadwerkelijke overname nog niet afgewikkeld. De preview is geen incassotoestemming.
+
+ De precieze betaal-/abonnementenplugin en versie van de bronsite zijn nog onbekend. De onderstaande route is onderzocht voor WooCommerce Subscriptions met de officiële Mollie Payments for WooCommerce-plugin. Andere abonnementenplugins vragen hun eigen adapter.
 
 ### Mogelijke routes
 

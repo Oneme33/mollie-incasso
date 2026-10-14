@@ -1,4 +1,4 @@
-# Testrapport — Mollie Incasso 0.1.1
+# Testrapport — Mollie Incasso ontwikkeling 0.2.0-alpha.1
 
 Lokaal uitgevoerd op 13 oktober 2026: PHP 8.2.29, WordPress 6.8.1, bestaande Docker MySQL/InnoDB. Geen live geld, echte incasso of echte klantmail gebruikt. Dit rapport is geen productiecertificering.
 
@@ -42,6 +42,12 @@ Daarnaast: PHP-syntax van eigen bron en alle gebundelde PHP-code; ZIP-structuur 
 ## Sleutelopslag 0.1.1
 
 `tests/secrets.php`: **13 controles geslaagd**: automatische WordPress-versleuteling en normaal uitlezen, willekeurige nonce, detectie van gewijzigde/beschadigde ciphertext, bestaande externe-key-opslag, later toevoegen/wijzigen van een externe key, blokkeren van een ongeldige expliciete encryptiesleutel, en ontbrekende/onveilige WordPress-configuratiesleutels. Geen API-calls of blijvende instellingen; ontbrekende/onveilige salts worden in aparte PHP-processen getest. Instellingen tonen eenvoudige plak-en-opslaan-uitleg met inklapbare stappen en optionele serverconfiguratie.
+
+## Importcontrole in ontwikkelbranch
+
+`tests/import.php`: **51 controles geslaagd** met objectfixtures voor WooCommerce Subscriptions en de fake Mollie-gateway. Dekking: CSV-roundtrip/BOM/puntkomma/quotes, grootte- en regellimiet, onbekende/dubbele headers, ongeldige encoding, ontbrekende gegevens, valuta, datum, interval, dubbele en gedeelde klantkoppelingen; Mollie-klant/order/betaalreferenties, refunds/chargebacks, pending/invalid/revoked mandaten; objectgetters en parent-order-fallback, paginering, jaar/kwartaal, handmatige verlenging en proef/einddatums; administratorrechten, CSRF, mode, escaping en geen financiële/databaseklantmutaties. Geen echte bronabonnementen of API-resources gewijzigd. Het importscherm is op 1440px en 390px gecontroleerd: actieve zijbalknavigatie, geen pagina-overflow, een afzonderlijk horizontaal scrollbare tabel, gelijke knoppadding en een expliciete melding dat er nog niets is overgezet. Fixtures vervangen geen compatibiliteitstest met de precieze betaalde bronplugin en HPOS-opslag.
+
+Dit is uitsluitend de analysefase. Overname/activering, bewijs van oude toestemming, stilleggen van oude renewals en een hervatbare financiële migratie zijn **niet geïmplementeerd** en niet als geslaagd getest. De bronplugin/-versie van de te migreren site moet nog bevestigd worden. Voor deze branch is nog geen nieuwe publieke testrelease gepubliceerd; 0.1.1 blijft de release om nu te testen.
 
 ## Nog nodig met credentials en bereikbare hosting
 

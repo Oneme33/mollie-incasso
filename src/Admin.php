@@ -11,7 +11,7 @@ final class Admin
     {
         add_action('admin_menu', function () {
             add_menu_page(__('Mollie Incasso', 'mollie-incasso'), __('Mollie Incasso', 'mollie-incasso'), 'manage_mollie_incasso', 'mollie-incasso', [$this, 'render'], 'dashicons-money-alt', 57);
-            foreach (['overview' => 'Overzicht', 'customers' => 'Klanten', 'commands' => 'Incasso’s / opdrachten', 'subscriptions' => 'Abonnementen', 'settings' => 'Instellingen en regelingen', 'setup' => 'Installatiehulp', 'diagnostics' => 'Diagnose en berichten'] as $view => $label) {
+            foreach (['overview' => 'Overzicht', 'customers' => 'Klanten', 'commands' => 'Incasso’s / opdrachten', 'subscriptions' => 'Abonnementen', 'settings' => 'Instellingen en regelingen', 'setup' => 'Installatiehulp', 'import' => 'Importeren', 'diagnostics' => 'Diagnose en berichten'] as $view => $label) {
                 add_submenu_page('mollie-incasso', __($label, 'mollie-incasso'), __($label, 'mollie-incasso'), 'manage_mollie_incasso', $view === 'overview' ? 'mollie-incasso' : 'mollie-incasso-' . $view, [$this, 'render']);
             }
         });
@@ -251,7 +251,7 @@ final class Admin
             $view = 'overview';
         }
         $mode = $this->p->config->mode();
-        $views = ['overview' => ['label' => __('Overzicht', 'mollie-incasso'), 'description' => __('Uw incassoafspraken in één oogopslag.', 'mollie-incasso')], 'customers' => ['label' => __('Klanten', 'mollie-incasso'), 'description' => __('Bekijk toestemmingen en machtigingen, of bereid een nieuwe incasso voor.', 'mollie-incasso')], 'commands' => ['label' => __('Incasso’s', 'mollie-incasso'), 'description' => __('Controleer opdrachten, betaalstatussen en de actuele financiële situatie.', 'mollie-incasso')], 'subscriptions' => ['label' => __('Abonnementen', 'mollie-incasso'), 'description' => __('Beheer vaste bedragen en de periodieke afspraken die Mollie uitvoert.', 'mollie-incasso')], 'settings' => ['label' => __('Instellingen', 'mollie-incasso'), 'description' => __('Verbind uw account en leg vast waarmee uw klanten akkoord gaan.', 'mollie-incasso')], 'setup' => ['label' => __('Installatiehulp', 'mollie-incasso'), 'description' => __('Een korte rondleiding om uw koppeling in te stellen. U kunt deze altijd overslaan.', 'mollie-incasso')], 'diagnostics' => ['label' => __('Diagnose en berichten', 'mollie-incasso'), 'description' => __('Controleer webhooks, achtergrondtaken en de verzending van meldingen.', 'mollie-incasso')]];
+        $views = ['overview' => ['label' => __('Overzicht', 'mollie-incasso'), 'description' => __('Uw incassoafspraken in één oogopslag.', 'mollie-incasso')], 'customers' => ['label' => __('Klanten', 'mollie-incasso'), 'description' => __('Bekijk toestemmingen en machtigingen, of bereid een nieuwe incasso voor.', 'mollie-incasso')], 'commands' => ['label' => __('Incasso’s', 'mollie-incasso'), 'description' => __('Controleer opdrachten, betaalstatussen en de actuele financiële situatie.', 'mollie-incasso')], 'subscriptions' => ['label' => __('Abonnementen', 'mollie-incasso'), 'description' => __('Beheer vaste bedragen en de periodieke afspraken die Mollie uitvoert.', 'mollie-incasso')], 'settings' => ['label' => __('Instellingen', 'mollie-incasso'), 'description' => __('Verbind uw account en leg vast waarmee uw klanten akkoord gaan.', 'mollie-incasso')], 'setup' => ['label' => __('Installatiehulp', 'mollie-incasso'), 'description' => __('Een korte rondleiding om uw koppeling in te stellen. U kunt deze altijd overslaan.', 'mollie-incasso')], 'import' => ['label' => __('Importeren', 'mollie-incasso'), 'description' => __('Controleer bestaande WooCommerce-abonnementen voordat u overstapt.', 'mollie-incasso')], 'diagnostics' => ['label' => __('Diagnose en berichten', 'mollie-incasso'), 'description' => __('Controleer webhooks, achtergrondtaken en de verzending van meldingen.', 'mollie-incasso')]];
         if (!isset($views[$view])) {
             $view = 'customers';
         }
@@ -270,6 +270,7 @@ final class Admin
             'overview' => $this->overview(),
             'settings' => $this->settings(),
             'setup' => $this->setup(),
+            'import' => (new ImportScreen($this->p))->render(),
             'commands' => $this->commands(),
             'subscriptions' => $this->subscriptions(),
             'diagnostics' => $this->diagnostics(),
@@ -285,6 +286,7 @@ final class Admin
             'commands' => '<path d="M4 7h15m-4-4 4 4-4 4M20 17H5m4 4-4-4 4-4"/>',
             'subscriptions' => '<path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 6.1A8 8 0 0 1 20 12M4 12a8 8 0 0 0 13.9 5.9"/>',
             'setup' => '<path d="m4 20 12-12m-4-1 5 5M5 3v4M3 5h4M19 15v6m-3-3h6M17 2v4m-2-2h4"/>',
+            'import' => '<path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/>',
             'settings' => '<path d="M12 3v3m0 12v3M3 12h3m12 0h3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1M5.6 18.4l2.1-2.1m8.6-8.6 2.1-2.1"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/>',
             default => '<path d="M3 12h4l3-8 4 16 3-8h4"/>',
         };
