@@ -70,7 +70,7 @@ final class Notifications
             remove_filter('wp_mail_from_name', $filter, 20);
         }
     }
-    /** Replies go to the organisation's contact address when one is configured. */
+    /** Replies go to the contact address of the organisation when one is configured. */
     private function headers(): array
     {
         $headers = ['Content-Type: text/plain; charset=UTF-8'];

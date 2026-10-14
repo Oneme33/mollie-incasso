@@ -25,7 +25,7 @@ final class Admin
                 wp_enqueue_style('mi-admin', plugins_url('assets/admin.css', MOLLIE_INCASSO_FILE), [], MOLLIE_INCASSO_VERSION . '.' . filemtime(dirname(MOLLIE_INCASSO_FILE) . '/assets/admin.css'));
             }
         });
-        // Other plugins' admin notices are hidden on our own screens only; they remain everywhere else.
+        // Admin notices from other plugins are hidden on our own screens only; they remain everywhere else.
         add_action('in_admin_header', function () {
             if (!str_starts_with((string) ($_GET['page'] ?? ''), 'mollie-incasso')) {
                 return;

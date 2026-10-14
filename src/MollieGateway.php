@@ -45,7 +45,7 @@ final class MollieGateway implements Gateway
             throw new Failure($status === 429 ? 'api_rate_limited' : 'api_unavailable', true, $mutates);
         }
     }
-    /** Mollie's title/detail/field for a rejected request, without e-mail addresses, URLs or account numbers. */
+    /** Title, detail and field that Mollie returns for a rejected request, without e-mail addresses, URLs or account numbers. */
     public static function detail(\Throwable $e): string
     {
         $message = method_exists($e, 'getPlainMessage') ? (string) $e->getPlainMessage() : $e->getMessage();
