@@ -30,6 +30,62 @@ final class Config
             throw new Failure('https_required');
         }
     }
+    /**
+     * Visitor IP for rate limits. A forwarded header counts only when REMOTE_ADDR is a proxy listed in
+     * MOLLIE_INCASSO_TRUSTED_PROXIES (comma-separated IPs/CIDRs), and only the one header named in
+     * MOLLIE_INCASSO_CLIENT_IP_HEADER (default X-Forwarded-For) is read. Other headers a proxy merely
+     * passes through, such as a client-supplied CF-Connecting-IP, are ignored.
+     */
+    public function clientIp(): string
+    {
+        $remote = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+        $trusted = array_filter(array_map('trim', explode(',', $this->settingSecret('MOLLIE_INCASSO_TRUSTED_PROXIES'))));
+        $ip = $remote;
+        if ($trusted && self::inRanges($remote, $trusted)) {
+            $header = strtolower(trim($this->settingSecret('MOLLIE_INCASSO_CLIENT_IP_HEADER'))) ?: 'x-forwarded-for';
+            $value = (string) ($_SERVER['HTTP_' . strtoupper(str_replace('-', '_', $header))] ?? '');
+            if ($header === 'x-forwarded-for') {
+                // Walk from the right: the first address that is not one of our proxies is the visitor.
+                foreach (array_reverse(array_map('trim', explode(',', $value))) as $hop) {
+                    if (!filter_var($hop, FILTER_VALIDATE_IP)) {
+                        break;
+                    }
+                    $ip = $hop;
+                    if (!self::inRanges($hop, $trusted)) {
+                        break;
+                    }
+                }
+            } elseif (filter_var(trim($value), FILTER_VALIDATE_IP)) {
+                // Single-value headers (CF-Connecting-IP, X-Real-IP) are set by the trusted proxy itself.
+                $ip = trim($value);
+            }
+        }
+        return (string) apply_filters('mollie_incasso_client_ip', $ip, $remote);
+    }
+    public static function inRanges(string $ip, array $ranges): bool
+    {
+        $packed = @inet_pton($ip);
+        if ($packed === false) {
+            return false;
+        }
+        foreach ($ranges as $range) {
+            [$net, $bits] = array_pad(explode('/', $range, 2), 2, null);
+            $netPacked = @inet_pton((string) $net);
+            if ($netPacked === false || strlen($netPacked) !== strlen($packed)) {
+                continue;
+            }
+            $bits = $bits === null ? strlen($packed) * 8 : max(0, min(strlen($packed) * 8, (int) $bits));
+            $bytes = intdiv($bits, 8);
+            $rest = $bits % 8;
+            if (substr($packed, 0, $bytes) !== substr($netPacked, 0, $bytes)) {
+                continue;
+            }
+            if ($rest === 0 || ((ord($packed[$bytes]) ^ ord($netPacked[$bytes])) & (0xFF << (8 - $rest)) & 0xFF) === 0) {
+                return true;
+            }
+        }
+        return false;
+    }
     public function binding(): string
     {
         return hash('sha256', home_url() . '|' . ABSPATH);

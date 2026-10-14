@@ -6,7 +6,7 @@ use Lukraak\MollieIncasso\{Gateway, Failure};
 final class FakeGateway implements Gateway
 {
     public array $customers = [], $payments = [], $subs = [], $mandateRows = [], $keys = [], $calls = [];
-    public bool $timeout = false, $cancelFails = false, $revokeFails = false, $hideFind = false;
+    public bool $timeout = false, $cancelFails = false, $revokeFails = false, $hideFind = false, $readFails = false;
     public ?\Closure $duringCreate = null;
     public function methods(string $sequence, int $cents = 1): array
     {
@@ -61,6 +61,9 @@ final class FakeGateway implements Gateway
     }
     public function payment(string $id): array
     {
+        if ($this->readFails) {
+            throw new Failure('api_unavailable', true);
+        }
         return $this->payments[$id] ?? throw new Failure('resource_not_found');
     }
     public function mandates(string $customer): array
@@ -101,7 +104,7 @@ final class FakeGateway implements Gateway
         $this->subs[$id]['status'] = 'canceled';
         return $this->subs[$id];
     }
-    public function find(string $kind, string $customer, string $reference, string $instance): ?array
+    public function find(string $kind, string $customer, string $reference, string $instance, ?string $since = null): ?array
     {
         if ($this->hideFind) {
             return null;

@@ -14,7 +14,7 @@ for path in sorted((root/'src').glob('*.php')):
             entries.setdefault(value,[]).append(f'{path.relative_to(root)}:{source[:match.start()].count(chr(10))+1}')
 header='''msgid ""
 msgstr ""
-"Project-Id-Version: Mollie Incasso 0.2.0\\n"
+"Project-Id-Version: Mollie Incasso 0.3.0\\n"
 "Content-Type: text/plain; charset=UTF-8\\n"
 "Content-Transfer-Encoding: 8bit\\n"
 "Language: nl_NL\\n"

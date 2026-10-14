@@ -1,4 +1,4 @@
-# Mollie Incasso — testversie 0.2.0
+# Mollie Incasso — testversie 0.3.0
 
 Zelfstandige WordPress-plugin voor één organisatie en één Mollie-profiel. Nederlandse, vertaalbare interface, werkt zelfstandig, met een optionele WooCommerce-checkout; geen WooCommerce Subscriptions of externe abonnementendienst nodig. Eerste iDEAL-betaling: **€ 0,01**, expliciet `sequenceType=first` bij een nieuwe, lokaal gekoppelde Mollie Customer. Alleen een betaald verificatieverzoek en een geldig `directdebit`-mandaat activeren toestemming. De eurocent blijft bij de organisatie, is geen abonnementsperiode en wordt niet stilzwijgend verrekend of terugbetaald.
 
@@ -15,7 +15,7 @@ Zelfstandige WordPress-plugin voor één organisatie en één Mollie-profiel. Ne
 
 ## Installeren
 
-1. Upload `mollie-incasso-0.2.0.zip` via **Plugins → Nieuwe plugin → Plugin uploaden**. Bij een update kiest u de bestaande plugin te vervangen; verwijderen is niet nodig.
+1. Upload `mollie-incasso-0.3.0.zip` via **Plugins → Nieuwe plugin → Plugin uploaden**. Bij een update kiest u de bestaande plugin te vervangen; verwijderen is niet nodig.
 2. Open **Mollie Incasso → Installatiehulp**. Stap 1: organisatie en contactgegevens. Stap 2: plak uw eigen `test_…` API-key uit Mollie Dashboard → Developers → API keys, sla op en controleer de betaalmethodes. Extra serverconfiguratie is voor normale opslag niet nodig; zie hieronder.
 3. Stap 3: geef het eerste abonnement een naam (bijvoorbeeld ‘GCC doorlopend abonnement’), bedrag en maand/kwartaal/jaar. Controleer de zichtbare voorbeeldtekst van de incassoafspraak en pas die aan. De wizard kiest automatisch starten met 14 dagen vooraankondiging. U kunt meerdere abonnementen toevoegen; bestaande afspraken blijven aan hun eigen versie gekoppeld.
 4. Stap 4: kies **aanmelden op een gewone pagina** of **via een WooCommerce-product**. Voor een pagina kunt u de shortcode kopiëren of een conceptpagina maken. Voor de winkel kunt u per regeling een eenvoudig virtueel product als concept klaarzetten. Herhaald klikken opent dezelfde pagina/product. Controleer het concept en publiceer het daarna.
@@ -30,6 +30,7 @@ WooCommerce is uitsluitend nodig als u de winkelroute kiest. WooCommerce Subscri
 - In de checkout staan de incassoafspraak, het bedrag, de frequentie, het opzeggen en een expliciete niet aangevinkte toestemming. Eén checkout is voldoende; geen tweede aanmeldformulier. Een gewone iDEAL-productbetaling of alleen de productnaam bewijst geen machtiging. De eigen gateway maakt de vereiste `first`-betaling bij de juiste Customer; API-controle en een geldig directdebit-mandaat zijn vereist.
 - Ondersteunt de klassieke checkout en Checkout Blocks (officiële Payment Method Type + legacy Store API-verwerking), met WooCommerce-objectgetters/CRUD voor klassieke opslag en HPOS. De betaalmethode verschijnt alleen voor gekoppelde aanmeldproducten. Een eigen product koppelen kan bij Productgegevens → Algemeen via afzonderlijke test-/liveregelingen; gebruik een eenvoudig virtueel product. Test- en livekoppelingen worden niet onderling vervangen.
 - Een duurzame `checkouts`-koppeling met unieke WooCommerce-order-ID voorkomt dubbele registratie bij retries. Bedrag, identiteit, regelingsversie en toestemming worden server-side gecontroleerd. Een onzekere API-uitkomst gaat naar de statuspagina en de lokale queue; er wordt niet gevraagd een tweede bestelling te plaatsen. Bij een nog open betaling staat op die pagina de gecontroleerde Mollie-checkoutlink.
+- WooCommerce annuleert onbetaalde aanmeldorders van deze gateway niet automatisch (voorraadreservering), zodat een vertraagde webhook of cron nooit een betaalde aanmelding intrekt. Bij handmatig annuleren controleert de plugin eerst bij Mollie of de € 0,01 toch betaald is; dan blijft de toestemming staan en volgt een ordernotitie.
 - De WooCommerce-order wordt pas betaald gemeld na een via Mollie gecontroleerde betaalstatus. Toestemming/machtiging kan dan nog in behandeling zijn. Een geannuleerde onbetaalde aanmelding blokkeert de toestemming en plant intrekking; een latere betaalmelding start geen abonnement meer. Een eerder al betaalde verificatieorder annuleren is geen opzegging van het lopende abonnement: gebruik daarvoor Mollie Incasso.
 - Vaste abonnementen met `auto_start` worden na geldig mandaat automatisch voorbereid en bevestigd met één vaste zakelijke opdrachtreferentie. De eerste incassodatum ligt veilig na de afgesproken vooraankondiging; de eerste vooraankondiging moet door de mailserver geaccepteerd zijn voordat de Subscription wordt aangemaakt. Mollie plant daarna de termijnen. Dezelfde automatische start werkt via het gewone websiteformulier. Bestaande regelingen zonder deze optie veranderen niet.
 - **Vervolgbetalingen verschijnen in Mollie Incasso en Mollie.** Er worden geen periodieke WooCommerce-bestellingen, facturen, verzendopdrachten of Memberships-rechten gegenereerd. Dit vervangt het beschreven vaste incassoabonnement, niet alle product-/verzend-/kortings-/pro-rateringsfuncties van WooCommerce Subscriptions. Lopende bestaande WooCommerce-abonnementen worden niet automatisch gemigreerd.
@@ -52,7 +53,9 @@ De opslag gebruikt AES-256-GCM. De markeringen `wp1:` en `file1:` onderscheiden 
 
 De klant ziet organisatie, doel, bedrag/berekeningswijze, frequentie/aanleiding, vooraankondigingstermijn, intrekken en behandeling van de eurocent. Expliciete toestemming is verplicht en nooit vooraf aangevinkt. De volledige tekst, versie, regeling en tijdstip worden vastgelegd. Browservelden kunnen geen bedrag of regeling vervangen: een serveropgeslagen token bindt het formulier aan de regeling en browsercookie. Een gewijzigde disclosure vraagt om een nieuw formulier.
 
-Het formulier maakt de Customer en de € 0,01 first-betaling met customerId, metadata, iDEAL, redirect en webhook. Alleen de door Mollie geretourneerde HTTPS-checkout-URL wordt gebruikt. Terugkeer bewijst geen betaling. Webhook/queue/API-controles werken de opgeslagen status bij; bij een pending mandaat blijft incasseren geblokkeerd. Een willekeurige overboeking van één cent activeert niets.
+Het formulier maakt de Customer en de € 0,01 first-betaling met customerId, metadata, iDEAL, redirect en webhook. Alleen de door Mollie geretourneerde HTTPS-checkout-URL wordt gebruikt. Terugkeer bewijst geen betaling, maar is wel het moment om de betaling server-side bij Mollie op te halen: de statuspagina en de WooCommerce-bedankpagina doen dat direct (begrensd per klant) en verversen automatisch zolang de aanmelding in behandeling is. Webhook/queue/API-controles werken de opgeslagen status bij; bij een pending mandaat blijft incasseren geblokkeerd. Een willekeurige overboeking van één cent activeert niets.
+
+Staat de shortcode niet in de pagina-inhoud zelf (page builders, FSE-templates, widgets), dan kan de beveiligingscookie niet vooraf worden gezet. Het formulier toont dan eerst een knop **Aanmeldformulier openen** die de cookie zet en terugkeert; er wordt nooit een formulier zonder browserbinding getoond.
 
 ### Losse incasso
 
@@ -64,11 +67,11 @@ Kies een vaste regeling met bedrag, maand (`1 month`), kwartaal (`3 months`) of 
 
 Per lokale klant/regeling is maximaal één lopend of voorbereid vast abonnement toegestaan. Zo veroorzaakt een nieuwe beheeractie geen tweede abonnement voor dezelfde afspraak.
 
-Nieuwe payment-ID’s worden gekoppeld via de **bekende subscriptionId én customerId**, met controle op omgeving, bedrag, valuta en betaalmethode. Een nog niet lokaal opgeslagen abonnement wordt opnieuw gecontroleerd. Abonnementsstatussen worden elk uur via de API gesynchroniseerd. Mollie kan zelf mislukte abonnementsbetalingen opnieuw proberen; de plugin doet geen aanvullende financiële retries.
+Nieuwe payment-ID’s worden gekoppeld via de **bekende subscriptionId én customerId**, met controle op omgeving, bedrag, valuta en betaalmethode. Een nog niet lokaal opgeslagen abonnement wordt opnieuw gecontroleerd. Elke abonnementsbetaling (webhook) laat het abonnement direct opnieuw ophalen, zodat de volgende vooraankondiging tijdig wordt gepland; daarnaast wordt elk abonnement dagelijks via de API gecontroleerd. Mollie kan zelf mislukte abonnementsbetalingen opnieuw proberen; de plugin doet geen aanvullende financiële retries.
 
 ### Stoppen en intrekken
 
-Een beveiligde persoonlijke link is zeven dagen geldig en geeft uitsluitend toegang tot de eigen klant. Alleen een SHA-256-hash van het willekeurige 256-bit token wordt opgeslagen. Een beheerder kan een nieuwe link laten mailen. Ingelogde klanten worden op eigenaarschap gecontroleerd.
+Een beveiligde persoonlijke link is zeven dagen geldig en geeft uitsluitend toegang tot de eigen klant. Bij openen wordt het token naar een privé, httponly-cookie verplaatst en volgt een redirect naar een adres zonder token, zodat het niet in adresbalk, geschiedenis of serverlogs blijft staan. De statuspagina toont per betaling datum, soort, bedrag, status en terugbetaling/stornering. Alleen een SHA-256-hash van het willekeurige 256-bit token wordt opgeslagen. Een beheerder kan een nieuwe link laten mailen. Ingelogde klanten worden op eigenaarschap gecontroleerd.
 
 **GET wijzigt nooit toestemming of abonnementen.** De klant bevestigt op de statuspagina via checkbox en beveiligde POST. Stoppen beëindigt het gekozen abonnement bij Mollie; intrekken blokkeert direct nieuwe lokale opdrachten, beëindigt de bijbehorende abonnementen en trekt directdebit-mandaten in. Bij een API-fout blijft de actie zichtbaar als niet voltooid. Een andere externe actieve afspraak op hetzelfde mandaat verhindert intrekken van dat mandaat. Het beheer moet die afspraak eerst bij Mollie behandelen. Een late verificatiewebhook na intrekken activeert geen toestemming en leidt opnieuw tot externe controle/intrekken.
 
@@ -85,9 +88,23 @@ https://uw-site.nl/wp-json/mollie-incasso/v1/payment/live
 
 POST met payment `id`, zonder WordPress-login of nonce. De ontvangen status wordt nooit vertrouwd. Een 200 volgt pas na opslag in de InnoDB-queue. Opslagfouten geven 503, begrenzing 429. De worker haalt de betaling server-side bij Mollie op en controleert haar lokale koppeling. Niet-gerelateerde resources worden genegeerd zonder klantgegevens terug te geven. Een optionele HTTPS-proxyoverride moet `mi_mode=test/live` correct doorsturen naar de bijbehorende route; een eigen proxy is niet onderdeel van deze plugin.
 
+**Rate-limits achter een proxy of CDN.** Formulier, aanmelding en webhook worden per bezoekers-IP begrensd. Standaard is dat `REMOTE_ADDR`. Staat de site achter Cloudflare, een load balancer of reverse proxy, stel dan de proxyadressen in, zodat niet alle bezoekers één limiet delen:
+
+```php
+define('MOLLIE_INCASSO_TRUSTED_PROXIES', '10.0.0.0/8, 2001:db8::/32');
+```
+
+Alleen als het verzoek van zo’n proxy komt, wordt één header gelezen: standaard `X-Forwarded-For` (van rechts naar links, tot het eerste niet-vertrouwde adres). Gebruik voor Cloudflare de Cloudflare-IP-ranges als vertrouwde proxies én kies hun header expliciet:
+
+```php
+define('MOLLIE_INCASSO_CLIENT_IP_HEADER', 'CF-Connecting-IP');
+```
+
+Andere headers worden genegeerd, ook als een proxy ze ongewijzigd doorgeeft; een bezoeker kan zijn eigen limiet dus niet kiezen. Hostingpartijen kunnen ook het filter `mollie_incasso_client_ip` gebruiken.
+
 Sluit formulierpagina’s, persoonlijke `mi_access`/`mi_return`/`mi_customer`-URL’s, `admin-post.php` en webhookroutes uit van caching en CDN/full-page caching. Laat checkout-return, webhooks en Mollie API-verkeer door de firewall. Persoonlijke pagina’s gebruiken no-cache, noindex en no-referrer; upstream caches moeten deze ook respecteren.
 
-Zakelijke opdrachten hebben database-unieke referenties en idempotency-keys. Transacties beschermen lokale wijzigingen; database-locks sluiten gelijktijdige verwerking per klant uit. De exacte uitgaande aanvraag wordt vóór verzending bewaard. Queuejobs hebben unieke sleutels, leases en een generatiecounter; een webhook tijdens verwerking blijft beschikbaar voor een volgende controle. Maximaal 20 jobs/40 seconden per run, een lease van 180 seconden, maximaal acht automatische pogingen met back-off; mislukte taken zijn zichtbaar en herstelbaar in Diagnose. SDK-netwerkretries zijn uitgeschakeld zodat de plugin eerst zelf reconcileert.
+Zakelijke opdrachten hebben database-unieke referenties en idempotency-keys. Transacties beschermen lokale wijzigingen; database-locks sluiten gelijktijdige verwerking per klant uit. De exacte uitgaande aanvraag wordt vóór verzending bewaard. Queuejobs hebben unieke sleutels, leases en een generatiecounter; een webhook tijdens verwerking blijft beschikbaar voor een volgende controle. De worker draait elke minuut en werkt per run door tot de queue leeg is, met een tijdsbudget van maximaal 40 seconden (ruim onder `max_execution_time`) en maximaal 400 taken. Taken hebben een prioriteit: opdrachten, mails, betaal-webhooks, stoppen en intrekken gaan vóór periodieke controles. Een lease duurt 180 seconden, maximaal acht automatische pogingen met back-off; mislukte taken zijn zichtbaar en herstelbaar in Diagnose. Periodieke controles zetten een mislukte taak niet stilzwijgend terug; alleen een nieuwe gebeurtenis (bijvoorbeeld een webhook) of herstel door de beheerder doet dat. SDK-netwerkretries zijn uitgeschakeld zodat de plugin eerst zelf reconcileert.
 
 **Mollie bewaart idempotency slechts één uur, gekoppeld aan credentials.** Na een onzekere verzending zoekt de plugin eerst op eigen metadata. Bij geen gevonden resource na 55 minuten of na key-wijziging blokkeert hij een nieuwe create. Controleer zo’n opdracht en het betreffende profiel handmatig; herstel van een job omzeilt die blokkade niet. Er is geen knop die zonder bewijs een onbekende uitkomst als mislukt bestempelt. Een beheerder kan definitieve afhandeling pas na onderzoek via een gecontroleerde gegevenscorrectie door een ontwikkelaar laten vastleggen.
 
@@ -97,7 +114,9 @@ WP-Cron hangt af van bezoek. Gebruik op de server bijvoorbeeld elke minuut:
 * * * * * cd /pad/naar/wordpress && /usr/local/bin/wp cron event run --due-now --quiet >> /pad/buiten/webroot/wp-cron.log 2>&1
 ```
 
-Met een betrouwbare server-cron kan `DISABLE_WP_CRON` op true. `wp mollie-incasso queue` verwerkt de beperkte queue direct. Houd Diagnose in de gaten: mislukte taken, onzekere opdrachten, verzendfouten en laatste run. Een moduswissel blokkeert lokale verwerking van de andere modus; **externe Mollie-abonnementen blijven bestaan**.
+Met een betrouwbare server-cron kan `DISABLE_WP_CRON` op true.
+
+Het uurlijkse onderhoud is een vangnet naast de webhooks en spreidt het werk over de dag: actieve klanten krijgen één mandaatcontrole per dag (in een vast uur per klant), klanten die op een geldige machtiging wachten elk uur. Afgehaakte of mislukte aanmeldingen (geen betaalde verificatie) worden niet meer voor mandaten gepolld; hun openstaande verificatiebetaling wordt gecontroleerd tot ze verloopt. Betalingen worden dagelijks gecontroleerd tot 70 dagen oud en daarna wekelijks tot 13 maanden (stornering). Afgehandelde taken ouder dan 30 dagen worden opgeruimd. `wp mollie-incasso queue` verwerkt de beperkte queue direct. Houd Diagnose in de gaten: mislukte taken, onzekere opdrachten, verzendfouten en laatste run. Een moduswissel blokkeert lokale verwerking van de andere modus; **externe Mollie-abonnementen blijven bestaan**.
 
 ## Mail en vooraankondiging
 
@@ -105,7 +124,11 @@ Toestemming, abonnement, beëindiging en vooraankondigingen gebruiken een duurza
 
 De eerste vooraankondiging moet door `wp_mail` zijn geaccepteerd vóór een financiële opdracht wordt verzonden. Vervolgvooraankondigingen volgen Mollies `nextPaymentDate`, verminderd met de regelingstermijn. Te late cronruns en ongewone externe wijzigingen vragen operationele opvolging: de plugin kan reeds bij Mollie lopende termijnen niet door een vertraagde mail automatisch tegenhouden. Gebruik betrouwbare SMTP, monitoring en tijdige profielinstellingen.
 
-`wp_mail=true` betekent geaccepteerd door de mailserver, **geen gegarandeerde aflevering**. False wordt met herstelbare fouten vastgelegd. Bij een procescrash tijdens verzending wordt de uitkomst onbekend en niet blind opnieuw verstuurd. Diagnose toont dit. Persoonlijke linktokens worden uitsluitend in het geheugen voor de betreffende mail samengesteld; volledige mailteksten/tokens staan niet in de lokale queue of logs.
+Mails tonen datums leesbaar (bijvoorbeeld ‘28 oktober 2026’) en krijgen een Reply-To naar het e-mailadres in de contactgegevens. Bij een mislukte incasso of stornering ontvangt het beheer-e-mailadres van WordPress (filter `mollie_incasso_admin_alert_email`) één signaalmail per gebeurtenis, zonder persoonlijke klantlink.
+
+De vooraankondigingstermijn is bij maandelijkse abonnementen maximaal 21 dagen, zodat de volgende vooraankondiging binnen één termijn past; bij kwartaal en jaar maximaal 60 dagen.
+
+`wp_mail=true` betekent geaccepteerd door de mailserver, **geen gegarandeerde aflevering**. False wordt met herstelbare fouten vastgelegd. Bij een procescrash tijdens verzending wordt de uitkomst onbekend en niet blind opnieuw verstuurd. Diagnose toont dit bovenaan, met **Opnieuw versturen** of — na controle van het mailserverlog — **Markeer als verzonden**. Een wachtende incasso gaat pas door zodra de vooraankondiging als verzonden geldt. Persoonlijke linktokens worden uitsluitend in het geheugen voor de betreffende mail samengesteld; volledige mailteksten/tokens staan niet in de lokale queue of logs.
 
 ## Test/live, staging en kopieën
 
@@ -132,16 +155,16 @@ Alleen met expliciet aangevinkte opruimkeuze, verstreken bewaartermijnen en actu
 
 ## Broncode en reproduceerbare build
 
-De bron staat in de root van de eigen GitHub-repository (in het themaproject onder `mollie-incasso/`); eigen records/statussen in twaalf `wp_mi_*`-tabellen. Schema versie 1 legt de tabellen idempotent aan met `dbDelta`; migratie 2 maakt Mollie-ID’s expliciet hoofdlettergevoelig. Migratie 3 voegt de duurzame WooCommerce-checkoutkoppeling toe. Nieuwe schemawijzigingen krijgen een verhoogde migratieversie. De officiële SDK is vastgelegd in `composer.lock` (**v3.15.0**), PHP-Scoper in `tools/composer.lock` (**v0.18.20**). De ZIP bevat alle productieafhankelijkheden onder `Lukraak\MollieIncasso\Vendor`, met een eigen autoloader zonder globale aliases/Composer-registratie. Een bestaande Mollie/WooCommerce-SDK kan daardoor naast deze versie laden.
+De bron staat in de root van de eigen GitHub-repository (in het themaproject onder `mollie-incasso/`); eigen records/statussen in twaalf `wp_mi_*`-tabellen. Schema versie 1 legt de tabellen idempotent aan met `dbDelta`; migratie 2 maakt Mollie-ID’s expliciet hoofdlettergevoelig. Migratie 3 voegt de duurzame WooCommerce-checkoutkoppeling toe. Migratie 4 voegt een prioriteit aan queuetaken toe; de collatiemigratie draait alleen nog op installaties met schema 1. Nieuwe schemawijzigingen krijgen een verhoogde migratieversie. De officiële SDK is vastgelegd in `composer.lock` (**v3.15.0**), PHP-Scoper in `tools/composer.lock` (**v0.18.20**). De ZIP bevat alle productieafhankelijkheden onder `Lukraak\MollieIncasso\Vendor`, met een eigen autoloader zonder globale aliases/Composer-registratie. Een bestaande Mollie/WooCommerce-SDK kan daardoor naast deze versie laden.
 
 Ontwikkelmachine: PHP 8.2+, curl/openssl/zip, Composer. Hosting heeft **geen Composer** nodig.
 
 ```sh
 cd mollie-incasso
-php tools/build.php /absoluut/pad/composer.phar ../artifacts/mollie-incasso-0.2.0.zip
+php tools/build.php /absoluut/pad/composer.phar ../artifacts/mollie-incasso-0.3.0.zip
 ```
 
-Met Composer op PATH: `php tools/build.php composer` (standaarduitvoer: `dist/mollie-incasso-0.2.0.zip`). De build gebruikt uitsluitend locks (`install`, geen `update`), scoped alle productiecode, controleert de SDK/CA-bundle en PHP-syntax en maakt een ZIP met gesorteerde bestanden en vaste tijdstempels/rechten. De ZIP bevat geen devtools, eigen testfixtures, secrets of ongescopete autoloaders. Zelfde bron, locks en toolomgeving produceren dezelfde ZIP. Dependencies en `.build/` zijn gegenereerd en staan niet in Git.
+Met Composer op PATH: `php tools/build.php composer` (standaarduitvoer: `dist/mollie-incasso-0.3.0.zip`). De build gebruikt uitsluitend locks (`install`, geen `update`), scoped alle productiecode, controleert de SDK/CA-bundle en PHP-syntax en maakt een ZIP met gesorteerde bestanden en vaste tijdstempels/rechten. De ZIP bevat geen devtools, eigen testfixtures, secrets of ongescopete autoloaders. Zelfde bron, locks en toolomgeving produceren dezelfde ZIP. Dependencies en `.build/` zijn gegenereerd en staan niet in Git.
 
 In dit repository is de build getest in de bestaande PHP 8.2.29 Docker-omgeving. Kopieer de pluginbron naar een tijdelijke map onder de lokaal gemounte `plugins/`, voer daar het bovenstaande PHP-buildcommando uit en kopieer de ZIP terug naar `artifacts/`. Composer 2.10.3 is daarvoor lokaal gebruikt. De bronmap buiten `plugins/` is leidend.
 
@@ -156,6 +179,8 @@ MI_WP_ROOT=/pad/naar/wordpress/wp-load.php php tests/secrets.php
 MI_WP_ROOT=/pad/naar/wordpress/wp-load.php php tests/woocommerce.php
 MI_WOO_HPOS=1 MI_WP_ROOT=/pad/naar/wordpress/wp-load.php php tests/woocommerce.php
 ```
+
+GitHub Actions (`.github/workflows/tests.yml`) controleert bij elke push de PHP-syntax op PHP 8.2–8.4 en draait alle suites op een verse WordPress-installatie: WordPress 6.8.1 + WooCommerce 9.9.5 op MySQL 8.0, en de nieuwste WordPress/WooCommerce op MariaDB 10.6.
 
 De WooCommerce-test vereist geïnstalleerde WooCommerce-bestanden en gebruikt de echte CRUD/cart/Store API-klassen met nagebootste Mollie-antwoorden. Hij maakt alleen eigen fixtureproducten/orders en verwijdert die weer; gebruik een wegwerpdatabase. De tests gebruiken geïsoleerde tabellen en proceslokale instellingen, maar een onderbreking kan testtabellen achterlaten. Een expliciet aangemaakte test-conceptpagina wordt na de controle verwijderd. Ze gebruiken een fake gateway/SDK-HTTP-adapter en onderscheppen `wp_mail`; geen echte incasso’s of mails. De SDK-test mag een reeds aanwezige ongescopete SDK laden voor conflictcontrole.
 

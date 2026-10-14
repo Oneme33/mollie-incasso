@@ -115,8 +115,7 @@ final class Service
         $scheme = $this->consent($customer);
         if (empty($scheme['auto_start']) || $scheme['type'] !== 'fixed') return;
         if ($customer['status'] !== 'active') throw new Failure('customer_not_active');
-        $hash = hash('sha256', 'automatic-subscription|'.$customer['reference']);
-        $reference = substr($hash,0,8).'-'.substr($hash,8,4).'-'.substr($hash,12,4).'-'.substr($hash,16,4).'-'.substr($hash,20,12);
+        $reference = $this->autoReference($customer);
         $command = $this->store->find('commands', 'reference', $reference, $mode);
         if (!$command) {
             $date = wp_date('Y-m-d', time() + (max(1,(int)$scheme['notice_days'])+1)*DAY_IN_SECONDS, new \DateTimeZone('Europe/Amsterdam'));
@@ -125,6 +124,12 @@ final class Service
         if ($command['state'] === 'draft') $this->confirm((int)$command['id'], $mode);
     }
 
+    /** One fixed business reference per customer, so an automatic start can never create a second subscription. */
+    private function autoReference(array $customer): string
+    {
+        $hash = hash('sha256', 'automatic-subscription|' . $customer['reference']);
+        return substr($hash, 0, 8) . '-' . substr($hash, 8, 4) . '-' . substr($hash, 12, 4) . '-' . substr($hash, 16, 4) . '-' . substr($hash, 20, 12);
+    }
     public function customer(int $id, string $mode): array
     {
         $row = $this->store->one('customers', $id, $mode);
@@ -264,7 +269,7 @@ final class Service
         }
         $remote = null;
         if ($command['attempted_at']) {
-            $remote = $api->find($kind === 'manual' ? 'payment' : $kind, (string) $customer['remote_id'], $command['reference'], (string) get_option('mi_instance'));
+            $remote = $api->find($kind === 'manual' ? 'payment' : $kind, (string) $customer['remote_id'], $command['reference'], (string) get_option('mi_instance'), $command['attempted_at']);
             if (!$remote && (!hash_equals($command['key_fingerprint'], $this->config->fingerprint($mode)) || time() - strtotime($command['attempted_at'] . ' UTC') >= 3300)) {
                 $this->store->update('commands', ['state' => 'blocked', 'error' => 'unknown_requires_review', 'updated_at' => Store::now()], $id, $mode);
                 throw new Failure('unknown_requires_review');
@@ -362,8 +367,16 @@ final class Service
         }
         $this->store->update('customers', ['status' => 'active', 'mandate_id' => $valid['remote_id'], 'updated_at' => Store::now()], $id, $mode);
         $this->mail->schedule($mode, $id, 'consent', 'consent:' . $id);
-        if (!empty($this->consent($customer)['auto_start'])) $this->queue->put($mode, 'auto_subscription', 'auto-subscription:'.$id, ['id'=>$id]);
-        $this->queue->put($mode, 'checkout', 'checkout:'.$id, ['id'=>$id]);
+        // Follow-up work only while it is still outstanding, not on every periodic mandate check.
+        if (!empty($this->consent($customer)['auto_start'])) {
+            $auto = $this->store->find('commands', 'reference', $this->autoReference($customer), $mode);
+            if (!$auto || $auto['state'] === 'draft') {
+                $this->queue->put($mode, 'auto_subscription', 'auto-subscription:' . $id, ['id' => $id]);
+            }
+        }
+        if ($this->store->select('SELECT id FROM ' . $this->store->table('checkouts') . ' WHERE customer_id=%d AND mode=%s AND state="pending" LIMIT 1', [$id, $mode])) {
+            $this->queue->put($mode, 'checkout', 'checkout:' . $id, ['id' => $id]);
+        }
         return $valid;
     }
     private function validatePayment(array $customer, ?array $command, array $p, ?array $subscription): void
@@ -408,6 +421,9 @@ final class Service
         if ($data['kind'] !== 'first' && $this->config->settings()['notifications']) {
             $event = 'payment:' . $p['id'] . ':' . hash('sha256', wp_json_encode([$data['status'], $data['refunded'], $data['charged_back']]));
             $this->mail->schedule($mode, (int) $customer['id'], 'payment', $event, $data);
+        }
+        if ($data['kind'] !== 'first' && ($data['status'] === 'failed' || $data['charged_back'] > 0)) {
+            $this->mail->schedule($mode, (int) $customer['id'], 'admin_alert', 'admin:' . $p['id'] . ':' . $data['status'] . ':' . $data['charged_back'], $data);
         }
     }
     public function syncPayment(string $id, string $mode): void
@@ -462,7 +478,9 @@ final class Service
                     $this->store->update('commands', ['state' => 'completed', 'remote_id' => $p['id'], 'error' => '', 'updated_at' => Store::now()], (int) $command['id'], $mode);
                 }
             });
-            $this->queue->put($mode, 'checkout', 'checkout:'.$customer['id'], ['id'=>(int)$customer['id']]);
+            if ($command && $command['kind'] === 'first') {
+                $this->queue->put($mode, 'checkout', 'checkout:' . $customer['id'], ['id' => (int) $customer['id']]);
+            }
             if ($command && $command['kind'] === 'first' && (in_array($p['status'], ['failed', 'canceled', 'expired'], true) || Money::cents((string) ($p['amountChargedBack']['value'] ?? '0.00'), true) > 0 || Money::cents((string) ($p['amountRefunded']['value'] ?? '0.00'), true) > 0) && !in_array($customer['status'], ['revoked', 'revoking'], true)) {
                 $this->store->update('customers', ['status' => 'verification_failed', 'updated_at' => Store::now()], (int) $customer['id'], $mode);
             }
@@ -474,6 +492,10 @@ final class Service
                 $kind = $withdrawing ? 'withdraw' : 'mandate';
                 $this->queue->put($mode, $kind, $kind . ':' . $customer['id'], ['id' => (int) $customer['id']]);
             }
+            if ($subscription) {
+                // Mollie moves nextPaymentDate after each term; sync now so the next pre-notification is planned in time.
+                $this->queue->put($mode, 'subscription', 'subscription:' . $subscription['id'], ['id' => (int) $subscription['id']]);
+            }
             if (in_array($p['status'], ['failed', 'canceled', 'expired'], true) || Money::cents((string) ($p['amountChargedBack']['value'] ?? '0.00'), true) > 0) {
                 if ($subscription) {
                     $this->queue->put($mode, 'subscription', 'subscription:' . $subscription['id'], ['id' => (int) $subscription['id']]);
@@ -481,6 +503,41 @@ final class Service
                 $this->queue->put($mode, 'mandate', 'mandate:' . $customer['id'], ['id' => (int) $customer['id']]);
             }
         });
+    }
+    /**
+     * Server-side check of the newest €0.01 verification at Mollie (never the browser return itself).
+     * Returns "paid", "unpaid" (Mollie confirms it is not paid) or "unknown" (Mollie could not be asked,
+     * or a create attempt has no stored result yet). Callers must never treat "unknown" as unpaid.
+     */
+    public function firstPaymentState(int $customerId, string $mode, bool $activate = false): string
+    {
+        $first = fn() => $this->store->select('SELECT * FROM ' . $this->store->table('payments') . ' WHERE customer_id=%d AND mode=%s AND kind="first" ORDER BY id DESC LIMIT 1', [$customerId, $mode])[0] ?? null;
+        $payment = $first();
+        if (!$payment) {
+            $attempted = $this->store->select('SELECT id FROM ' . $this->store->table('commands') . ' WHERE customer_id=%d AND mode=%s AND kind IN ("customer","first") AND attempted_at IS NOT NULL AND state!="completed" LIMIT 1', [$customerId, $mode]);
+            return $attempted ? 'unknown' : 'unpaid';
+        }
+        if (in_array($payment['status'], ['open', 'pending', 'authorized'], true)) {
+            try {
+                $this->syncPayment($payment['remote_id'], $mode);
+            } catch (Failure $e) {
+                return 'unknown';
+            }
+            $payment = $first();
+        }
+        $paid = $payment['status'] === 'paid' && !(int) $payment['refunded'] && !(int) $payment['charged_back'];
+        if ($paid && $activate && in_array($this->customer($customerId, $mode)['status'], ['pending', 'mandate_pending'], true)) {
+            try {
+                $this->refreshMandate($customerId, $mode);
+            } catch (Failure $e) {
+                // A pending mandate stays visible; the queued mandate job continues.
+            }
+        }
+        return $paid ? 'paid' : 'unpaid';
+    }
+    public function verifiedFirstPayment(int $customerId, string $mode, bool $activate = false): bool
+    {
+        return $this->firstPaymentState($customerId, $mode, $activate) === 'paid';
     }
     private function storeSubscription(array $customer, array $command, array $s, bool $notify = true): void
     {
@@ -590,7 +647,7 @@ final class Service
     private function reconcileWithdrawnSubscription(int $id, array $customer, Gateway $api): void
     {
         $command = $this->store->one('commands', $id, $customer['mode']);
-        $remote = $api->find('subscription', $customer['remote_id'], $command['reference'], (string) get_option('mi_instance'));
+        $remote = $api->find('subscription', $customer['remote_id'], $command['reference'], (string) get_option('mi_instance'), $command['attempted_at']);
         if (!$remote) {
             throw new Failure('unknown_subscription_requires_review', true);
         }
@@ -627,7 +684,9 @@ final class Service
                 }
                 $this->store->update('subscriptions', ['status' => $result['status'], 'checked_at' => Store::now()], (int) $row['id'], $mode);
             }
-            if ($customer['status'] === 'stop_pending' || $row['status'] === 'canceling') {
+            // Re-read: the transaction above changed both rows, and the stop may have completed in this request.
+            $customer = $this->customer($id, $mode);
+            if ($customer['status'] === 'stop_pending') {
                 $other = $this->store->select('SELECT id FROM ' . $this->store->table('subscriptions') . ' WHERE customer_id=%d AND mode=%s AND status="canceling"', [$id, $mode]);
                 if (!$other) {
                     $this->store->update('customers', ['status' => 'mandate_pending', 'updated_at' => Store::now()], $id, $mode);
@@ -662,31 +721,49 @@ final class Service
             }
         }
     }
-    public function maintenance(): void
+    /**
+     * Hourly safety net next to webhooks. Work is spread over the day (id % 24) so the queue keeps
+     * room for customer-facing jobs; unpaid or failed signups are never polled for mandates.
+     */
+    public function maintenance(?int $hour = null): void
     {
         $mode = $this->config->mode();
         $this->config->assertRun($mode);
-        foreach ($this->store->select('SELECT id,status FROM ' . $this->store->table('customers') . ' WHERE mode=%s AND remote_id IS NOT NULL AND status!="revoked"', [$mode]) as $c) {
-            $kind = $c['status'] === 'revoking' ? 'withdraw' : 'mandate';
-            $this->queue->put($mode, $kind, $kind . ':' . $c['id'], ['id' => (int) $c['id']]);
+        $hour ??= (int) gmdate('G');
+        $week = (int) gmdate('N') * 24 + $hour;
+        $customers = $this->store->table('customers');
+        $payments = $this->store->table('payments');
+        foreach ($this->store->select('SELECT id FROM ' . $customers . ' WHERE mode=%s AND status="revoking"', [$mode]) as $c) {
+            $this->queue->put($mode, 'withdraw', 'withdraw:' . $c['id'], ['id' => (int) $c['id']], null, false);
         }
-        foreach ($this->store->select('SELECT id FROM ' . $this->store->table('subscriptions') . ' WHERE mode=%s AND status NOT IN ("completed","canceled")', [$mode]) as $s) {
-            $row = $this->store->one('subscriptions', (int) $s['id'], $mode);
-            $kind = $row['status'] === 'canceling' ? 'stop' : 'subscription';
-            $this->queue->put($mode, $kind, $kind . ':' . $s['id'], ['id' => (int) $s['id']]);
+        $paidFirst = 'EXISTS (SELECT 1 FROM ' . $payments . ' p WHERE p.customer_id=c.id AND p.mode=c.mode AND p.kind="first" AND p.status="paid")';
+        $due = $this->store->select('SELECT c.id FROM ' . $customers . ' c WHERE c.mode=%s AND c.remote_id IS NOT NULL AND (c.status="mandate_pending" OR (c.status="pending" AND ' . $paidFirst . ') OR (c.status="active" AND c.id %% 24 = %d))', [$mode, $hour]);
+        foreach ($due as $c) {
+            $this->queue->put($mode, 'mandate', 'mandate:' . $c['id'], ['id' => (int) $c['id']], null, false);
         }
-        foreach ($this->store->select('SELECT remote_id FROM ' . $this->store->table('payments') . ' WHERE mode=%s AND (status IN ("open","pending","authorized") OR checked_at<%s)', [$mode, gmdate('Y-m-d H:i:s', time() - 86400)]) as $p) {
-            $this->queue->put($mode, 'payment', 'payment:' . $p['remote_id'], ['id' => $p['remote_id']]);
+        foreach ($this->store->select('SELECT id,status FROM ' . $this->store->table('subscriptions') . ' WHERE mode=%s AND (status="canceling" OR (status NOT IN ("completed","canceled") AND id %% 24 = %d))', [$mode, $hour]) as $s) {
+            $kind = $s['status'] === 'canceling' ? 'stop' : 'subscription';
+            $this->queue->put($mode, $kind, $kind . ':' . $s['id'], ['id' => (int) $s['id']], null, false);
         }
-        foreach ($this->store->select('SELECT customer_id FROM '.$this->store->table('checkouts').' WHERE mode=%s AND customer_id IS NOT NULL AND state!="complete"', [$mode]) as $checkout) $this->queue->put($mode, 'checkout', 'checkout:'.$checkout['customer_id'], ['id'=>(int)$checkout['customer_id']]);
+        // Open payments hourly; settled ones daily while chargebacks are likely, then weekly up to 13 months.
+        $recent = gmdate('Y-m-d H:i:s', time() - 70 * DAY_IN_SECONDS);
+        $oldest = gmdate('Y-m-d H:i:s', time() - 400 * DAY_IN_SECONDS);
+        foreach ($this->store->select('SELECT remote_id FROM ' . $payments . ' WHERE mode=%s AND (status IN ("open","pending","authorized") OR (created_at>=%s AND id %% 24 = %d) OR (created_at<%s AND created_at>=%s AND id %% 168 = %d))', [$mode, $recent, $hour, $recent, $oldest, $week % 168]) as $p) {
+            $this->queue->put($mode, 'payment', 'payment:' . $p['remote_id'], ['id' => $p['remote_id']], null, false);
+        }
+        foreach ($this->store->select('SELECT customer_id FROM ' . $this->store->table('checkouts') . ' WHERE mode=%s AND customer_id IS NOT NULL AND state="pending" AND created_at>=%s', [$mode, gmdate('Y-m-d H:i:s', time() - 14 * DAY_IN_SECONDS)]) as $checkout) {
+            $this->queue->put($mode, 'checkout', 'checkout:' . $checkout['customer_id'], ['id' => (int) $checkout['customer_id']], null, false);
+        }
         $this->store->query('DELETE FROM ' . $this->store->table('limits') . ' WHERE expires_at<%s', [Store::now()]);
         $this->store->query('DELETE FROM ' . $this->store->table('tokens') . ' WHERE expires_at<%s', [gmdate('Y-m-d H:i:s', time() - 86400)]);
+        $this->store->query('DELETE FROM ' . $this->store->table('jobs') . ' WHERE mode=%s AND state="done" AND updated_at<%s', [$mode, gmdate('Y-m-d H:i:s', time() - 30 * DAY_IN_SECONDS)]);
     }
     public function job(string $kind, array $data, string $mode): void
     {
         match ($kind) {
             'auto_subscription' => $this->startAutomaticSubscription((int)$data['id'], $mode),
             'checkout' => do_action('mollie_incasso_sync_checkout', (int)$data['id'], $mode),
+            'cancel_checkout' => do_action('mollie_incasso_cancel_checkout', (int) $data['order'], $mode),
             'payment' => $this->syncPayment((string) $data['id'], $mode),
             'mandate' => $this->refreshMandate((int) $data['id'], $mode),
             'subscription' => $this->syncSubscription((int) $data['id'], $mode),

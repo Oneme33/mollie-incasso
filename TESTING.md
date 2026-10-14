@@ -1,4 +1,4 @@
-# Testrapport — Mollie Incasso 0.2.0
+# Testrapport — Mollie Incasso 0.3.0
 
 Lokaal uitgevoerd op 13 en 14 oktober 2026: PHP 8.2.29, WordPress 6.8.1, bestaande Docker MySQL/InnoDB. Geen live geld, echte incasso of echte klantmail gebruikt. Dit rapport is geen productiecertificering.
 
@@ -52,6 +52,31 @@ Getest: meerdere onafhankelijke plannen en producten; idempotente product-/wizar
 Browsercontrole op 1440px en 390px: klassieke checkoutvelden en het echte React-component van de Blocks-integratie tonen bedrag/termijn/verificatie, onbevestigde toestemming en geen pagina-overflow. Het Blocks-component weigert zonder toestemming en levert na bevestiging de verwachte payment-data aan de server. De browserfixture gebruikt een nagebootste Blocks-eventregistry; dit is geen volledige browseraankoop via de echte winkel/Store API. Die serverroute is apart met de echte Legacy-processor getest. De wizard en beheerschermen zijn eveneens op desktop/mobiel gecontroleerd.
 
 De volledige gehoste checkout met echte Mollie-testkey/webhook, de exacte bronsitecombinatie met Mollie Payments for WooCommerce 8.1.11/Flexible Shipping en daadwerkelijke SMTP/cron moeten nog getest worden. Er is geen volledige WooCommerce Subscriptions-import, periodieke WooCommerce-ordergeneratie of algemene productiegeschiktheid aangetoond.
+
+## Betrouwbaarheid en schaal (0.3.0)
+
+Lokaal uitgevoerd op 14 oktober 2026 in dezelfde Docker-omgeving (PHP 8.2.29, WordPress 6.8.1, MySQL 8.0.32, WooCommerce 11.2.1 — eerdere rapporten noemden hier abusievelijk 9.9.5; die versie draait nu in CI). Resultaat: `integration.php` **121**, `sdk.php` **22**, `secrets.php` **23**, `woocommerce.php` **68 klassiek en 68 HPOS** — alle controles geslaagd. (De SDK-controle op een naast-geladen ongescopete SDK draait alleen als `mollie-incasso-build/vendor` aanwezig is.)
+
+Nieuw getest:
+
+- Urgente taken (mail, opdracht, webhook) lopen vóór oudere periodieke controles; één run werkt meerdere batches af binnen het tijdsbudget.
+- Periodieke controles zetten een mislukte taak niet stilzwijgend terug; een nieuwe gebeurtenis wel.
+- Onderhoud: een actieve klant krijgt één mandaatcontrole per dag in een eigen uur; afgehaakte of onbetaalde aanmeldingen worden nooit voor mandaten gepolld, hun open verificatie wel. Met 200 actieve en 40 mislukte klanten zet één onderhoudsrun hooguit één dagdeel aan mandaatcontroles klaar.
+- Een routinematige mandaatcontrole zet geen overbodige checkout-/abonnementstaken klaar.
+- Geslaagd stoppen laat de klant niet op `stop_pending` staan; een abonnementsbetaling zet direct een abonnementssynchronisatie klaar.
+- Mail met onbekende uitkomst: opnieuw versturen of na controle als verzonden markeren; daarna niet nogmaals afhandelbaar.
+- Mislukte incasso en stornering geven elk één beheerderssignaal zonder persoonlijke klantlink; datums in mails zijn leesbaar.
+- Maandabonnement weigert een vooraankondiging langer dan 21 dagen; jaarabonnement accepteert een langere afgesproken termijn.
+- Terugkeer van iDEAL: server-side controle bij Mollie activeert de klant direct bij betaalde verificatie en geldig mandaat.
+- Rate-limit-IP: forwarded headers alleen achter vertrouwde proxies (IPv4/IPv6-CIDR), gespoofte linkerwaarden genegeerd.
+- Shortcode zonder formuliercookie toont een startknop in plaats van een onbruikbaar formulier.
+- Reconciliatie via de echte SDK stopt bij resources ouder dan de onzekere aanvraag en vindt de recente nog wel.
+- WooCommerce: voorraadreservering annuleert alleen gewone onbetaalde orders, geen aanmeldorders; annuleren terwijl Mollie de verificatie al betaald meldt, laat de toestemming staan en voegt een ordernotitie toe.
+- Na review van PR #1: is Mollie onbereikbaar tijdens het annuleren, dan is de uitkomst ‘onbekend’ en wordt de toestemming nooit ingetrokken; een queuetaak controleert opnieuw. Bij betaald blijft de toestemming staan, bij door Mollie bevestigd onbetaald volgt intrekken. Een gestarte first-betaling zonder opgeslagen resultaat telt ook als onbekend. Deze test faalt aantoonbaar op de eerdere PR-code.
+- Na review: een door een vertrouwde proxy doorgegeven `CF-Connecting-IP` wordt genegeerd tenzij die header expliciet is ingesteld, en ook dan alleen vanaf vertrouwde proxyadressen.
+- CI maakt de WooCommerce- en HPOS-ordertabellen expliciet aan; de WooCommerce-test stopt direct met een duidelijke melding als orders niet kunnen worden opgeslagen.
+
+Niet getest in deze ronde: een echte Mollie-testkey met bereikbare webhook, en de schaalgedragingen onder echte cron/hosting.
 
 ## Nog nodig met credentials en bereikbare hosting
 
