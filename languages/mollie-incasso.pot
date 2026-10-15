@@ -1,6 +1,6 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: Mollie Incasso 0.3.1\n"
+"Project-Id-Version: Mollie Incasso 0.3.2\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Language: nl_NL\n"
@@ -598,7 +598,7 @@ msgstr ""
 msgid "Er is geen abonnement gestart en er wordt niets geïncasseerd. Wilt u het opnieuw proberen? Plaats dan een nieuwe bestelling van dit abonnement."
 msgstr ""
 
-#: src/Notifications.php:16 src/Service.php:121 src/Service.php:147 src/Service.php:206 src/Service.php:207 src/Service.php:325 src/Service.php:590
+#: src/Notifications.php:16 src/Service.php:121 src/Service.php:147 src/Service.php:206 src/Service.php:207 src/Service.php:328 src/Service.php:593
 msgid "Europe/Amsterdam"
 msgstr ""
 

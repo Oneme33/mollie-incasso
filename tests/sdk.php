@@ -42,7 +42,7 @@ try {
     expect($api->find('customer', '', 'ref', 'instance')['id'] === 'cst_12345678', 'customer reconciliation iterator');
     expect($api->mandate('cst_12345678', 'mdt_12345678')['masked'] === '•••• 1234', 'full bank account discarded by gateway');
     expect(count($api->mandates('cst_12345678')) === 1, 'mandates iterator');
-    $body = ['amount' => ['currency' => 'EUR', 'value' => '25.00'], 'interval' => '12 months', 'startDate' => '2027-01-01', 'description' => 'Test', 'mandateId' => 'mdt_12345678', 'method' => 'directdebit', 'webhookUrl' => 'https://example.org/webhook', 'metadata' => $metadata, 'times' => 3];
+    $body = ['amount' => ['currency' => 'EUR', 'value' => '25.00'], 'interval' => '12 months', 'startDate' => '2027-01-01', 'description' => 'Test', 'mandateId' => 'mdt_12345678', 'webhookUrl' => 'https://example.org/webhook', 'metadata' => $metadata, 'times' => 3];
     expect($api->createSubscription('cst_12345678', $body, 'subscription-key')['id'] === 'sub_12345678', 'yearly subscription payload via real SDK');
     expect($api->subscription('cst_12345678', 'sub_12345678')['interval'] === '12 months', 'subscription GET');
     expect(count($api->subscriptions('cst_12345678')) === 1, 'subscription iterator');

@@ -561,6 +561,8 @@ try {
     sendPre((int) $again['id']);
     $service->execute((int) $again['id'], 'test');
     check($store->one('commands', (int) $again['id'], 'test')['state'] === 'completed', 'retried subscription is created at Mollie');
+    $sentSub = array_values(array_filter($fake->subs, fn($row) => ($row['metadata']['mi_command'] ?? '') === $again['reference']))[0];
+    check(!empty($sentSub['mandateId']) && !array_key_exists('method', $sentSub), 'subscription request sends the mandate without a method, as Mollie requires');
     rejects(fn() => $service->retrySubscription((int) $again['id'], 'test'), 'invalid_command');
     // A failed verification does not queue a mandate check that can only fail.
     $failedFirst = signup($manual, 'failedfirst@example.invalid');

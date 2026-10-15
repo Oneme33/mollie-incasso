@@ -305,16 +305,19 @@ final class Service
                 if ($kind === 'customer') {
                     $body = $payload + ['metadata' => $metadata];
                 } elseif ($kind === 'subscription') {
-                    $body = ['amount' => Money::api((int) $command['amount']), 'interval' => $payload['interval'], 'startDate' => $payload['date'], 'description' => $payload['description'], 'mandateId' => $payload['mandateId'], 'method' => 'directdebit', 'webhookUrl' => $this->config->webhook($mode), 'metadata' => $metadata];
+                    // No method: Mollie treats method and mandateId as mutually exclusive (found in the live test).
+                    $body = ['amount' => Money::api((int) $command['amount']), 'interval' => $payload['interval'], 'startDate' => $payload['date'], 'description' => $payload['description'], 'mandateId' => $payload['mandateId'], 'webhookUrl' => $this->config->webhook($mode), 'metadata' => $metadata];
                     if ($payload['times']) {
                         $body['times'] = (int) $payload['times'];
                     }
                 } else {
-                    $body = ['amount' => Money::api((int) $command['amount']), 'customerId' => $customer['remote_id'], 'sequenceType' => $kind === 'first' ? 'first' : 'recurring', 'method' => $kind === 'first' ? 'ideal' : 'directdebit', 'description' => $payload['description'], 'webhookUrl' => $payload['webhookUrl'] ?? $this->config->webhook($mode), 'metadata' => $metadata];
+                    $body = ['amount' => Money::api((int) $command['amount']), 'customerId' => $customer['remote_id'], 'sequenceType' => $kind === 'first' ? 'first' : 'recurring', 'description' => $payload['description'], 'webhookUrl' => $payload['webhookUrl'] ?? $this->config->webhook($mode), 'metadata' => $metadata];
                     if ($kind === 'first') {
+                        $body['method'] = 'ideal';
                         $body['redirectUrl'] = $payload['redirectUrl'];
                         $body['locale'] = 'nl_NL';
                     } else {
+                        // Mollie rejects method together with mandateId; the directdebit mandate decides the method.
                         $body['mandateId'] = $payload['mandateId'];
                     }
                 }
