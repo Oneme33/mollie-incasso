@@ -42,7 +42,7 @@ try {
     expect($api->find('customer', '', 'ref', 'instance')['id'] === 'cst_12345678', 'customer reconciliation iterator');
     expect($api->mandate('cst_12345678', 'mdt_12345678')['masked'] === '•••• 1234', 'full bank account discarded by gateway');
     expect(count($api->mandates('cst_12345678')) === 1, 'mandates iterator');
-    $body = ['amount' => ['currency' => 'EUR', 'value' => '25.00'], 'interval' => '12 months', 'startDate' => '2027-01-01', 'description' => 'Test', 'mandateId' => 'mdt_12345678', 'method' => 'directdebit', 'webhookUrl' => 'https://example.org/webhook', 'metadata' => $metadata, 'times' => 3];
+    $body = ['amount' => ['currency' => 'EUR', 'value' => '25.00'], 'interval' => '12 months', 'startDate' => '2027-01-01', 'description' => 'Test', 'mandateId' => 'mdt_12345678', 'webhookUrl' => 'https://example.org/webhook', 'metadata' => $metadata, 'times' => 3];
     expect($api->createSubscription('cst_12345678', $body, 'subscription-key')['id'] === 'sub_12345678', 'yearly subscription payload via real SDK');
     expect($api->subscription('cst_12345678', 'sub_12345678')['interval'] === '12 months', 'subscription GET');
     expect(count($api->subscriptions('cst_12345678')) === 1, 'subscription iterator');
@@ -73,6 +73,14 @@ try {
     expect((new MollieGateway($config, 'test', $older))->find('customer', '', 'ref', 'instance', gmdate('Y-m-d H:i:s')) === null, 'reconciliation stops at resources older than the uncertain create');
     $older = MollieApiClient::fake([$prefix . 'GetPaginatedCustomerRequest' => $list('customers', [['resource' => 'customer', 'id' => 'cst_new00001', 'createdAt' => gmdate('c'), 'metadata' => $metadata]])]);
     expect((new MollieGateway($config, 'test', $older))->find('customer', '', 'ref', 'instance', gmdate('Y-m-d H:i:s', time() - 60))['id'] === 'cst_new00001', 'reconciliation still finds the recent uncertain create');
+    $rejecting = MollieApiClient::fake([$prefix . 'CreateSubscriptionRequest' => MockResponse::error(422, 'Unprocessable Entity', 'The start date is invalid for klant@example.com, see https://docs.mollie.com/x', 'startDate')]);
+    try {
+        (new MollieGateway($config, 'test', $rejecting))->createSubscription('cst_12345678', $body, 'reject-key');
+        throw new RuntimeException('Expected rejection');
+    } catch (Failure $e) {
+        expect($e->reason === 'mollie_rejected' && str_contains($e->detail, 'startDate') && str_contains($e->detail, 'The start date is invalid'), 'Mollie rejection keeps its field and explanation (' . $e->detail . ')');
+        expect(!str_contains($e->detail, 'klant@example.com') && !str_contains($e->detail, 'https://'), 'rejection detail is stripped of e-mail addresses and URLs');
+    }
     $bad = MollieApiClient::fake([$prefix . 'CreatePaymentRequest' => MockResponse::error(503, 'Error', 'Mock failure')]);
     $gateway = new MollieGateway($config, 'test', $bad);
     try {

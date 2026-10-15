@@ -32,6 +32,12 @@ final class WooCommerceBridge
         add_filter('woocommerce_coupon_is_valid', static function ($valid) { if (self::instance()->hasCartProduct()) throw new \Exception(__('Kortingscodes gelden niet voor de verificatiebetaling van € 0,01.','mollie-incasso'));return $valid; });
         add_filter('woocommerce_get_price_html', static fn($html,$product)=>self::instance()->priceHtml($html,$product),10,2);
         add_action('woocommerce_thankyou_mollie_incasso', static fn($id)=>self::instance()->orderStatus((int)$id));
+        // Before the template loads, so WooCommerce itself shows "paid" or its "payment failed" text.
+        add_action('template_redirect', static fn()=>self::instance()->refreshReturnedOrder());
+        // A failed verification is never retried on the same order: a new order starts a fresh enrollment.
+        add_filter('woocommerce_valid_order_statuses_for_payment', static fn($statuses,$order=null)=>is_object($order) && $order->get_payment_method()==='mollie_incasso' ? array_values(array_diff((array)$statuses,['failed'])) : $statuses, 10, 2);
+        // Nothing to ship: a paid €0.01 verification order completes immediately.
+        add_filter('woocommerce_order_item_needs_processing', static fn($needs,$product)=>is_object($product) && self::instance()->isProduct($product) ? false : $needs, 10, 2);
         add_action('woocommerce_product_options_general_product_data', static fn()=>self::instance()->productFields());
         add_action('woocommerce_admin_process_product_object', static fn($product)=>self::instance()->saveProduct($product));
     }
@@ -205,6 +211,32 @@ final class WooCommerceBridge
             }
         }
     }
+    /** Order-received page of an enrollment order: ask Mollie (rate-limited) and update the order first. */
+    public function refreshReturnedOrder(): void
+    {
+        if (!function_exists('is_order_received_page') || !is_order_received_page()) return;
+        $id=(int)get_query_var('order-received');$order=$id?wc_get_order($id):null;
+        if(!$order || $order->get_payment_method()!=='mollie_incasso')return;
+        $key=isset($_GET['key']) && is_string($_GET['key']) ? wp_unslash($_GET['key']) : '';
+        if (!$key || !hash_equals($order->get_order_key(),$key)) return;
+        try { $this->refreshEnrollment($id); } catch(Failure $e) {}
+    }
+    /**
+     * Bring order and consent up to date for the shopper who just returned. The webhook may already
+     * have completed the order while the mandate check is still queued, so both are checked.
+     */
+    public function refreshEnrollment(int $orderId): void
+    {
+        $rows=$this->plugin->store->select('SELECT * FROM '.$this->plugin->store->table('checkouts').' WHERE order_id=%d AND mode=%s',[$orderId,$this->mode()]);
+        if(!$rows || !$rows[0]['customer_id'] || $rows[0]['state']==='canceled')return;
+        $cid=(int)$rows[0]['customer_id'];
+        $orderPending=$rows[0]['state']==='pending';
+        $consentPending=in_array($this->plugin->service->customer($cid,$this->mode())['status'],['pending','mandate_pending'],true);
+        if(!$orderPending && !$consentPending)return;
+        $this->plugin->store->limit('return-sync:'.$cid,10,600);
+        $state=$this->plugin->service->firstPaymentState($cid,$this->mode(),true);
+        if($orderPending && $state!=='unknown') $this->sync($cid,$this->mode());
+    }
     public function orderStatus(int $id): void
     {
         $order=wc_get_order($id);if(!$order)return;
@@ -214,13 +246,9 @@ final class WooCommerceBridge
         $row=$rows[0];
         echo '<section class="mi-woo-status"><h2>'.esc_html__('Uw incassoaanmelding','mollie-incasso').'</h2><p>'.esc_html__('Deze bestelling betreft alleen de verificatiebetaling van € 0,01. Uw vaste abonnement en volgende incasso’s worden beheerd via Mollie Incasso.','mollie-incasso').'</p>';
         if($row['customer_id']) {
-            // Check Mollie server-side once the shopper is back, so the order and status are current right away.
-            try {
-                $this->plugin->store->limit('return-sync:'.$row['customer_id'],10,600);
-                if($this->plugin->service->verifiedFirstPayment((int)$row['customer_id'],$this->mode(),true)) $this->sync((int)$row['customer_id'],$this->mode());
-            } catch(Failure $e) {}
             $customer=$this->plugin->service->customer((int)$row['customer_id'],$this->mode());
             echo '<p>'.esc_html(Plugin::status($customer['status'])).'</p>';
+            if($customer['status']==='verification_failed') echo '<p>'.esc_html__('Er is geen abonnement gestart en er wordt niets geïncasseerd. Wilt u het opnieuw proberen? Plaats dan een nieuwe bestelling van dit abonnement.','mollie-incasso').'</p>';
             $payments=$this->plugin->store->select('SELECT * FROM '.$this->plugin->store->table('payments').' WHERE customer_id=%d AND mode=%s AND kind="first" ORDER BY id DESC LIMIT 1',[(int)$row['customer_id'],$this->mode()]);
             if($payments && in_array($payments[0]['status'],['open','pending'],true) && $payments[0]['checkout_url']) echo '<p><a class="button" href="'.esc_url($payments[0]['checkout_url']).'">'.esc_html__('Verificatie via iDEAL afronden','mollie-incasso').'</a></p>';
         } else echo '<p>'.esc_html__('Uw betaling wordt voorbereid. Vernieuw deze pagina later; maak geen tweede bestelling aan.','mollie-incasso').'</p>';

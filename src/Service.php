@@ -130,6 +130,25 @@ final class Service
         $hash = hash('sha256', 'automatic-subscription|' . $customer['reference']);
         return substr($hash, 0, 8) . '-' . substr($hash, 8, 4) . '-' . substr($hash, 12, 4) . '-' . substr($hash, 16, 4) . '-' . substr($hash, 20, 12);
     }
+    /**
+     * Retry a fixed subscription whose create Mollie rejected. A new business reference and a new,
+     * properly announced start date are used; the failed command stays as history.
+     */
+    public function retrySubscription(int $commandId, string $mode): array
+    {
+        $this->config->assertRun($mode, true);
+        $failed = $this->store->one('commands', $commandId, $mode);
+        if (!$failed || $failed['kind'] !== 'subscription' || $failed['state'] !== 'failed') {
+            throw new Failure('invalid_command');
+        }
+        $customer = $this->customer((int) $failed['customer_id'], $mode);
+        $scheme = $this->consent($customer);
+        $payload = json_decode($failed['payload'], true);
+        $date = wp_date('Y-m-d', time() + (max(1, (int) $scheme['notice_days']) + 1) * DAY_IN_SECONDS, new \DateTimeZone('Europe/Amsterdam'));
+        $command = $this->prepare((int) $customer['id'], $mode, 'subscription', (int) $failed['amount'], (string) $payload['description'], $date, wp_generate_uuid4());
+        $this->confirm((int) $command['id'], $mode);
+        return $this->store->one('commands', (int) $command['id'], $mode);
+    }
     public function customer(int $id, string $mode): array
     {
         $row = $this->store->one('customers', $id, $mode);
@@ -286,16 +305,19 @@ final class Service
                 if ($kind === 'customer') {
                     $body = $payload + ['metadata' => $metadata];
                 } elseif ($kind === 'subscription') {
-                    $body = ['amount' => Money::api((int) $command['amount']), 'interval' => $payload['interval'], 'startDate' => $payload['date'], 'description' => $payload['description'], 'mandateId' => $payload['mandateId'], 'method' => 'directdebit', 'webhookUrl' => $this->config->webhook($mode), 'metadata' => $metadata];
+                    // No method: Mollie treats method and mandateId as mutually exclusive (found in the live test).
+                    $body = ['amount' => Money::api((int) $command['amount']), 'interval' => $payload['interval'], 'startDate' => $payload['date'], 'description' => $payload['description'], 'mandateId' => $payload['mandateId'], 'webhookUrl' => $this->config->webhook($mode), 'metadata' => $metadata];
                     if ($payload['times']) {
                         $body['times'] = (int) $payload['times'];
                     }
                 } else {
-                    $body = ['amount' => Money::api((int) $command['amount']), 'customerId' => $customer['remote_id'], 'sequenceType' => $kind === 'first' ? 'first' : 'recurring', 'method' => $kind === 'first' ? 'ideal' : 'directdebit', 'description' => $payload['description'], 'webhookUrl' => $payload['webhookUrl'] ?? $this->config->webhook($mode), 'metadata' => $metadata];
+                    $body = ['amount' => Money::api((int) $command['amount']), 'customerId' => $customer['remote_id'], 'sequenceType' => $kind === 'first' ? 'first' : 'recurring', 'description' => $payload['description'], 'webhookUrl' => $payload['webhookUrl'] ?? $this->config->webhook($mode), 'metadata' => $metadata];
                     if ($kind === 'first') {
+                        $body['method'] = 'ideal';
                         $body['redirectUrl'] = $payload['redirectUrl'];
                         $body['locale'] = 'nl_NL';
                     } else {
+                        // Mollie rejects method together with mandateId; the directdebit mandate decides the method.
                         $body['mandateId'] = $payload['mandateId'];
                     }
                 }
@@ -314,7 +336,7 @@ final class Service
                     default => $api->createPayment($body, $command['idempotency_key']),
                 };
             } catch (Failure $e) {
-                $this->store->update('commands', ['state' => $e->unknown ? 'unknown' : ($e->temporary ? 'scheduled' : 'failed'), 'error' => $e->reason, 'updated_at' => Store::now()], $id, $mode);
+                $this->store->update('commands', ['state' => $e->unknown ? 'unknown' : ($e->temporary ? 'scheduled' : 'failed'), 'error' => $e->reason, 'error_detail' => $e->detail, 'updated_at' => Store::now()], $id, $mode);
                 if ($e->temporary || $e->unknown) {
                     $this->queue->put($mode, 'command', 'command:' . $id, ['id' => $id], gmdate('Y-m-d H:i:s', time() + 60));
                 }
@@ -329,7 +351,7 @@ final class Service
             } else {
                 $this->storePayment($customer, $command, $remote, null);
             }
-            $this->store->update('commands', ['state' => 'completed', 'remote_id' => $remote['id'], 'error' => '', 'updated_at' => Store::now()], $id, $mode);
+            $this->store->update('commands', ['state' => 'completed', 'remote_id' => $remote['id'], 'error' => '', 'error_detail' => '', 'updated_at' => Store::now()], $id, $mode);
         });
         if ($kind === 'first') {
             $this->queue->put($mode, 'payment', 'payment:' . $remote['id'], ['id' => $remote['id']]);
@@ -500,7 +522,10 @@ final class Service
                 if ($subscription) {
                     $this->queue->put($mode, 'subscription', 'subscription:' . $subscription['id'], ['id' => (int) $subscription['id']]);
                 }
-                $this->queue->put($mode, 'mandate', 'mandate:' . $customer['id'], ['id' => (int) $customer['id']]);
+                // A failed verification has no mandate to re-check; that job could only fail.
+                if (!$command || $command['kind'] !== 'first') {
+                    $this->queue->put($mode, 'mandate', 'mandate:' . $customer['id'], ['id' => (int) $customer['id']]);
+                }
             }
         });
     }
@@ -725,6 +750,29 @@ final class Service
      * Hourly safety net next to webhooks. Work is spread over the day (id % 24) so the queue keeps
      * room for customer-facing jobs; unpaid or failed signups are never polled for mandates.
      */
+    /**
+     * Remove every test-mode record so a test site starts clean. Live rows are never touched, and the
+     * call is refused unless the plugin itself runs in test mode. Settings and API keys are kept.
+     */
+    public function wipeTestData(): int
+    {
+        if ($this->config->mode() !== 'test') {
+            throw new Failure('environment_mismatch');
+        }
+        $removed = 0;
+        $this->store->transaction(function () use (&$removed) {
+            foreach (['customers', 'consents', 'schemes', 'mandates', 'commands', 'payments', 'subscriptions', 'tokens', 'jobs', 'notifications', 'checkouts'] as $table) {
+                $removed += $this->store->query('DELETE FROM ' . $this->store->table($table) . ' WHERE mode=%s', ['test']);
+            }
+            $this->store->query('DELETE FROM ' . $this->store->table('limits'));
+        });
+        global $wpdb;
+        $wpdb->query($wpdb->prepare('DELETE FROM ' . $wpdb->options . ' WHERE option_name LIKE %s OR option_name LIKE %s OR option_name LIKE %s', $wpdb->esc_like('mi_setup_page_test_') . '%', $wpdb->esc_like('mi_wizard_plan_test_') . '%', $wpdb->esc_like('mi_woo_product_test_') . '%'));
+        foreach (['mi_last_webhook_test', 'mi_cron_error', 'mi_cleanup_blocked'] as $option) {
+            delete_option($option);
+        }
+        return $removed;
+    }
     public function maintenance(?int $hour = null): void
     {
         $mode = $this->config->mode();

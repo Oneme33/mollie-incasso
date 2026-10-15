@@ -40,10 +40,20 @@ final class MollieGateway implements Gateway
                 throw new Failure('api_access_denied');
             }
             if ($status >= 400 && $status < 500 && !in_array($status, [408, 409, 429], true)) {
-                throw new Failure('mollie_rejected');
+                throw new Failure('mollie_rejected', false, false, self::detail($e));
             }
             throw new Failure($status === 429 ? 'api_rate_limited' : 'api_unavailable', true, $mutates);
         }
+    }
+    /** Title, detail and field that Mollie returns for a rejected request, without e-mail addresses, URLs or account numbers. */
+    public static function detail(\Throwable $e): string
+    {
+        $message = method_exists($e, 'getPlainMessage') ? (string) $e->getPlainMessage() : $e->getMessage();
+        $message = preg_replace('/^.*?Error executing API call \(\d+: /', '', $message);
+        $message = preg_replace(['/[^\s@]+@[^\s@]+/', '/https?:\/\/\S+/', '/\b[A-Z]{2}\d{2}[A-Z0-9]{10,30}\b/'], ['[e-mail]', '[url]', '[iban]'], (string) $message);
+        $field = method_exists($e, 'getField') ? (string) $e->getField() : '';
+        $detail = trim(($field !== '' ? 'Veld: ' . $field . ' — ' : '') . preg_replace('/\s+/', ' ', str_replace('):', ':', (string) $message)));
+        return mb_substr(sanitize_text_field($detail), 0, 250);
     }
     private function data(object $r, array $fields): array
     {

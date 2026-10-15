@@ -1,4 +1,4 @@
-# Testrapport — Mollie Incasso 0.3.0
+# Testrapport — Mollie Incasso 0.3.3
 
 Lokaal uitgevoerd op 13 en 14 oktober 2026: PHP 8.2.29, WordPress 6.8.1, bestaande Docker MySQL/InnoDB. Geen live geld, echte incasso of echte klantmail gebruikt. Dit rapport is geen productiecertificering.
 
@@ -51,7 +51,7 @@ Getest: meerdere onafhankelijke plannen en producten; idempotente product-/wizar
 
 Browsercontrole op 1440px en 390px: klassieke checkoutvelden en het echte React-component van de Blocks-integratie tonen bedrag/termijn/verificatie, onbevestigde toestemming en geen pagina-overflow. Het Blocks-component weigert zonder toestemming en levert na bevestiging de verwachte payment-data aan de server. De browserfixture gebruikt een nagebootste Blocks-eventregistry; dit is geen volledige browseraankoop via de echte winkel/Store API. Die serverroute is apart met de echte Legacy-processor getest. De wizard en beheerschermen zijn eveneens op desktop/mobiel gecontroleerd.
 
-De volledige gehoste checkout met echte Mollie-testkey/webhook, de exacte bronsitecombinatie met Mollie Payments for WooCommerce 8.1.11/Flexible Shipping en daadwerkelijke SMTP/cron moeten nog getest worden. Er is geen volledige WooCommerce Subscriptions-import, periodieke WooCommerce-ordergeneratie of algemene productiegeschiktheid aangetoond.
+De gehoste checkout met echte Mollie-testkey, webhook, mail en cron is inmiddels online getest (zie ‘Online test en 0.3.1’). De exacte bronsitecombinatie met Mollie Payments for WooCommerce 8.1.11/Flexible Shipping is niet apart getest. Er is geen volledige WooCommerce Subscriptions-import, periodieke WooCommerce-ordergeneratie of algemene productiegeschiktheid aangetoond.
 
 ## Betrouwbaarheid en schaal (0.3.0)
 
@@ -76,20 +76,29 @@ Nieuw getest:
 - Na review: een door een vertrouwde proxy doorgegeven `CF-Connecting-IP` wordt genegeerd tenzij die header expliciet is ingesteld, en ook dan alleen vanaf vertrouwde proxyadressen.
 - CI maakt de WooCommerce- en HPOS-ordertabellen expliciet aan; de WooCommerce-test stopt direct met een duidelijke melding als orders niet kunnen worden opgeslagen.
 
-Niet getest in deze ronde: een echte Mollie-testkey met bereikbare webhook, en de schaalgedragingen onder echte cron/hosting.
+Deze ronde was lokaal; de online test met een echte Mollie-testkey volgt hieronder. Schaalgedrag onder echte cron/hosting is niet gemeten.
 
-## Nog nodig met credentials en bereikbare hosting
+## Online test en 0.3.1 (14 oktober 2026)
 
-Een echte Mollie-testkey was niet beschikbaar. Daardoor zijn **niet** uitgevoerd: echte iDEAL-testcheckout, het werkelijke ontstaan/verloop van het accountmandaat, door Mollie bezorgde webhooks en retries, daadwerkelijk gegenereerde testtermijnen of externe bank-/storneringsverwerking. SMTP-aflevering en productiecron zijn evenmin bewezen.
+Op de online WooCommerce-site (Mollie-testkey, echte webhooks en mail; drie testorders) werkten: betaalde verificatie met directe status ‘Actief’ op de bedankpagina, echte webhook, geldig mandaat, toestemmings- en vooraankondigingsmail (de toestemmingsmail kwam in spam), mislukte verificatie → order Failed, afgebroken betaling blijft open, winkelwagenregels en toestemmingsplicht. Het aanmaken van het abonnement werd door Mollie afgewezen; de reden werd niet bewaard. 0.3.1 lost de gevonden punten op: Mollies uitleg bij afwijzing bewaren en tonen, opnieuw proberen met nieuwe startdatum, geen zinloze mandaatcontrole na mislukte verificatie, status bijwerken vóór de bedankpagina, verificatieorders direct voltooid en zonder ‘opnieuw betalen’ na mislukking, zichtbare uitkomst van de methodecontrole, toestemmingszin één keer tonen, leesbare frequentie, Nederlandse taaknamen en maandnamen, organisatie als afzendernaam en geen meldingen van andere plugins op de eigen schermen.
 
-Doorloop op HTTPS-testhosting:
+Lokaal: `integration.php` **133**, `sdk.php` **24**, `secrets.php` **23**, `woocommerce.php` **71 klassiek en 71 HPOS** — alle controles geslaagd. Na installatie van 0.3.1 gaf een nieuwe poging Mollies reden: *“The 'method' and 'mandateId' parameters are mutually exclusive.”* 0.3.2 stuurt bij een mandaat geen `method` meer mee (abonnementen en losse incasso’s); de nagebootste Mollie in de tests hanteert dezelfde regel, waardoor de oude code nu aantoonbaar faalt. Lokaal: `integration.php` **134**, `sdk.php` **24**, `secrets.php` **23**, `woocommerce.php` **71 klassiek en 71 HPOS**.
 
-1. Accountmethodes controleren; betaalde en mislukte € 0,01 first-checkout; mandaat pending/valid/invalid.
-2. Vroege browserterugkeer, dubbele webhooks en onderbroken API-verkeer. Vergelijk lokale opdrachten met Mollie Dashboard.
-3. Losse testincasso na vooraankondiging; maand/kwartaal/jaar en maximum; gegenereerde subscriptionbetaling.
-4. Mislukking en chargeback indien dit door de actuele testomgeving kan worden gesimuleerd.
-5. Stoppen, intrekken, gedeeld mandaat en herstel bij externe fouten.
-6. Mail/SMTP, echte cron zonder sitebezoek, HTTPS/firewall/cache, privacy en veilige stagingkopie.
-7. Tekst van toestemming, SEPA-voorwaarden, klantafspraken en vooraankondigingstermijn laten beoordelen vóór enig livegebruik.
+## Testgegevens wissen (0.3.3)
+
+Nieuwe knop in Diagnose. Getest: geweigerd buiten testmodus, verwijdert alle testrecords, laat liverecords ongemoeid. Daarnaast: de bedankpagina activeert een nog wachtende toestemming ook als de webhook de order al had afgerond (gereproduceerd uit de review van PR #2). Lokaal: `integration.php` **137**, `sdk.php` **24**, `secrets.php` **23**, `woocommerce.php` **73 klassiek en 73 HPOS**.
+
+## Wat online is aangetoond en wat nog open staat
+
+Online aangetoond (14–15 oktober 2026, WooCommerce-site, Mollie-testkey, echte webhooks, mail en cron): methodecontrole; betaalde, mislukte en verlopen € 0,01-verificatie; directe status op de bedankpagina; geldig mandaat; toestemmings-, vooraankondigings- en abonnementsmails; automatisch aangemaakt Mollie-abonnement (na de fix in 0.3.2); intrekken via de persoonlijke link met geannuleerd abonnement en ingetrokken mandaat; winkelwagenregels en toestemmingsplicht.
+
+Nog niet aangetoond:
+
+1. Een door Mollie daadwerkelijk gegenereerde abonnementstermijn en een losse testincasso op de aanbieddatum (vereist wachten tot de startdatum).
+2. Mislukking en chargeback van een incasso, voor zover de testomgeving dat kan simuleren.
+3. Stoppen van alleen een abonnement (zonder intrekken), gedeeld mandaat en herstel na externe fouten in de echte omgeving.
+4. Geauthenticeerde SMTP (SPF/DKIM): zonder die instelling kwam een bevestiging in spam.
+5. Echte cron zonder sitebezoek, cache/firewall-instellingen en een veilige stagingkopie.
+6. Juridische beoordeling van toestemmingstekst, SEPA-voorwaarden en vooraankondigingstermijn; ook de taal van de teksten op een Engelstalige winkel.
 
 Geen live geld gebruiken voor deze acceptatie. Schakel live pas afzonderlijk in na succesvolle externe tests en operationele afspraken.

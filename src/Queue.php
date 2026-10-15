@@ -28,7 +28,7 @@ final class Queue
         $keep = $revive ? '("working")' : '("working","failed")';
         $this->store->query('INSERT INTO ' . $this->store->table('jobs') . ' (mode,kind,dedup,payload,priority,run_at,updated_at) VALUES (%s,%s,%s,%s,%d,%s,%s) ON DUPLICATE KEY UPDATE generation=IF(state IN ' . $keep . ' AND state!="working",generation,generation+1),priority=IF(state IN ("done","failed"),VALUES(priority),LEAST(priority,VALUES(priority))),payload=VALUES(payload),run_at=IF(state IN ' . $keep . ' AND state!="working",run_at,LEAST(run_at,VALUES(run_at))),attempts=IF(state IN ' . $keep . ',attempts,0),state=IF(state IN ' . $keep . ',state,"pending"),updated_at=VALUES(updated_at)', [$mode, $kind, $key, wp_json_encode($payload), $priority, $at ?? Store::now(), Store::now()]);
     }
-    /** Seconds a run may spend, leaving room below PHP's own execution limit. */
+    /** Seconds a run may spend, leaving room below the PHP execution limit. */
     public static function budget(): int
     {
         $max = (int) ini_get('max_execution_time');

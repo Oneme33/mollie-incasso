@@ -14,7 +14,7 @@ final class WooCommerceBlocks extends \Automattic\WooCommerce\Blocks\Payments\In
     public function get_payment_method_data()
     {
         $available=false;$text='';$consent='';
-        try{$bridge=WooCommerceBridge::instance();$scheme=$bridge->contextScheme();$text=$bridge->plugin()->schemes->disclosure($scheme);$consent=$scheme['consent'];$gateway=new WooCommerceGateway();$available=$gateway->is_available();}catch(Failure $e){}
-        return ['title'=>__('iDEAL — abonnement afsluiten','mollie-incasso'),'available'=>$available,'disclosure'=>$text,'hash'=>hash('sha256',$text),'consent'=>$consent,'consent_error'=>__('Geef toestemming voor de beschreven incassoafspraak.','mollie-incasso'),'button'=>__('Toestemming geven en € 0,01 betalen','mollie-incasso'),'supports'=>['products']];
+        try{$bridge=WooCommerceBridge::instance();$scheme=$bridge->contextScheme();$text=$bridge->plugin()->schemes->disclosure($scheme);$shown=$bridge->plugin()->schemes->displayText($scheme);$consent=$scheme['consent'];$gateway=new WooCommerceGateway();$available=$gateway->is_available();}catch(Failure $e){}
+        return ['title'=>__('iDEAL — abonnement afsluiten','mollie-incasso'),'available'=>$available,'disclosure'=>$shown??'','hash'=>hash('sha256',$text),'consent'=>$consent,'consent_error'=>__('Geef toestemming voor de beschreven incassoafspraak.','mollie-incasso'),'button'=>__('Toestemming geven en € 0,01 betalen','mollie-incasso'),'supports'=>['products']];
     }
 }

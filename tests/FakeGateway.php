@@ -6,7 +6,7 @@ use Lukraak\MollieIncasso\{Gateway, Failure};
 final class FakeGateway implements Gateway
 {
     public array $customers = [], $payments = [], $subs = [], $mandateRows = [], $keys = [], $calls = [];
-    public bool $timeout = false, $cancelFails = false, $revokeFails = false, $hideFind = false, $readFails = false;
+    public bool $timeout = false, $cancelFails = false, $revokeFails = false, $hideFind = false, $readFails = false, $rejectSubscription = false;
     public ?\Closure $duringCreate = null;
     public function methods(string $sequence, int $cents = 1): array
     {
@@ -14,6 +14,10 @@ final class FakeGateway implements Gateway
     }
     private function create(string $kind, array $body, string $key): array
     {
+        // Real Mollie rule, found in the live test: a mandate already decides the method.
+        if (isset($body['method'], $body['mandateId'])) {
+            throw new Failure('mollie_rejected', false, false, "Unprocessable Entity: The 'method' and 'mandateId' parameters are mutually exclusive.");
+        }
         $hash = hash('sha256', json_encode($body));
         if (isset($this->keys[$key])) {
             if ($this->keys[$key]['hash'] !== $hash) {
@@ -33,6 +37,9 @@ final class FakeGateway implements Gateway
             default => 'tr_',
         } . $this->calls[$kind];
         $row = $body + ['id' => $id, 'mode' => 'test', 'status' => $kind === 'subscription' ? 'active' : 'open', 'amountRefunded' => ['currency' => 'EUR', 'value' => '0.00'], 'amountChargedBack' => ['currency' => 'EUR', 'value' => '0.00']];
+        if ($kind === 'payment' && isset($body['mandateId'])) {
+            $row['method'] = 'directdebit';
+        }
         if ($kind === 'payment' && $body['sequenceType'] === 'first') {
             $row['checkout'] = 'https://www.mollie.com/checkout/' . $id;
         }
@@ -86,6 +93,9 @@ final class FakeGateway implements Gateway
     }
     public function createSubscription(string $customer, array $payload, string $key): array
     {
+        if ($this->rejectSubscription) {
+            throw new Failure('mollie_rejected', false, false, 'Veld: startDate — Unprocessable Entity: The start date is invalid');
+        }
         return $this->create('subscription', $payload + ['customerId' => $customer], $key);
     }
     public function subscription(string $customer, string $id): array
