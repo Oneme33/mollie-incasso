@@ -58,6 +58,20 @@ final class Notifications
             $this->queue->put($mode, 'mail', 'mail:' . $id, ['id' => $id]);
         });
     }
+    /** Plain test message so the site owner can check delivery and spam placement. */
+    public function testMail(string $to): bool
+    {
+        if (!is_email($to)) {
+            throw new Failure('mail_recipient_missing');
+        }
+        $text = __('Dit is een testmail van Mollie Incasso. Komt deze mail in uw inbox (en niet in spam), dan worden vooraankondigingen en bevestigingen waarschijnlijk ook goed afgeleverd.', 'mollie-incasso');
+        return $this->mail($to, __('Mollie Incasso: testmail', 'mollie-incasso'), $text, $this->headers());
+    }
+    /** True when another plugin configures PHPMailer (SMTP plugins such as WP Mail SMTP or FluentSMTP). */
+    public static function smtpConfigured(): bool
+    {
+        return has_action('phpmailer_init') !== false || defined('WPMS_PLUGIN_VER') || defined('FLUENTMAIL');
+    }
     /** wp_mail with the organisation as sender name, for these mails only. */
     private function mail(string $to, string $subject, string $text, array $headers): bool
     {

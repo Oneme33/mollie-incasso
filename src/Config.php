@@ -4,13 +4,63 @@ namespace Lukraak\MollieIncasso;
 
 final class Config
 {
+    /**
+     * Live is the default from 1.0; the test phase (test mode, test key, wiping test data) is an
+     * opt-in under Instellingen → Geavanceerd. Sites saved before 0.4 that run in test keep it on.
+     */
     public function settings(): array
     {
-        return wp_parse_args(get_option('mi_settings', []), ['mode' => 'test', 'organization' => '', 'address' => '', 'contact' => '', 'privacy_url' => '', 'notifications' => 1, 'cleanup' => 0, 'retention_days' => 2555, 'webhook_url' => '']);
+        $stored = get_option('mi_settings', []);
+        $stored = is_array($stored) ? $stored : [];
+        if (isset($stored['mode']) && !array_key_exists('test_tools', $stored)) {
+            $stored['test_tools'] = $stored['mode'] === 'test' ? 1 : 0;
+        }
+        $settings = wp_parse_args($stored, ['mode' => 'live', 'test_tools' => 0, 'organization' => '', 'address' => '', 'contact' => '', 'privacy_url' => '', 'notifications' => 1, 'cleanup' => 0, 'retention_days' => 2555, 'webhook_url' => '']);
+        if ($settings['mode'] === 'test') {
+            $settings['test_tools'] = 1;
+        }
+        return $settings;
     }
     public function mode(): string
     {
-        return $this->settings()['mode'] === 'live' ? 'live' : 'test';
+        return $this->settings()['mode'] === 'test' ? 'test' : 'live';
+    }
+    /**
+     * Live is released by an administrator in the plugin ("Live activeren"), bound to the URL
+     * and path of this site, or by MOLLIE_INCASSO_ALLOW_LIVE=true on the server. It is never released on a site
+     * marked staging/development/local, on a copied site, or when MOLLIE_INCASSO_ALLOW_LIVE=false.
+     */
+    public function liveReleased(): bool
+    {
+        if (wp_get_environment_type() !== 'production' || $this->liveBrake()) {
+            return false;
+        }
+        $site = $this->settingSecret('MOLLIE_INCASSO_LIVE_SITE');
+        if ($site !== '' && rtrim($site, '/') !== rtrim(home_url(), '/')) {
+            return false;
+        }
+        if (defined('MOLLIE_INCASSO_ALLOW_LIVE') && MOLLIE_INCASSO_ALLOW_LIVE === true) {
+            return true;
+        }
+        $activation = $this->liveActivation();
+        return $activation !== null && hash_equals((string) $activation['binding'], $this->binding());
+    }
+    /** Server emergency brake: MOLLIE_INCASSO_ALLOW_LIVE set to false (constant or environment). */
+    public function liveBrake(): bool
+    {
+        if (defined('MOLLIE_INCASSO_ALLOW_LIVE')) {
+            return MOLLIE_INCASSO_ALLOW_LIVE === false;
+        }
+        return in_array(strtolower(trim((string) getenv('MOLLIE_INCASSO_ALLOW_LIVE'))), ['0', 'false', 'no', 'off'], true);
+    }
+    public function liveActivation(): ?array
+    {
+        $activation = get_option('mi_live_activation', null);
+        return is_array($activation) && !empty($activation['binding']) ? $activation : null;
+    }
+    public function testTools(): bool
+    {
+        return !empty($this->settings()['test_tools']);
     }
     public function assertRun(string $mode, bool $write = false): void
     {
@@ -23,7 +73,7 @@ final class Config
         if (!hash_equals((string) get_option('mi_site_binding', ''), $this->binding())) {
             throw new Failure('site_copy_blocked');
         }
-        if ($mode === 'live' && (wp_get_environment_type() !== 'production' || !defined('MOLLIE_INCASSO_ALLOW_LIVE') || MOLLIE_INCASSO_ALLOW_LIVE !== true || !$this->settingSecret('MOLLIE_INCASSO_LIVE_SITE') || rtrim($this->settingSecret('MOLLIE_INCASSO_LIVE_SITE'), '/') !== rtrim(home_url(), '/'))) {
+        if ($mode === 'live' && !$this->liveReleased()) {
             throw new Failure('live_disabled');
         }
         if ($write && $mode === 'live' && !is_ssl() && PHP_SAPI !== 'cli') {

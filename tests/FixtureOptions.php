@@ -32,6 +32,16 @@ final class FixtureOptions
             return $old;
         };
         add_filter('pre_update_option_' . $key, self::$updates[$key], 10, 2);
+        if (!has_action('delete_option', [self::class, 'deleted'])) {
+            add_action('delete_option', [self::class, 'deleted']);
+        }
+    }
+    /** A scoped option that code deletes reads as absent for the rest of the request. */
+    public static function deleted(string $key): void
+    {
+        if (array_key_exists($key, self::$filters)) {
+            self::$values[$key] = null;
+        }
     }
     public static function finish(): void
     {
@@ -41,6 +51,7 @@ final class FixtureOptions
         foreach (self::$updates as $key => $filter) {
             remove_filter('pre_update_option_' . $key, $filter);
         }
+        remove_action('delete_option', [self::class, 'deleted']);
         self::$updates = [];
         self::$filters = [];
         self::$values = [];

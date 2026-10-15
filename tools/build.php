@@ -5,7 +5,7 @@ date_default_timezone_set('UTC');
 if (PHP_VERSION_ID < 80200 || !class_exists(ZipArchive::class)) { throw new RuntimeException('PHP 8.2+ and ext-zip required.'); }
 $root = dirname(__DIR__);
 $composer = $argv[1] ?? 'composer';
-$out = $argv[2] ?? $root.'/dist/mollie-incasso-0.3.3.zip';
+$out = $argv[2] ?? $root.'/dist/mollie-incasso-0.5.0.zip';
 $build = $root.'/.build';
 function run(array $args, string $cwd): void {
     $process = proc_open(implode(' ',array_map('escapeshellarg',$args)),[0=>STDIN,1=>STDOUT,2=>STDERR],$pipes,$cwd);

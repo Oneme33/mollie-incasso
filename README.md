@@ -1,4 +1,4 @@
-# Mollie Incasso — testversie 0.3.3
+# Mollie Incasso — versie 0.5.0
 
 Zelfstandige WordPress-plugin voor één organisatie en één Mollie-profiel. Nederlandse, vertaalbare interface, werkt zelfstandig, met een optionele WooCommerce-checkout; geen WooCommerce Subscriptions of externe abonnementendienst nodig. Eerste iDEAL-betaling: **€ 0,01**, expliciet `sequenceType=first` bij een nieuwe, lokaal gekoppelde Mollie Customer. Alleen een betaald verificatieverzoek en een geldig `directdebit`-mandaat activeren toestemming. De eurocent blijft bij de organisatie, is geen abonnementsperiode en wordt niet stilzwijgend verrekend of terugbetaald.
 
@@ -15,11 +15,11 @@ Zelfstandige WordPress-plugin voor één organisatie en één Mollie-profiel. Ne
 
 ## Installeren
 
-1. Upload `mollie-incasso-0.3.3.zip` via **Plugins → Nieuwe plugin → Plugin uploaden**. Bij een update kiest u de bestaande plugin te vervangen; verwijderen is niet nodig.
-2. Open **Mollie Incasso → Installatiehulp**. Stap 1: organisatie en contactgegevens. Stap 2: plak uw eigen `test_…` API-key uit Mollie Dashboard → Developers → API keys, sla op en controleer de betaalmethodes. Extra serverconfiguratie is voor normale opslag niet nodig; zie hieronder.
+1. Upload `mollie-incasso-0.5.0.zip` via **Plugins → Nieuwe plugin → Plugin uploaden**. Bij een update kiest u de bestaande plugin te vervangen; verwijderen is niet nodig.
+2. Open **Mollie Incasso → Installatiehulp**. Stap 1: organisatie en contactgegevens. Stap 2: plak uw `live_…` API-key uit Mollie Dashboard → Developers → API keys en klik op **Live activeren** (de plugin controleert eerst bij Mollie of iDEAL en SEPA-incasso live beschikbaar zijn). **Eerst risicoloos testen?** Zet onder **Instellingen → Geavanceerd → Testfase gebruiken** aan; dan kunt u een `test_…`-key gebruiken, naar testmodus schakelen en testgegevens wissen.
 3. Stap 3: geef het eerste abonnement een naam (bijvoorbeeld ‘GCC doorlopend abonnement’), bedrag en maand/kwartaal/jaar. Controleer de zichtbare voorbeeldtekst van de incassoafspraak en pas die aan. De wizard kiest automatisch starten met 14 dagen vooraankondiging. U kunt meerdere abonnementen toevoegen; bestaande afspraken blijven aan hun eigen versie gekoppeld.
 4. Stap 4: kies **aanmelden op een gewone pagina** of **via een WooCommerce-product**. Voor een pagina kunt u de shortcode kopiëren of een conceptpagina maken. Voor de winkel kunt u per regeling een eenvoudig virtueel product als concept klaarzetten. Herhaald klikken opent dezelfde pagina/product. Controleer het concept en publiceer het daarna.
-5. Test de gekozen route op HTTPS met de eigen Mollie-testkey, inclusief betaling, machtiging, webhooks, mail, cron en abonnement. De wizard is optioneel: geavanceerde regelingen en losse incasso’s blijven via Instellingen beschikbaar. De wizard publiceert niets en schakelt live niet automatisch in.
+5. Test de gekozen route bij voorkeur eerst in de testfase op HTTPS met de eigen Mollie-testkey, inclusief betaling, machtiging, webhooks, mail, cron en abonnement. Wis daarna de testgegevens en zet de testfase uit. De wizard is optioneel: geavanceerde regelingen en losse incasso’s blijven via Instellingen beschikbaar. De wizard publiceert niets.
 
 ### Aanmelden via WooCommerce
 
@@ -110,19 +110,17 @@ Zakelijke opdrachten hebben database-unieke referenties en idempotency-keys. Tra
 
 **Mollie bewaart idempotency slechts één uur, gekoppeld aan credentials.** Na een onzekere verzending zoekt de plugin eerst op eigen metadata. Bij geen gevonden resource na 55 minuten of na key-wijziging blokkeert hij een nieuwe create. Controleer zo’n opdracht en het betreffende profiel handmatig; herstel van een job omzeilt die blokkade niet. Er is geen knop die zonder bewijs een onbekende uitkomst als mislukt bestempelt. Een beheerder kan definitieve afhandeling pas na onderzoek via een gecontroleerde gegevenscorrectie door een ontwikkelaar laten vastleggen.
 
-WP-Cron hangt af van bezoek. Gebruik op de server bijvoorbeeld elke minuut:
+De achtergrondtaken draaien op de gewone WordPress-planning (WP-Cron), net als bij WooCommerce: die start bij websitebezoek, en elke Mollie-webhook telt ook als bezoek. Mollie voert abonnementstermijnen zelf uit; alleen vooraankondigingen, losse incasso’s en statuscontroles wachten op de planning en kunnen op een rustige site enkele uren later gaan, ruim binnen de vooraankondigingstermijn. Een server-cron is daarom **niet verplicht**. Diagnose waarschuwt als de taken langer dan drie uur niet hebben gedraaid. Wie het strakker wil, laat de hosting elke 5 minuten `wp-cron.php` aanroepen of gebruikt WP-CLI:
 
 ```cron
-* * * * * cd /pad/naar/wordpress && /usr/local/bin/wp cron event run --due-now --quiet >> /pad/buiten/webroot/wp-cron.log 2>&1
+*/5 * * * * cd /pad/naar/wordpress && wp cron event run --due-now --quiet
 ```
-
-Met een betrouwbare server-cron kan `DISABLE_WP_CRON` op true.
 
 Het uurlijkse onderhoud is een vangnet naast de webhooks en spreidt het werk over de dag: actieve klanten krijgen één mandaatcontrole per dag (in een vast uur per klant), klanten die op een geldige machtiging wachten elk uur. Afgehaakte of mislukte aanmeldingen (geen betaalde verificatie) worden niet meer voor mandaten gepolld; hun openstaande verificatiebetaling wordt gecontroleerd tot ze verloopt. Betalingen worden dagelijks gecontroleerd tot 70 dagen oud en daarna wekelijks tot 13 maanden (stornering). Afgehandelde taken ouder dan 30 dagen worden opgeruimd. `wp mollie-incasso queue` verwerkt de beperkte queue direct. Houd Diagnose in de gaten: mislukte taken, onzekere opdrachten, verzendfouten en laatste run. Een moduswissel blokkeert lokale verwerking van de andere modus; **externe Mollie-abonnementen blijven bestaan**.
 
 ## Mail en vooraankondiging
 
-Plugin-mails gebruiken de organisatienaam als afzendernaam. Datums volgen de taal van de plugin-teksten: Nederlands zolang er geen vertaling is geladen. Voor betrouwbare aflevering is geauthenticeerde SMTP (SPF/DKIM voor het afzenderdomein) sterk aanbevolen; zonder die instelling kunnen bevestigingen in spam belanden, zoals in de online test van 14 oktober 2026.
+Plugin-mails gebruiken de organisatienaam als afzendernaam. Datums volgen de taal van de plugin-teksten: Nederlands zolang er geen vertaling is geladen. **Aflevering is de verantwoordelijkheid van de website-eigenaar**, net als bij WooCommerce-mails. Diagnose geeft advies, met links naar [WP Mail SMTP](https://wordpress.org/plugins/wp-mail-smtp/) en [FluentSMTP](https://wordpress.org/plugins/fluent-smtp/), herkent een actieve SMTP-koppeling en heeft een knop **Testmail naar mijzelf versturen**. Zonder geauthenticeerde verzending (SPF/DKIM) kunnen bevestigingen in spam belanden, zoals in de online test van 14 oktober 2026.
 
 Toestemming, abonnement, beëindiging en vooraankondigingen gebruiken een duurzame outbox met unieke gebeurtenissleutels. Betaalstatusmails zijn optioneel. Standaard termijn: **14 kalenderdagen**; een andere termijn vraagt een expliciete bevestiging van een afwijkende klantafspraak in de regeling. Beoordeel teksten, termijn, SEPA-verplichtingen en consumentenrechten vóór livegang. De voorbeeldtekst is geen verklaring van juridische geschiktheid.
 
@@ -136,16 +134,18 @@ De vooraankondigingstermijn is bij maandelijkse abonnementen maximaal 21 dagen, 
 
 ## Test/live, staging en kopieën
 
-Test is de standaard. Records, tokens, keys en jobs zijn per mode gescheiden. Live werkt alleen wanneer alle volgende voorwaarden gelden:
+**Live is de standaard** voor nieuwe installaties. De testfase (testmodus, testkey en testgegevens wissen) is een keuze onder **Instellingen → Geavanceerd**, standaard uit; installaties die vóór 0.4 in testmodus stonden houden de testfase aan. Records, tokens, keys en jobs zijn per mode gescheiden.
+
+**Live activeren** (Instellingen of installatiehulp, vanaf 0.5): vul de livekey in, vink aan dat er vanaf nu echt geld wordt geïncasseerd en klik op **Live activeren**. De plugin controleert met de livekey of Mollie iDEAL en SEPA-incasso live aanbiedt; lukt dat niet, dan verandert er niets. De activering wordt met gebruiker en tijdstip vastgelegd en geldt alleen voor deze website op dit adres en serverpad. **Live uitschakelen** zet de site terug in de testfase; lopende Mollie-abonnementen blijven bestaan. Er is geen serverwerk nodig. Live is nooit mogelijk op een site met `WP_ENVIRONMENT_TYPE` staging/development/local of op een gekopieerde site. Optioneel voor beheerders:
 
 ```php
-define('WP_ENVIRONMENT_TYPE', 'production');
-define('MOLLIE_INCASSO_ALLOW_LIVE', true);
-define('MOLLIE_INCASSO_LIVE_SITE', 'https://uw-productiesite.nl');
-define('MOLLIE_INCASSO_LIVE_KEY', getenv('MOLLIE_INCASSO_LIVE_KEY'));
+define('MOLLIE_INCASSO_ALLOW_LIVE', false); // noodrem: live altijd geblokkeerd
+define('MOLLIE_INCASSO_ALLOW_LIVE', true);  // live vrijgeven zonder activering in de plugin
+define('MOLLIE_INCASSO_LIVE_SITE', 'https://uw-productiesite.nl'); // live alleen op dit adres
+define('MOLLIE_INCASSO_LIVE_KEY', getenv('MOLLIE_INCASSO_LIVE_KEY')); // key buiten de database
 ```
 
-HTTPS is vereist voor live POST’s en voor alle webhookadressen. Een sitebinding op home-URL én serverpad blokkeert taken op een kopie; opnieuw binden zet de kopie in testmodus. Staging moet expliciet `WP_ENVIRONMENT_TYPE=staging` gebruiken, zonder livekey of live-vlag. Zet bij migraties/back-ups waar nodig `MOLLIE_INCASSO_DISABLED=true`. Een byte-identieke database/config-kopie onder exact dezelfde URL en hetzelfde pad is technisch niet te onderscheiden: zet altijd een stagingomgeving en veilige secrets op de kopie. Een moduswissel of deactivering stopt nooit externe abonnementen.
+HTTPS is vereist voor live POST’s en voor alle webhookadressen. Een sitebinding op home-URL én serverpad blokkeert taken op een kopie; bij (her)activatie of opnieuw binden gaat een kopie naar testmodus, met de testfase zichtbaar. De eerste activatie op een nieuwe site houdt de live-standaard. Staging moet expliciet `WP_ENVIRONMENT_TYPE=staging` gebruiken, zonder livekey of live-vlag. Zet bij migraties/back-ups waar nodig `MOLLIE_INCASSO_DISABLED=true`. Een byte-identieke database/config-kopie onder exact dezelfde URL en hetzelfde pad is technisch niet te onderscheiden: zet altijd een stagingomgeving en veilige secrets op de kopie. Een moduswissel of deactivering stopt nooit externe abonnementen.
 
 ## Privacy en opruimen
 
@@ -167,10 +167,10 @@ Ontwikkelmachine: PHP 8.2+, curl/openssl/zip, Composer. Hosting heeft **geen Com
 
 ```sh
 cd mollie-incasso
-php tools/build.php /absoluut/pad/composer.phar ../artifacts/mollie-incasso-0.3.3.zip
+php tools/build.php /absoluut/pad/composer.phar ../artifacts/mollie-incasso-0.5.0.zip
 ```
 
-Met Composer op PATH: `php tools/build.php composer` (standaarduitvoer: `dist/mollie-incasso-0.3.3.zip`). De build gebruikt uitsluitend locks (`install`, geen `update`), scoped alle productiecode, controleert de SDK/CA-bundle en PHP-syntax en maakt een ZIP met gesorteerde bestanden en vaste tijdstempels/rechten. De ZIP bevat geen devtools, eigen testfixtures, secrets of ongescopete autoloaders. Zelfde bron, locks en toolomgeving produceren dezelfde ZIP. Dependencies en `.build/` zijn gegenereerd en staan niet in Git.
+Met Composer op PATH: `php tools/build.php composer` (standaarduitvoer: `dist/mollie-incasso-0.5.0.zip`). De build gebruikt uitsluitend locks (`install`, geen `update`), scoped alle productiecode, controleert de SDK/CA-bundle en PHP-syntax en maakt een ZIP met gesorteerde bestanden en vaste tijdstempels/rechten. De ZIP bevat geen devtools, eigen testfixtures, secrets of ongescopete autoloaders. Zelfde bron, locks en toolomgeving produceren dezelfde ZIP. Dependencies en `.build/` zijn gegenereerd en staan niet in Git.
 
 In dit repository is de build getest in de bestaande PHP 8.2.29 Docker-omgeving. Kopieer de pluginbron naar een tijdelijke map onder de lokaal gemounte `plugins/`, voer daar het bovenstaande PHP-buildcommando uit en kopieer de ZIP terug naar `artifacts/`. Composer 2.10.3 is daarvoor lokaal gebruikt. De bronmap buiten `plugins/` is leidend.
 

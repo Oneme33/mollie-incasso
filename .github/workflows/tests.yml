@@ -52,6 +52,15 @@ jobs:
           coverage: none
       - name: Build scoped dependencies from the lock files
         run: php tools/build.php composer /tmp/mollie-incasso-ci.zip
+      - name: Make sure WP-CLI is available
+        # setup-php occasionally fails to provide wp-cli; fall back to the pinned official release.
+        run: |
+          if ! command -v wp >/dev/null; then
+            curl -sSfLo /tmp/wp-cli.phar https://github.com/wp-cli/wp-cli/releases/download/v2.11.0/wp-cli-2.11.0.phar
+            chmod +x /tmp/wp-cli.phar
+            sudo mv /tmp/wp-cli.phar /usr/local/bin/wp
+          fi
+          wp --version
       - name: Install WordPress and WooCommerce
         run: |
           wp core download --path="$WP_PATH" --version="${{ matrix.wp }}"

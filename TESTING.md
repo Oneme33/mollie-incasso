@@ -1,4 +1,4 @@
-# Testrapport — Mollie Incasso 0.3.3
+# Testrapport — Mollie Incasso 0.5.0
 
 Lokaal uitgevoerd op 13 en 14 oktober 2026: PHP 8.2.29, WordPress 6.8.1, bestaande Docker MySQL/InnoDB. Geen live geld, echte incasso of echte klantmail gebruikt. Dit rapport is geen productiecertificering.
 
@@ -88,6 +88,16 @@ Lokaal: `integration.php` **133**, `sdk.php` **24**, `secrets.php` **23**, `wooc
 
 Nieuwe knop in Diagnose. Getest: geweigerd buiten testmodus, verwijdert alle testrecords, laat liverecords ongemoeid. Daarnaast: de bedankpagina activeert een nog wachtende toestemming ook als de webhook de order al had afgerond (gereproduceerd uit de review van PR #2). Lokaal: `integration.php` **137**, `sdk.php` **24**, `secrets.php` **23**, `woocommerce.php` **73 klassiek en 73 HPOS**.
 
+## Live als standaard (0.4.0)
+
+Nieuwe installaties starten in live; de testfase staat onder Instellingen → Geavanceerd. Getest: verse installatie is live zonder testfase; een vóór 0.4 in test opgeslagen site houdt de testfase, een live-site niet; eerste activatie bindt de site en blijft live, een gekopieerde site valt terug naar test met zichtbare testfase; testfase aan maakt testmodus mogelijk; testfase uitzetten wordt in zijn geheel geweigerd zolang live niet is vrijgegeven; de live-instellingen tonen geen testkey of omgevingsschakelaar; de installatiehulp vraagt om de livekey en toont de ontbrekende `wp-config.php`-regels. Lokaal: `integration.php` **147**, `sdk.php` **24**, `secrets.php` **23**, `woocommerce.php` **73 klassiek en 73 HPOS**.
+
+## Live activeren, mailadvies en cron (0.5.0)
+
+Live wordt in de plugin geactiveerd in plaats van via `wp-config.php`. Getest: zonder activering geen live; een mislukte live-methodecontrole verandert niets; geslaagde activering schakelt naar live en staat live-API-gebruik toe; een activering van een andere site of ander pad geeft geen vrijgave; de serverrem `MOLLIE_INCASSO_ALLOW_LIVE=false` blokkeert altijd; uitschakelen zet de site terug in de testfase. De installatiehulp biedt Live activeren aan zonder wp-config-instructies. Testmail naar de beheerder werkt en weigert een ongeldig adres. Na review van PR #3: live wordt pas vrijgegeven ná een geslaagde alleen-lezen methodecontrole (tijdens de controle is live aantoonbaar niet vrijgegeven); een nieuwe live-installatie kan via het echte formulier de testfase aanzetten en haar instellingen opslaan vóór activering. Lokaal: `integration.php` **160**, `sdk.php` **26**, `secrets.php` **23**, `woocommerce.php` **73 klassiek en 73 HPOS**.
+
+Beheerschermen (0.5.0): Instellingen, Diagnose en het blok ‘Nieuwe incasso of vast abonnement’ bij Klanten zijn ingedeeld in inklapbare thema’s met een status in de kop; een thema met een probleem staat open. Diagnose begint met een overzicht van achtergrondtaken, e-mail en Mollie. Alle beheerschermen renderen in de tests; visueel gecontroleerd op 1280px.
+
 ## Wat online is aangetoond en wat nog open staat
 
 Online aangetoond (14–15 oktober 2026, WooCommerce-site, Mollie-testkey, echte webhooks, mail en cron): methodecontrole; betaalde, mislukte en verlopen € 0,01-verificatie; directe status op de bedankpagina; geldig mandaat; toestemmings-, vooraankondigings- en abonnementsmails; automatisch aangemaakt Mollie-abonnement (na de fix in 0.3.2); intrekken via de persoonlijke link met geannuleerd abonnement en ingetrokken mandaat; winkelwagenregels en toestemmingsplicht.
@@ -97,8 +107,8 @@ Nog niet aangetoond:
 1. Een door Mollie daadwerkelijk gegenereerde abonnementstermijn en een losse testincasso op de aanbieddatum (vereist wachten tot de startdatum).
 2. Mislukking en chargeback van een incasso, voor zover de testomgeving dat kan simuleren.
 3. Stoppen van alleen een abonnement (zonder intrekken), gedeeld mandaat en herstel na externe fouten in de echte omgeving.
-4. Geauthenticeerde SMTP (SPF/DKIM): zonder die instelling kwam een bevestiging in spam.
-5. Echte cron zonder sitebezoek, cache/firewall-instellingen en een veilige stagingkopie.
+4. Mailaflevering is de verantwoordelijkheid van de website-eigenaar (SMTP met SPF/DKIM aanbevolen; zonder kwam een bevestiging in spam). Diagnose geeft advies en een testmail.
+5. Gedrag op een zeer rustige site zonder server-cron (niet verplicht; Diagnose waarschuwt na drie uur), cache/firewall-instellingen en een veilige stagingkopie.
 6. Juridische beoordeling van toestemmingstekst, SEPA-voorwaarden en vooraankondigingstermijn; ook de taal van de teksten op een Engelstalige winkel.
 
 Geen live geld gebruiken voor deze acceptatie. Schakel live pas afzonderlijk in na succesvolle externe tests en operationele afspraken.

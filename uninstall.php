@@ -27,7 +27,7 @@ try {
 foreach (['customers', 'consents', 'schemes', 'mandates', 'commands', 'payments', 'subscriptions', 'tokens', 'jobs', 'notifications', 'limits', 'checkouts'] as $table) {
     $plugin->store->query('DROP TABLE IF EXISTS ' . $plugin->store->table($table));
 }
-foreach (['mi_settings', 'mi_schema', 'mi_instance', 'mi_site_binding', 'mi_secret_test', 'mi_secret_live', 'mi_last_tick', 'mi_cron_error', 'mi_cleanup_blocked', 'mi_last_webhook_test', 'mi_last_webhook_live', 'mi_methods_test', 'mi_methods_live'] as $key) {
+foreach (['mi_settings', 'mi_schema', 'mi_instance', 'mi_site_binding', 'mi_secret_test', 'mi_secret_live', 'mi_last_tick', 'mi_cron_error', 'mi_cleanup_blocked', 'mi_last_webhook_test', 'mi_last_webhook_live', 'mi_methods_test', 'mi_methods_live', 'mi_live_activation'] as $key) {
     delete_option($key);
 }
 get_role('administrator')?->remove_cap('manage_mollie_incasso');
