@@ -573,7 +573,9 @@ final class Admin
             }
             echo '</td></tr>';
         }
-        echo '</tbody></table></div><h2>' . esc_html__('Nieuwe incasso of vast abonnement', 'mollie-incasso') . '</h2>';
+        echo '</tbody></table></div>';
+        $activeCustomers = (int) ($this->p->store->select('SELECT COUNT(*) AS n FROM ' . $this->p->store->table('customers') . ' WHERE mode=%s AND status="active"', [$mode])[0]['n'] ?? 0);
+        $this->section(__('Nieuwe incasso of vast abonnement', 'mollie-incasso'), sprintf(_n('%d klant kan worden geïncasseerd', '%d klanten kunnen worden geïncasseerd', $activeCustomers, 'mollie-incasso'), $activeCustomers), isset($_GET['mi_error']));
         $this->help(__('U bereidt hier alleen een opdracht voor. Op het volgende scherm controleert u klant, bedrag en doel; pas na bevestiging wordt de vooraankondiging verzonden.', 'mollie-incasso'));
         $this->start('prepare');
         echo '<label>' . esc_html__('Klant en geaccepteerde regeling', 'mollie-incasso') . '<select name="customer" required>';
@@ -587,6 +589,7 @@ final class Admin
         $this->help(__('Losse incasso: u kiest één bedrag en datum. Vast abonnement: Mollie incasseert het afgesproken bedrag elke maand, elk kwartaal of elk jaar.', 'mollie-incasso'));
         $this->help(__('Kies een toekomstige datum die past bij de afgesproken vooraankondigingstermijn, standaard 14 dagen. Een abonnement begint niet op de verificatiedag.', 'mollie-incasso'));
         $this->end('Opdracht controleren', true);
+        $this->sectionEnd();
     }
     private function commands(): void
     {
@@ -661,10 +664,10 @@ final class Admin
         echo '</tbody></table></div>';
     }
     /** "Live activeren": status, requirements and the confirmation form; shared by settings and setup. */
-    private function livePanel(string $returnView): void
+    private function livePanel(string $returnView, bool $heading = true): void
     {
         $config = $this->p->config;
-        echo '<div class="mi-live-panel" id="mi-live"><h2>' . esc_html__('Live activeren', 'mollie-incasso') . '</h2>';
+        echo '<div class="mi-live-panel" id="mi-live">' . ($heading ? '<h2>' . esc_html__('Live activeren', 'mollie-incasso') . '</h2>' : '');
         if ($config->liveReleased() && $config->mode() === 'live') {
             $activation = $config->liveActivation();
             $user = $activation ? get_userdata((int) $activation['user']) : null;
@@ -700,6 +703,15 @@ final class Admin
         $this->end('Live activeren', true);
         echo '</div>';
     }
+    /** Collapsible themed block; open when it needs attention, with a short status in the header. */
+    private function section(string $title, string $status = '', bool $open = false, string $tone = ''): void
+    {
+        echo '<details class="mi-section' . ($tone ? ' mi-section--' . esc_attr($tone) : '') . '"' . ($open ? ' open' : '') . '><summary><span class="mi-section-title">' . esc_html($title) . '</span>' . ($status !== '' ? '<span class="mi-section-status">' . esc_html($status) . '</span>' : '') . '</summary><div class="mi-section-body">';
+    }
+    private function sectionEnd(): void
+    {
+        echo '</div></details>';
+    }
     private function settings(): void
     {
         if (!current_user_can('manage_options')) {
@@ -707,37 +719,66 @@ final class Admin
             return;
         }
         $s = $this->p->config->settings();
-        $this->start('settings');
-        echo '<h2>' . esc_html__('Account en organisatie', 'mollie-incasso') . '</h2>';
-        if (!empty($s['test_tools'])) {
-            echo '<label>' . esc_html__('Omgeving', 'mollie-incasso') . '<select name="target_mode"><option value="test" ' . selected($s['mode'], 'test', false) . '>' . esc_html__('Test — geen echt geld', 'mollie-incasso') . '</option><option value="live" ' . selected($s['mode'], 'live', false) . '>' . esc_html__('Live — echte betalingen', 'mollie-incasso') . '</option></select></label><p>' . esc_html__('Test gebruikt nagebootste betalingen. Voor live zijn een livekey en vrijgave op de productiesite nodig. Wisselen stopt geen bestaande Mollie-abonnementen.', 'mollie-incasso') . '</p>';
-        } else {
-            echo '<input type="hidden" name="target_mode" value="live"><p><strong>' . esc_html__('Omgeving: live — echte betalingen.', 'mollie-incasso') . '</strong> ' . esc_html__('Eerst risicoloos testen? Zet onder Geavanceerd de testfase aan.', 'mollie-incasso') . '</p>';
-        }
-        foreach (['organization' => 'Organisatienaam', 'address' => 'Adres en organisatiegegevens', 'contact' => 'Contact en intrekken', 'privacy_url' => 'URL privacyverklaring', 'webhook_url' => 'HTTPS-webhookoverride voor reverse proxy (optioneel)', 'retention_days' => 'Bewaartermijn in dagen'] as $key => $label) {
-            echo '<label>' . esc_html__($label, 'mollie-incasso') . '<input name="' . esc_attr($key) . '" value="' . esc_attr((string) $s[$key]) . '"></label>';
-        }
-        foreach (!empty($s['test_tools']) ? ['test', 'live'] : ['live'] as $mode) {
-            $configured = $this->p->config->settingSecret('MOLLIE_INCASSO_' . strtoupper($mode) . '_KEY') || get_option('mi_secret_' . $mode);
-            echo '<label>' . esc_html(sprintf(__('Nieuwe %s API-key (leeg = behouden)', 'mollie-incasso'), $mode)) . '<input type="password" name="key_' . esc_attr($mode) . '" value="" autocomplete="new-password" placeholder="' . esc_attr($configured ? '•••••••• — ' . __('ingesteld', 'mollie-incasso') : __('niet ingesteld', 'mollie-incasso')) . '"></label><label><input type="checkbox" name="delete_' . $mode . '" value="1">' . esc_html(sprintf(__('Opgeslagen %s-key verwijderen (omgeving/config blijft leidend)', 'mollie-incasso'), $mode)) . '</label>';
-        }
-        $this->keyHelp();
-        foreach (['notifications' => 'Statusmails voor betalingen', 'cleanup' => 'Bij uninstall opruimen, uitsluitend wanneer extern veilig en bewaarbeleid dit toestaat'] as $key => $label) {
-            echo '<label><input type="checkbox" name="' . $key . '" value="1" ' . checked((bool) $s[$key], true, false) . '>' . esc_html__($label, 'mollie-incasso') . '</label>';
-        }
-        echo '<details class="mi-advanced"' . (!empty($s['test_tools']) ? ' open' : '') . '><summary>' . esc_html__('Geavanceerd', 'mollie-incasso') . '</summary><label><input type="checkbox" name="test_tools" value="1" ' . checked(!empty($s['test_tools']), true, false) . '>' . esc_html__('Testfase gebruiken: testmodus met een Mollie-testkey, en testgegevens kunnen wissen (onder Diagnose).', 'mollie-incasso') . '</label><p class="mi-help">' . esc_html__('Uitzetten kan alleen als live op deze site is vrijgegeven; de plugin gaat dan naar live.', 'mollie-incasso') . '</p></details>';
-        $this->end('Instellingen opslaan', true);
-        $this->livePanel('settings');
-        if (get_option('mi_site_binding') !== $this->p->config->binding()) {
+        $config = $this->p->config;
+        if (get_option('mi_site_binding') !== $config->binding()) {
+            echo '<div class="notice notice-warning inline"><p>' . esc_html(Plugin::message('site_copy_blocked')) . '</p></div>';
             $this->quick('bind', 0, 'Deze installatie binden en naar testmodus zetten');
         }
+        $keyFor = function (string $mode) use ($config): bool {
+            return $config->settingSecret('MOLLIE_INCASSO_' . strtoupper($mode) . '_KEY') !== '' || (bool) get_option('mi_secret_' . $mode);
+        };
+        $this->start('settings');
+        // Organisatie
+        $orgReady = $s['organization'] !== '' && $s['contact'] !== '';
+        $this->section(__('Organisatie', 'mollie-incasso'), $orgReady ? $s['organization'] : __('Nog invullen', 'mollie-incasso'), !$orgReady, $orgReady ? '' : 'attention');
+        $this->help(__('Deze gegevens staan in de incassoafspraak die klanten accepteren en in de mails.', 'mollie-incasso'));
+        foreach (['organization' => 'Organisatienaam', 'address' => 'Adres en organisatiegegevens', 'contact' => 'Contact en intrekken', 'privacy_url' => 'URL privacyverklaring'] as $key => $label) {
+            echo '<label>' . esc_html__($label, 'mollie-incasso') . '<input name="' . esc_attr($key) . '" value="' . esc_attr((string) $s[$key]) . '"></label>';
+        }
+        $this->sectionEnd();
+        // Mollie-koppeling
+        $modes = !empty($s['test_tools']) ? ['test', 'live'] : ['live'];
+        $currentKey = $keyFor($config->mode());
+        $this->section(__('Mollie-koppeling', 'mollie-incasso'), ($config->mode() === 'test' ? __('Testmodus', 'mollie-incasso') : __('Live', 'mollie-incasso')) . ' · ' . ($currentKey ? __('API-key ingesteld', 'mollie-incasso') : __('API-key ontbreekt', 'mollie-incasso')), !$currentKey, $currentKey ? '' : 'attention');
+        if (!empty($s['test_tools'])) {
+            echo '<label>' . esc_html__('Omgeving', 'mollie-incasso') . '<select name="target_mode"><option value="test" ' . selected($s['mode'], 'test', false) . '>' . esc_html__('Test — geen echt geld', 'mollie-incasso') . '</option><option value="live" ' . selected($s['mode'], 'live', false) . '>' . esc_html__('Live — echte betalingen', 'mollie-incasso') . '</option></select></label><p class="mi-help">' . esc_html__('Wisselen stopt geen bestaande Mollie-abonnementen. Naar live gaat via ‘Live activeren’.', 'mollie-incasso') . '</p>';
+        } else {
+            echo '<input type="hidden" name="target_mode" value="live"><p>' . esc_html__('Omgeving: live — echte betalingen. Eerst risicoloos testen? Zet onder Geavanceerd de testfase aan.', 'mollie-incasso') . '</p>';
+        }
+        foreach ($modes as $mode) {
+            echo '<label>' . esc_html(sprintf(__('Nieuwe %s API-key (leeg = behouden)', 'mollie-incasso'), $mode)) . '<input type="password" name="key_' . esc_attr($mode) . '" value="" autocomplete="new-password" placeholder="' . esc_attr($keyFor($mode) ? '•••••••• — ' . __('ingesteld', 'mollie-incasso') : __('niet ingesteld', 'mollie-incasso')) . '"></label><label><input type="checkbox" name="delete_' . $mode . '" value="1">' . esc_html(sprintf(__('Opgeslagen %s-key verwijderen (omgeving/config blijft leidend)', 'mollie-incasso'), $mode)) . '</label>';
+        }
+        $this->keyHelp();
+        $this->sectionEnd();
+        // Meldingen en bewaren
+        $this->section(__('Meldingen en bewaren', 'mollie-incasso'), sprintf(__('Statusmails %1$s · bewaartermijn %2$d dagen', 'mollie-incasso'), $s['notifications'] ? __('aan', 'mollie-incasso') : __('uit', 'mollie-incasso'), (int) $s['retention_days']));
+        echo '<label><input type="checkbox" name="notifications" value="1" ' . checked((bool) $s['notifications'], true, false) . '>' . esc_html__('Statusmails voor betalingen', 'mollie-incasso') . '</label>';
+        echo '<label>' . esc_html__('Bewaartermijn in dagen', 'mollie-incasso') . '<input name="retention_days" value="' . esc_attr((string) $s['retention_days']) . '"></label>';
+        echo '<label><input type="checkbox" name="cleanup" value="1" ' . checked((bool) $s['cleanup'], true, false) . '>' . esc_html__('Bij uninstall opruimen, uitsluitend wanneer extern veilig en bewaarbeleid dit toestaat', 'mollie-incasso') . '</label>';
+        $this->sectionEnd();
+        // Geavanceerd
+        $this->section(__('Geavanceerd', 'mollie-incasso'), !empty($s['test_tools']) ? __('Testfase aan', 'mollie-incasso') : '');
+        echo '<label><input type="checkbox" name="test_tools" value="1" ' . checked(!empty($s['test_tools']), true, false) . '>' . esc_html__('Testfase gebruiken: testmodus met een Mollie-testkey, en testgegevens kunnen wissen (onder Diagnose).', 'mollie-incasso') . '</label><p class="mi-help">' . esc_html__('Uitzetten kan alleen als live op deze site is vrijgegeven; de plugin gaat dan naar live.', 'mollie-incasso') . '</p>';
+        echo '<label>' . esc_html__('HTTPS-webhookoverride voor reverse proxy (optioneel)', 'mollie-incasso') . '<input name="webhook_url" value="' . esc_attr((string) $s['webhook_url']) . '"></label>';
+        $this->sectionEnd();
+        $this->end('Instellingen opslaan', true);
+        // Live activeren (own form)
+        $liveActive = $config->mode() === 'live' && $config->liveReleased();
+        $this->section(__('Live activeren', 'mollie-incasso'), $liveActive ? __('Actief', 'mollie-incasso') : __('Niet geactiveerd', 'mollie-incasso'), isset($_GET['mi_live']) || ($config->mode() === 'live' && !$liveActive), $liveActive ? 'ok' : '');
+        $this->livePanel('settings', false);
+        $this->sectionEnd();
+        // Regelingen
+        $schemes = $this->p->store->rows('schemes', $config->mode());
+        $active = count(array_filter($schemes, fn($row) => (int) $row['active'] === 1));
+        $this->section(__('Regelingen', 'mollie-incasso'), sprintf(_n('%d actieve regeling', '%d actieve regelingen', $active, 'mollie-incasso'), $active), $active === 0, $active === 0 ? 'attention' : '');
         $this->help(__('Een regeling beschrijft waarvoor, hoeveel en wanneer een klant toestemming geeft. De naam is zichtbaar in het aanmeldformulier. Gebruik een nieuwe versie als de afspraken veranderen.', 'mollie-incasso'));
-        echo '<h2 id="mi-regelingen">' . esc_html__('Regelingen', 'mollie-incasso') . '</h2><div class="mi-scroll"><table class="widefat striped"><thead><tr><th>' . esc_html__('Naam / versie', 'mollie-incasso') . '</th><th>' . esc_html__('Bedrag / type', 'mollie-incasso') . '</th><th>Shortcode</th></tr></thead><tbody>';
-        foreach ($this->p->store->rows('schemes', $this->p->config->mode()) as $row) {
+        echo '<div class="mi-scroll" id="mi-regelingen"><table class="widefat striped"><thead><tr><th>' . esc_html__('Naam / versie', 'mollie-incasso') . '</th><th>' . esc_html__('Bedrag / type', 'mollie-incasso') . '</th><th>Shortcode</th></tr></thead><tbody>';
+        foreach ($schemes as $row) {
             $data = json_decode($row['data'], true);
             echo '<tr><td>' . esc_html($data['name'] . ' v' . $row['version'] . ($row['active'] ? '' : ' — ' . __('archief', 'mollie-incasso'))) . '</td><td>' . esc_html(Money::eur($data['amount']) . ' / ' . Plugin::kind($data['type'])) . '</td><td><code>' . esc_html('[mollie_incasso regeling="' . $row['id'] . '"]') . '</code></td></tr>';
         }
-        echo '</tbody></table></div><h3>' . esc_html__('Nieuwe regeling / nieuwe versie', 'mollie-incasso') . '</h3><p>' . esc_html__('Bestaande toestemming blijft aan de geaccepteerde versie gekoppeld. De voorbeeldteksten zijn een startpunt en moeten voor uw organisatie worden beoordeeld.', 'mollie-incasso') . '</p>';
+        echo '</tbody></table></div>';
+        echo '<details class="mi-subsection"' . ($active === 0 ? ' open' : '') . '><summary>' . esc_html__('Nieuwe regeling of nieuwe versie toevoegen', 'mollie-incasso') . '</summary><p>' . esc_html__('Bestaande toestemming blijft aan de geaccepteerde versie gekoppeld. De voorbeeldteksten zijn een startpunt en moeten voor uw organisatie worden beoordeeld.', 'mollie-incasso') . '</p>';
         $this->start('scheme');
         foreach (['slug' => ['Vaste regelingscode (dezelfde code maakt een nieuwe versie)', ''], 'name' => ['Naam', 'Lidmaatschap'], 'purpose' => ['Doel', 'Betaling voor het afgesproken lidmaatschap.'], 'amount' => ['Vast bedrag of maximaal bedrag bij losse incasso', '10.00'], 'calculation' => ['Bedrag / berekeningswijze', 'Het vooraf aangekondigde bedrag volgens onze overeenkomst.'], 'frequency' => ['Frequentie of aanleiding', 'Maandelijks, of uitsluitend na een afzonderlijke aankondiging conform de gekozen regeling.'], 'withdrawal' => ['Hoe toestemming kan worden ingetrokken', 'Via uw persoonlijke statuslink of door contact met ons op te nemen.'], 'consent' => ['Expliciete toestemmingstekst', 'Ik geef deze organisatie toestemming om de hiervoor beschreven bedragen via SEPA Direct Debit van mijn rekening te incasseren.'], 'notice_days' => ['Vooraankondiging in kalenderdagen', '14'], 'times' => ['Maximum aantal betalingen (optioneel, maximaal 10000)', '']] as $key => [$label, $default]) {
             echo '<label>' . esc_html__($label, 'mollie-incasso');
@@ -751,30 +792,74 @@ final class Admin
         echo '<label><input type="checkbox" name="auto_start" value="1" checked> ' . esc_html__('Vast abonnement automatisch starten na verificatie en geldige machtiging (alleen bij vast bedrag).', 'mollie-incasso') . '</label>';
         echo '<label>' . esc_html__('Type', 'mollie-incasso') . '<select name="type"><option value="manual">' . esc_html__('Losse incasso’s', 'mollie-incasso') . '</option><option value="fixed">' . esc_html__('Vast abonnement', 'mollie-incasso') . '</option></select></label><label>' . esc_html__('Vaste frequentie', 'mollie-incasso') . '<select name="interval"><option value="1 month">' . esc_html__('Maand', 'mollie-incasso') . '</option><option value="3 months">' . esc_html__('Kwartaal', 'mollie-incasso') . '</option><option value="12 months">' . esc_html__('Jaar', 'mollie-incasso') . '</option></select></label><label><input type="checkbox" name="notice_agreed" value="1">' . esc_html__('Een afwijkende vooraankondigingstermijn is expliciet met de klant afgesproken en opgenomen in deze regeling.', 'mollie-incasso') . '</label>';
         $this->end('Regeling opslaan', true);
+        echo '</details>';
+        $this->sectionEnd();
     }
     private function diagnostics(): void
     {
         $mode = $this->p->config->mode();
-        $this->help(__('Webhooks zijn statusmeldingen van Mollie. Achtergrondtaken controleren deze meldingen en versturen mails. Een mislukte taak kan hier opnieuw worden gecontroleerd; dat maakt niet automatisch een tweede incasso.', 'mollie-incasso'));
-        echo '<h2>' . esc_html__('Bereikbaarheid en achtergrondwerk', 'mollie-incasso') . '</h2>';
-        try {
-            $url = $this->p->config->webhook($mode);
-            echo '<p>Webhook: <code>' . esc_html($url) . '</code></p>';
-        } catch (Failure $e) {
-            echo '<p>' . esc_html(Plugin::message($e->reason)) . '</p>';
-        }
-        echo '<p>' . esc_html__('Deze URL moet extern via HTTPS bereikbaar zijn zonder login, caching of firewallblokkade. Alleen een geslaagde echte Mollie-test bevestigt bereikbaarheid.', 'mollie-incasso') . '</p><p>' . esc_html__('Laatste webhook:', 'mollie-incasso') . ' ' . esc_html((string) get_option('mi_last_webhook_' . $mode, '—')) . ' UTC</p><p>' . esc_html__('Laatste queue-run:', 'mollie-incasso') . ' ' . esc_html((string) get_option('mi_last_tick', '—')) . ' UTC</p>';
+        $jobs = $this->p->store->select('SELECT * FROM ' . $this->p->store->table('jobs') . ' WHERE mode=%s ORDER BY state="failed" DESC, id DESC LIMIT 100', [$mode]);
+        $mails = $this->p->store->select('SELECT * FROM ' . $this->p->store->table('notifications') . ' WHERE mode=%s ORDER BY state IN ("unknown","failed") DESC, id DESC LIMIT 100', [$mode]);
+        $failedJobs = count(array_filter($jobs, fn($job) => $job['state'] === 'failed'));
+        $mailProblems = count(array_filter($mails, fn($mail) => in_array($mail['state'], ['unknown', 'failed'], true)));
+        $lastTick = (string) get_option('mi_last_tick', '');
+        $tickLate = $lastTick === '' || strtotime($lastTick . ' UTC') < time() - 3 * HOUR_IN_SECONDS;
+        $lastWebhook = (string) get_option('mi_last_webhook_' . $mode, '');
         $methods = get_option('mi_methods_' . $mode, []);
+        $webhookError = '';
+        try {
+            $webhookUrl = $this->p->config->webhook($mode);
+        } catch (Failure $e) {
+            $webhookUrl = '';
+            $webhookError = Plugin::message($e->reason);
+        }
+        // At a glance
+        $tiles = [
+            [__('Achtergrondtaken', 'mollie-incasso'), $failedJobs ? sprintf(_n('%d mislukt', '%d mislukt', $failedJobs, 'mollie-incasso'), $failedJobs) : ($tickLate ? __('Lang niet gedraaid', 'mollie-incasso') : __('In orde', 'mollie-incasso')), $failedJobs || $tickLate],
+            [__('E-mail', 'mollie-incasso'), $mailProblems ? sprintf(_n('%d vraagt aandacht', '%d vragen aandacht', $mailProblems, 'mollie-incasso'), $mailProblems) : (Notifications::smtpConfigured() ? __('SMTP actief', 'mollie-incasso') : __('Geen SMTP herkend', 'mollie-incasso')), $mailProblems > 0],
+            [__('Mollie', 'mollie-incasso'), $webhookError !== '' ? __('Webhook-probleem', 'mollie-incasso') : ($lastWebhook !== '' ? sprintf(__('Laatste webhook %s', 'mollie-incasso'), Notifications::date($lastWebhook, true)) : __('Nog geen webhook ontvangen', 'mollie-incasso')), $webhookError !== ''],
+        ];
+        echo '<div class="mi-glance">';
+        foreach ($tiles as [$label, $value, $alert]) {
+            echo '<div class="mi-glance-tile' . ($alert ? ' mi-glance-tile--alert' : '') . '"><span>' . esc_html($label) . '</span><strong>' . esc_html($value) . '</strong></div>';
+        }
+        echo '</div>';
+        // Mollie and webhook
+        $this->section(__('Mollie en webhook', 'mollie-incasso'), $webhookError !== '' ? __('Webhook-probleem', 'mollie-incasso') : (!empty($methods['checked_at']) ? sprintf(__('Methodes gecontroleerd op %s', 'mollie-incasso'), Notifications::date($methods['checked_at'], true)) : __('Methodes nog niet gecontroleerd', 'mollie-incasso')), $webhookError !== '' || isset($_GET['mi_saved']) && empty($_GET['mi_testmail']) && empty($_GET['mi_wiped']), $webhookError !== '' ? 'attention' : '');
+        $this->help(__('Webhooks zijn statusmeldingen van Mollie. De URL moet extern via HTTPS bereikbaar zijn zonder login, caching of firewallblokkade.', 'mollie-incasso'));
+        echo $webhookUrl !== '' ? '<p>Webhook: <code>' . esc_html($webhookUrl) . '</code></p>' : '<p>' . esc_html($webhookError) . '</p>';
+        echo '<p>' . esc_html__('Laatste webhook:', 'mollie-incasso') . ' ' . esc_html($lastWebhook !== '' ? Notifications::date($lastWebhook, true) : '—') . '</p>';
         if (!empty($methods['checked_at'])) {
             echo '<p>' . esc_html(sprintf(__('Laatste methodecontrole (%1$s): eerste betaling %2$s; terugkerende incasso %3$s.', 'mollie-incasso'), Notifications::date($methods['checked_at'], true), implode(', ', $methods['first']), implode(', ', $methods['recurring']))) . '</p>';
         }
         $this->quick('diagnose', 0, 'Beschikbare iDEAL- en directdebit-methodes controleren');
-        $this->quick('queue', 0, 'Achtergrondwerk nu uitvoeren');
-        $lastTick = (string) get_option('mi_last_tick', '');
-        if ($lastTick === '' || strtotime($lastTick . ' UTC') < time() - 3 * HOUR_IN_SECONDS) {
+        $this->sectionEnd();
+        // Background tasks
+        $this->section(__('Achtergrondtaken', 'mollie-incasso'), $failedJobs ? sprintf(_n('%d mislukt', '%d mislukt', $failedJobs, 'mollie-incasso'), $failedJobs) : sprintf(__('Laatste run %s', 'mollie-incasso'), $lastTick !== '' ? Notifications::date($lastTick, true) : '—'), $failedJobs > 0 || $tickLate, $failedJobs || $tickLate ? 'attention' : '');
+        $this->help(__('Achtergrondtaken controleren webhooks, versturen mails en sturen opdrachten naar Mollie. Een mislukte taak opnieuw controleren maakt niet automatisch een tweede incasso.', 'mollie-incasso'));
+        if ($tickLate) {
             echo '<div class="notice notice-warning inline"><p>' . esc_html__('De achtergrondtaken hebben langer dan drie uur niet gedraaid. WordPress start ze alleen bij websitebezoek; op een rustige site kan dat uitlopen. Tip: laat uw hostingpartij elke 5 minuten wp-cron.php aanroepen (een ‘server-cron’). Dit is niet verplicht.', 'mollie-incasso') . '</p></div>';
         }
-        echo '<h2>' . esc_html__('E-mail', 'mollie-incasso') . '</h2>';
+        $error = get_option('mi_cron_error', []);
+        if ($error) {
+            echo '<p>' . esc_html(Plugin::message($error['reason'])) . ' — ' . esc_html($error['at']) . '</p>';
+        }
+        $this->quick('queue', 0, 'Achtergrondwerk nu uitvoeren');
+        echo '<div class="mi-scroll"><table class="widefat striped"><thead><tr><th>ID</th><th>' . esc_html__('Type / status', 'mollie-incasso') . '</th><th>' . esc_html__('Pogingen / eerstvolgende run', 'mollie-incasso') . '</th><th>' . esc_html__('Fout / herstel', 'mollie-incasso') . '</th></tr></thead><tbody>';
+        foreach ($jobs as $job) {
+            echo '<tr><td>' . (int) $job['id'] . '</td><td>' . esc_html(Plugin::kind($job['kind']) . ' / ' . Plugin::status($job['state'])) . '</td><td>' . (int) $job['attempts'] . ' / ' . esc_html(Notifications::date($job['run_at'], true)) . '</td><td>';
+            if ($job['error']) {
+                echo esc_html(Plugin::message($job['error']));
+            }
+            if ($job['state'] === 'failed') {
+                $this->quick('recover', (int) $job['id'], 'Taak opnieuw controleren');
+            }
+            echo '</td></tr>';
+        }
+        echo '</tbody></table></div>';
+        $this->sectionEnd();
+        // E-mail
+        $this->section(__('E-mail', 'mollie-incasso'), $mailProblems ? sprintf(_n('%d vraagt aandacht', '%d vragen aandacht', $mailProblems, 'mollie-incasso'), $mailProblems) : (Notifications::smtpConfigured() ? __('SMTP actief', 'mollie-incasso') : __('Geen SMTP herkend', 'mollie-incasso')), $mailProblems > 0 || isset($_GET['mi_testmail']), $mailProblems ? 'attention' : '');
         if (isset($_GET['mi_testmail'])) {
             echo '<p><strong>' . esc_html__('De testmail is door de mailserver geaccepteerd. Controleer of hij in uw inbox staat en niet in spam.', 'mollie-incasso') . '</strong></p>';
         }
@@ -784,24 +869,7 @@ final class Admin
             echo '<p>' . esc_html__('Vooraankondigingen zijn bij SEPA-incasso verplicht. Zonder geauthenticeerde verzending (SMTP met SPF/DKIM voor uw domein) belanden ze vaak in spam. Het instellen daarvan is de verantwoordelijkheid van de website-eigenaar; bijvoorbeeld met:', 'mollie-incasso') . ' <a href="https://wordpress.org/plugins/wp-mail-smtp/" target="_blank" rel="noopener noreferrer">WP Mail SMTP</a> ' . esc_html__('of', 'mollie-incasso') . ' <a href="https://wordpress.org/plugins/fluent-smtp/" target="_blank" rel="noopener noreferrer">FluentSMTP</a>.</p>';
         }
         $this->quick('test_mail', 0, 'Testmail naar mijzelf versturen');
-        $error = get_option('mi_cron_error', []);
-        if ($error) {
-            echo '<p>' . esc_html(Plugin::message($error['reason'])) . ' — ' . esc_html($error['at']) . '</p>';
-        }
-        echo '<h2>' . esc_html__('Taken', 'mollie-incasso') . '</h2><div class="mi-scroll"><table class="widefat striped"><thead><tr><th>ID</th><th>' . esc_html__('Type / status', 'mollie-incasso') . '</th><th>' . esc_html__('Pogingen / eerstvolgende run', 'mollie-incasso') . '</th><th>' . esc_html__('Fout / herstel', 'mollie-incasso') . '</th></tr></thead><tbody>';
-        $jobs = $this->p->store->select('SELECT * FROM ' . $this->p->store->table('jobs') . ' WHERE mode=%s ORDER BY state="failed" DESC, id DESC LIMIT 100', [$mode]);
-        foreach ($jobs as $job) {
-            echo '<tr><td>' . (int) $job['id'] . '</td><td>' . esc_html(Plugin::kind($job['kind']) . ' / ' . Plugin::status($job['state'])) . '</td><td>' . (int) $job['attempts'] . ' / ' . esc_html($job['run_at']) . ' UTC</td><td>';
-            if ($job['error']) {
-                echo esc_html(Plugin::message($job['error']));
-            }
-            if ($job['state'] === 'failed') {
-                $this->quick('recover', (int) $job['id'], 'Taak opnieuw controleren');
-            }
-            echo '</td></tr>';
-        }
-        echo '</tbody></table></div><h2>' . esc_html__('Meldingen en mailstatus', 'mollie-incasso') . '</h2><div class="mi-scroll"><table class="widefat striped"><thead><tr><th>' . esc_html__('Gebeurtenis', 'mollie-incasso') . '</th><th>' . esc_html__('Status', 'mollie-incasso') . '</th><th>' . esc_html__('Fout', 'mollie-incasso') . '</th><th>' . esc_html__('Afhandelen', 'mollie-incasso') . '</th></tr></thead><tbody>';
-        $mails = $this->p->store->select('SELECT * FROM ' . $this->p->store->table('notifications') . ' WHERE mode=%s ORDER BY state IN ("unknown","failed") DESC, id DESC LIMIT 100', [$mode]);
+        echo '<details class="mi-subsection"' . ($mailProblems ? ' open' : '') . '><summary>' . esc_html__('Verzonden meldingen', 'mollie-incasso') . '</summary><div class="mi-scroll"><table class="widefat striped"><thead><tr><th>' . esc_html__('Gebeurtenis', 'mollie-incasso') . '</th><th>' . esc_html__('Status', 'mollie-incasso') . '</th><th>' . esc_html__('Fout', 'mollie-incasso') . '</th><th>' . esc_html__('Afhandelen', 'mollie-incasso') . '</th></tr></thead><tbody>';
         foreach ($mails as $mail) {
             echo '<tr><td>' . esc_html($mail['event_key']) . '</td><td>' . esc_html(Plugin::status($mail['state'])) . '</td><td>' . esc_html($mail['error'] ? Plugin::message($mail['error']) : '') . '</td><td>';
             if (in_array($mail['state'], ['unknown', 'failed'], true)) {
@@ -812,9 +880,11 @@ final class Admin
             }
             echo '</td></tr>';
         }
-        echo '</tbody></table></div><p>' . esc_html__('Door wp_mail geaccepteerd betekent geen gegarandeerde aflevering. Een onbekende verzenduitkomst wordt niet automatisch opnieuw verstuurd: controleer uw mailserverlog. Kies "Markeer als verzonden" alleen als de mail aantoonbaar is verstuurd; anders "Opnieuw versturen". Een wachtende incasso gaat pas door als de vooraankondiging als verzonden geldt.', 'mollie-incasso') . '</p>';
+        echo '</tbody></table></div><p class="mi-help">' . esc_html__('Door wp_mail geaccepteerd betekent geen gegarandeerde aflevering. Een onbekende verzenduitkomst wordt niet automatisch opnieuw verstuurd: controleer uw mailserverlog. Kies "Markeer als verzonden" alleen als de mail aantoonbaar is verstuurd; anders "Opnieuw versturen". Een wachtende incasso gaat pas door als de vooraankondiging als verzonden geldt.', 'mollie-incasso') . '</p></details>';
+        $this->sectionEnd();
+        // Test data
         if ($mode === 'test' && $this->p->config->testTools() && current_user_can('manage_options')) {
-            echo '<h2>' . esc_html__('Testgegevens wissen', 'mollie-incasso') . '</h2>';
+            $this->section(__('Testgegevens wissen', 'mollie-incasso'), __('Alleen in de testfase', 'mollie-incasso'), isset($_GET['mi_wiped']));
             if (isset($_GET['mi_wiped'])) {
                 echo '<p><strong>' . esc_html__('Alle testgegevens zijn gewist. Instellingen en API-keys zijn behouden.', 'mollie-incasso') . '</strong></p>';
             }
@@ -822,6 +892,7 @@ final class Admin
             $this->start('wipe_test');
             echo '<label>' . esc_html__('Typ WISSEN om te bevestigen', 'mollie-incasso') . '<input name="confirm_text" autocomplete="off" required pattern="WISSEN"></label>';
             $this->end('Alle testgegevens definitief wissen');
+            $this->sectionEnd();
         }
     }
     private function csv(string $mode): void

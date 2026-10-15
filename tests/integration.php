@@ -655,7 +655,7 @@ try {
     ob_start();
     $adminScreen->render();
     $liveSettingsHtml = ob_get_clean();
-    check(str_contains($liveSettingsHtml, 'mi-advanced') && !str_contains($liveSettingsHtml, 'name="key_test"') && !str_contains($liveSettingsHtml, '<select name="target_mode"'), 'live default hides test key and environment switch behind Geavanceerd');
+    check(str_contains($liveSettingsHtml, 'mi-section') && str_contains($liveSettingsHtml, 'Geavanceerd') && !str_contains($liveSettingsHtml, 'name="key_test"') && !str_contains($liveSettingsHtml, '<select name="target_mode"'), 'live default hides test key and environment switch behind Geavanceerd');
     $_GET = ['page' => 'mollie-incasso-setup', 'step' => 2];
     ob_start();
     $adminScreen->render();
