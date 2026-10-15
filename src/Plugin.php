@@ -36,15 +36,28 @@ final class Plugin
         if (!get_option('mi_instance')) {
             add_option('mi_instance', wp_generate_uuid4(), '', 'no');
         }
-        $binding = $plugin->config->binding();
-        if (get_option('mi_site_binding') !== $binding) {
-            $settings = $plugin->config->settings();
-            $settings['mode'] = 'test';
-            update_option('mi_settings', $settings, false);
-            update_option('mi_site_binding', $binding, false);
-        }
+        self::bindSite($plugin->config);
         get_role('administrator')?->add_cap('manage_mollie_incasso');
         self::schedule();
+    }
+    /**
+     * First activation binds the site and keeps the live default. A different existing binding means
+     * a copied site: it is forced into test mode (with the test phase visible) before anything runs.
+     */
+    public static function bindSite(Config $config): void
+    {
+        $binding = $config->binding();
+        $current = (string) get_option('mi_site_binding', '');
+        if ($current === $binding) {
+            return;
+        }
+        if ($current !== '') {
+            $settings = $config->settings();
+            $settings['mode'] = 'test';
+            $settings['test_tools'] = 1;
+            update_option('mi_settings', $settings, false);
+        }
+        update_option('mi_site_binding', $binding, false);
     }
     public static function deactivate(): void
     {

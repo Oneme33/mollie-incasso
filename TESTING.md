@@ -1,4 +1,4 @@
-# Testrapport — Mollie Incasso 0.3.3
+# Testrapport — Mollie Incasso 0.4.0
 
 Lokaal uitgevoerd op 13 en 14 oktober 2026: PHP 8.2.29, WordPress 6.8.1, bestaande Docker MySQL/InnoDB. Geen live geld, echte incasso of echte klantmail gebruikt. Dit rapport is geen productiecertificering.
 
@@ -87,6 +87,10 @@ Lokaal: `integration.php` **133**, `sdk.php` **24**, `secrets.php` **23**, `wooc
 ## Testgegevens wissen (0.3.3)
 
 Nieuwe knop in Diagnose. Getest: geweigerd buiten testmodus, verwijdert alle testrecords, laat liverecords ongemoeid. Daarnaast: de bedankpagina activeert een nog wachtende toestemming ook als de webhook de order al had afgerond (gereproduceerd uit de review van PR #2). Lokaal: `integration.php` **137**, `sdk.php` **24**, `secrets.php` **23**, `woocommerce.php` **73 klassiek en 73 HPOS**.
+
+## Live als standaard (0.4.0)
+
+Nieuwe installaties starten in live; de testfase staat onder Instellingen → Geavanceerd. Getest: verse installatie is live zonder testfase; een vóór 0.4 in test opgeslagen site houdt de testfase, een live-site niet; eerste activatie bindt de site en blijft live, een gekopieerde site valt terug naar test met zichtbare testfase; testfase aan maakt testmodus mogelijk; testfase uitzetten wordt in zijn geheel geweigerd zolang live niet is vrijgegeven; de live-instellingen tonen geen testkey of omgevingsschakelaar; de installatiehulp vraagt om de livekey en toont de ontbrekende `wp-config.php`-regels. Lokaal: `integration.php` **147**, `sdk.php` **24**, `secrets.php` **23**, `woocommerce.php` **73 klassiek en 73 HPOS**.
 
 ## Wat online is aangetoond en wat nog open staat
 

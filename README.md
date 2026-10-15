@@ -1,4 +1,4 @@
-# Mollie Incasso — testversie 0.3.3
+# Mollie Incasso — versie 0.4.0
 
 Zelfstandige WordPress-plugin voor één organisatie en één Mollie-profiel. Nederlandse, vertaalbare interface, werkt zelfstandig, met een optionele WooCommerce-checkout; geen WooCommerce Subscriptions of externe abonnementendienst nodig. Eerste iDEAL-betaling: **€ 0,01**, expliciet `sequenceType=first` bij een nieuwe, lokaal gekoppelde Mollie Customer. Alleen een betaald verificatieverzoek en een geldig `directdebit`-mandaat activeren toestemming. De eurocent blijft bij de organisatie, is geen abonnementsperiode en wordt niet stilzwijgend verrekend of terugbetaald.
 
@@ -15,11 +15,11 @@ Zelfstandige WordPress-plugin voor één organisatie en één Mollie-profiel. Ne
 
 ## Installeren
 
-1. Upload `mollie-incasso-0.3.3.zip` via **Plugins → Nieuwe plugin → Plugin uploaden**. Bij een update kiest u de bestaande plugin te vervangen; verwijderen is niet nodig.
-2. Open **Mollie Incasso → Installatiehulp**. Stap 1: organisatie en contactgegevens. Stap 2: plak uw eigen `test_…` API-key uit Mollie Dashboard → Developers → API keys, sla op en controleer de betaalmethodes. Extra serverconfiguratie is voor normale opslag niet nodig; zie hieronder.
+1. Upload `mollie-incasso-0.4.0.zip` via **Plugins → Nieuwe plugin → Plugin uploaden**. Bij een update kiest u de bestaande plugin te vervangen; verwijderen is niet nodig.
+2. Open **Mollie Incasso → Installatiehulp**. Stap 1: organisatie en contactgegevens. Stap 2: plak uw `live_…` API-key uit Mollie Dashboard → Developers → API keys en controleer de betaalmethodes. Live is de standaard; zolang live op de server nog niet is vrijgegeven, toont de installatiehulp de benodigde regels voor `wp-config.php` (zie ‘Test/live’). **Eerst risicoloos testen?** Zet onder **Instellingen → Geavanceerd → Testfase gebruiken** aan; dan kunt u een `test_…`-key gebruiken, naar testmodus schakelen en testgegevens wissen.
 3. Stap 3: geef het eerste abonnement een naam (bijvoorbeeld ‘GCC doorlopend abonnement’), bedrag en maand/kwartaal/jaar. Controleer de zichtbare voorbeeldtekst van de incassoafspraak en pas die aan. De wizard kiest automatisch starten met 14 dagen vooraankondiging. U kunt meerdere abonnementen toevoegen; bestaande afspraken blijven aan hun eigen versie gekoppeld.
 4. Stap 4: kies **aanmelden op een gewone pagina** of **via een WooCommerce-product**. Voor een pagina kunt u de shortcode kopiëren of een conceptpagina maken. Voor de winkel kunt u per regeling een eenvoudig virtueel product als concept klaarzetten. Herhaald klikken opent dezelfde pagina/product. Controleer het concept en publiceer het daarna.
-5. Test de gekozen route op HTTPS met de eigen Mollie-testkey, inclusief betaling, machtiging, webhooks, mail, cron en abonnement. De wizard is optioneel: geavanceerde regelingen en losse incasso’s blijven via Instellingen beschikbaar. De wizard publiceert niets en schakelt live niet automatisch in.
+5. Test de gekozen route bij voorkeur eerst in de testfase op HTTPS met de eigen Mollie-testkey, inclusief betaling, machtiging, webhooks, mail, cron en abonnement. Wis daarna de testgegevens en zet de testfase uit. De wizard is optioneel: geavanceerde regelingen en losse incasso’s blijven via Instellingen beschikbaar. De wizard publiceert niets.
 
 ### Aanmelden via WooCommerce
 
@@ -136,7 +136,7 @@ De vooraankondigingstermijn is bij maandelijkse abonnementen maximaal 21 dagen, 
 
 ## Test/live, staging en kopieën
 
-Test is de standaard. Records, tokens, keys en jobs zijn per mode gescheiden. Live werkt alleen wanneer alle volgende voorwaarden gelden:
+Vanaf 0.4 is **live de standaard** voor nieuwe installaties. De testfase (testmodus, testkey en testgegevens wissen) is een keuze onder **Instellingen → Geavanceerd**, standaard uit; installaties die vóór 0.4 in testmodus stonden houden de testfase aan. Records, tokens, keys en jobs zijn per mode gescheiden. Live werkt alleen wanneer alle volgende voorwaarden gelden:
 
 ```php
 define('WP_ENVIRONMENT_TYPE', 'production');
@@ -145,7 +145,7 @@ define('MOLLIE_INCASSO_LIVE_SITE', 'https://uw-productiesite.nl');
 define('MOLLIE_INCASSO_LIVE_KEY', getenv('MOLLIE_INCASSO_LIVE_KEY'));
 ```
 
-HTTPS is vereist voor live POST’s en voor alle webhookadressen. Een sitebinding op home-URL én serverpad blokkeert taken op een kopie; opnieuw binden zet de kopie in testmodus. Staging moet expliciet `WP_ENVIRONMENT_TYPE=staging` gebruiken, zonder livekey of live-vlag. Zet bij migraties/back-ups waar nodig `MOLLIE_INCASSO_DISABLED=true`. Een byte-identieke database/config-kopie onder exact dezelfde URL en hetzelfde pad is technisch niet te onderscheiden: zet altijd een stagingomgeving en veilige secrets op de kopie. Een moduswissel of deactivering stopt nooit externe abonnementen.
+HTTPS is vereist voor live POST’s en voor alle webhookadressen. Een sitebinding op home-URL én serverpad blokkeert taken op een kopie; bij (her)activatie of opnieuw binden gaat een kopie naar testmodus, met de testfase zichtbaar. De eerste activatie op een nieuwe site houdt de live-standaard. Staging moet expliciet `WP_ENVIRONMENT_TYPE=staging` gebruiken, zonder livekey of live-vlag. Zet bij migraties/back-ups waar nodig `MOLLIE_INCASSO_DISABLED=true`. Een byte-identieke database/config-kopie onder exact dezelfde URL en hetzelfde pad is technisch niet te onderscheiden: zet altijd een stagingomgeving en veilige secrets op de kopie. Een moduswissel of deactivering stopt nooit externe abonnementen.
 
 ## Privacy en opruimen
 
@@ -167,10 +167,10 @@ Ontwikkelmachine: PHP 8.2+, curl/openssl/zip, Composer. Hosting heeft **geen Com
 
 ```sh
 cd mollie-incasso
-php tools/build.php /absoluut/pad/composer.phar ../artifacts/mollie-incasso-0.3.3.zip
+php tools/build.php /absoluut/pad/composer.phar ../artifacts/mollie-incasso-0.4.0.zip
 ```
 
-Met Composer op PATH: `php tools/build.php composer` (standaarduitvoer: `dist/mollie-incasso-0.3.3.zip`). De build gebruikt uitsluitend locks (`install`, geen `update`), scoped alle productiecode, controleert de SDK/CA-bundle en PHP-syntax en maakt een ZIP met gesorteerde bestanden en vaste tijdstempels/rechten. De ZIP bevat geen devtools, eigen testfixtures, secrets of ongescopete autoloaders. Zelfde bron, locks en toolomgeving produceren dezelfde ZIP. Dependencies en `.build/` zijn gegenereerd en staan niet in Git.
+Met Composer op PATH: `php tools/build.php composer` (standaarduitvoer: `dist/mollie-incasso-0.4.0.zip`). De build gebruikt uitsluitend locks (`install`, geen `update`), scoped alle productiecode, controleert de SDK/CA-bundle en PHP-syntax en maakt een ZIP met gesorteerde bestanden en vaste tijdstempels/rechten. De ZIP bevat geen devtools, eigen testfixtures, secrets of ongescopete autoloaders. Zelfde bron, locks en toolomgeving produceren dezelfde ZIP. Dependencies en `.build/` zijn gegenereerd en staan niet in Git.
 
 In dit repository is de build getest in de bestaande PHP 8.2.29 Docker-omgeving. Kopieer de pluginbron naar een tijdelijke map onder de lokaal gemounte `plugins/`, voer daar het bovenstaande PHP-buildcommando uit en kopieer de ZIP terug naar `artifacts/`. Composer 2.10.3 is daarvoor lokaal gebruikt. De bronmap buiten `plugins/` is leidend.
 

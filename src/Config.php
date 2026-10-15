@@ -4,13 +4,35 @@ namespace Lukraak\MollieIncasso;
 
 final class Config
 {
+    /**
+     * Live is the default from 1.0; the test phase (test mode, test key, wiping test data) is an
+     * opt-in under Instellingen → Geavanceerd. Sites saved before 0.4 that run in test keep it on.
+     */
     public function settings(): array
     {
-        return wp_parse_args(get_option('mi_settings', []), ['mode' => 'test', 'organization' => '', 'address' => '', 'contact' => '', 'privacy_url' => '', 'notifications' => 1, 'cleanup' => 0, 'retention_days' => 2555, 'webhook_url' => '']);
+        $stored = get_option('mi_settings', []);
+        $stored = is_array($stored) ? $stored : [];
+        if (isset($stored['mode']) && !array_key_exists('test_tools', $stored)) {
+            $stored['test_tools'] = $stored['mode'] === 'test' ? 1 : 0;
+        }
+        $settings = wp_parse_args($stored, ['mode' => 'live', 'test_tools' => 0, 'organization' => '', 'address' => '', 'contact' => '', 'privacy_url' => '', 'notifications' => 1, 'cleanup' => 0, 'retention_days' => 2555, 'webhook_url' => '']);
+        if ($settings['mode'] === 'test') {
+            $settings['test_tools'] = 1;
+        }
+        return $settings;
     }
     public function mode(): string
     {
-        return $this->settings()['mode'] === 'live' ? 'live' : 'test';
+        return $this->settings()['mode'] === 'test' ? 'test' : 'live';
+    }
+    public function testTools(): bool
+    {
+        return !empty($this->settings()['test_tools']);
+    }
+    /** The wp-config lines live mode needs on this site, for display in the setup screens. */
+    public function liveRequirements(): array
+    {
+        return ["define('WP_ENVIRONMENT_TYPE', 'production');", "define('MOLLIE_INCASSO_ALLOW_LIVE', true);", "define('MOLLIE_INCASSO_LIVE_SITE', '" . rtrim(home_url(), '/') . "');"];
     }
     public function assertRun(string $mode, bool $write = false): void
     {

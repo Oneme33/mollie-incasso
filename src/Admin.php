@@ -156,15 +156,12 @@ final class Admin
                     if (!current_user_can('manage_options')) {
                         throw new Failure('access_denied');
                     }
-                    $this->p->config->assertRun($mode);
-                    if ($mode !== 'test') {
-                        throw new Failure('environment_mismatch');
-                    }
-                    $key = trim($this->field('key_test', 120));
-                    if (!preg_match('/^test_[A-Za-z0-9]{30,100}$/D', $key)) {
+                    // Storing an encrypted key is harmless; live API use stays gated by assertRun.
+                    $key = trim($this->field('key_' . $mode, 120));
+                    if (!preg_match('/^' . $mode . '_[A-Za-z0-9]{30,100}$/D', $key)) {
                         throw new Failure('invalid_api_key');
                     }
-                    update_option('mi_secret_test', $this->p->config->encrypt($key), false);
+                    update_option('mi_secret_' . $mode, $this->p->config->encrypt($key), false);
                     $view = 'setup';
                     $args = ['mi_saved' => 1, 'step' => 2];
                     break;
@@ -238,7 +235,7 @@ final class Admin
                     $view = 'diagnostics';
                     break;
                 case 'wipe_test':
-                    if (!current_user_can('manage_options') || $mode !== 'test') {
+                    if (!current_user_can('manage_options') || $mode !== 'test' || !$this->p->config->testTools()) {
                         throw new Failure('access_denied');
                     }
                     if ($this->field('confirm_text', 20) !== 'WISSEN') {
@@ -274,7 +271,8 @@ final class Admin
             throw new Failure('access_denied');
         }
         $old = $this->p->config->settings();
-        $new = ['mode' => $this->field('target_mode') === 'live' ? 'live' : 'test', 'organization' => sanitize_text_field($this->field('organization', 190)), 'address' => sanitize_textarea_field($this->field('address')), 'contact' => sanitize_textarea_field($this->field('contact')), 'privacy_url' => esc_url_raw($this->field('privacy_url')), 'notifications' => $this->field('notifications') === '1' ? 1 : 0, 'cleanup' => $this->field('cleanup') === '1' ? 1 : 0, 'retention_days' => max(1, min(10950, (int) $this->field('retention_days', 8))), 'webhook_url' => esc_url_raw($this->field('webhook_url'))];
+        $testTools = $this->field('test_tools') === '1';
+        $new = ['mode' => $testTools && $this->field('target_mode') === 'test' ? 'test' : 'live', 'test_tools' => $testTools ? 1 : 0, 'organization' => sanitize_text_field($this->field('organization', 190)), 'address' => sanitize_textarea_field($this->field('address')), 'contact' => sanitize_textarea_field($this->field('contact')), 'privacy_url' => esc_url_raw($this->field('privacy_url')), 'notifications' => $this->field('notifications') === '1' ? 1 : 0, 'cleanup' => $this->field('cleanup') === '1' ? 1 : 0, 'retention_days' => max(1, min(10950, (int) $this->field('retention_days', 8))), 'webhook_url' => esc_url_raw($this->field('webhook_url'))];
         foreach (['test', 'live'] as $mode) {
             $key = trim($this->field('key_' . $mode, 120));
             if ($key && !preg_match('/^' . $mode . '_[A-Za-z0-9]{30,100}$/D', $key)) {
@@ -291,7 +289,9 @@ final class Admin
         try {
             $this->p->config->assertRun($new['mode']);
         } catch (Failure $e) {
+            // Switching is refused as a whole: the previous mode and test phase stay in place.
             $new['mode'] = $old['mode'];
+            $new['test_tools'] = $old['test_tools'];
             update_option('mi_settings', $new, false);
             throw $e;
         }
@@ -438,7 +438,18 @@ final class Admin
             }
         } elseif ($step === 2) {
             echo '<h2>' . esc_html__('Verbind uw Mollie-account', 'mollie-incasso') . '</h2>';
-            $this->help(__('Begin met een testkey: daarmee zijn betalingen nagebootst en wordt geen echt geld gebruikt. Mollie activeert uw account en betaalmethodes; dat zet deze plugin niet automatisch op live.', 'mollie-incasso'));
+            if ($mode === 'test') {
+                $this->help(__('Testfase: met een testkey zijn betalingen nagebootst en wordt geen echt geld gebruikt. De plugin schakelt niet vanzelf naar live.', 'mollie-incasso'));
+            } else {
+                $this->help(__('Plak uw live-API-key uit Mollie Dashboard → Developers → API keys. Eerst risicoloos testen kan via Instellingen → Geavanceerd → Testfase gebruiken.', 'mollie-incasso'));
+                try {
+                    $this->p->config->assertRun('live');
+                } catch (Failure $e) {
+                    if ($e->reason === 'live_disabled') {
+                        echo '<div class="mi-help"><p>' . esc_html__('Live is op deze server nog niet vrijgegeven. Laat uw beheerder deze regels in wp-config.php zetten (boven “That’s all, stop editing”):', 'mollie-incasso') . '</p><pre>' . esc_html(implode("\n", $this->p->config->liveRequirements())) . '</pre></div>';
+                    }
+                }
+            }
             $configured = false;
             try {
                 $this->p->config->key($mode);
@@ -448,14 +459,10 @@ final class Admin
             if ($configured) {
                 echo '<p class="mi-setup-status">' . esc_html__('Er is een API-key ingesteld voor de huidige betaalmodus.', 'mollie-incasso') . '</p>';
             } elseif (current_user_can('manage_options')) {
-                if ($mode === 'test') {
-                    $this->start('setup_key');
-                    echo '<label>' . esc_html__('Mollie test-API-key', 'mollie-incasso') . '<input type="password" name="key_test" value="" autocomplete="new-password" required></label>';
-                    $this->keyHelp();
-                    $this->end('Testkey opslaan', true);
-                } else {
-                    $this->help(__('Beheer de livekey via Instellingen. Deze installatiehulp schakelt zelf geen echte betalingen in.', 'mollie-incasso'));
-                }
+                $this->start('setup_key');
+                echo '<label>' . esc_html($mode === 'test' ? __('Mollie test-API-key', 'mollie-incasso') : __('Mollie live-API-key', 'mollie-incasso')) . '<input type="password" name="key_' . esc_attr($mode) . '" value="" autocomplete="new-password" required></label>';
+                $this->keyHelp();
+                $this->end($mode === 'test' ? 'Testkey opslaan' : 'Livekey opslaan', true);
             }
             if ($configured) {
                 $this->quick('setup_check', 0, 'iDEAL en SEPA-incasso controleren');
@@ -627,11 +634,16 @@ final class Admin
         }
         $s = $this->p->config->settings();
         $this->start('settings');
-        echo '<h2>' . esc_html__('Account en organisatie', 'mollie-incasso') . '</h2><label>' . esc_html__('Omgeving', 'mollie-incasso') . '<select name="target_mode"><option value="test" ' . selected($s['mode'], 'test', false) . '>' . esc_html__('Test — geen echt geld', 'mollie-incasso') . '</option><option value="live" ' . selected($s['mode'], 'live', false) . '>' . esc_html__('Live — echte betalingen', 'mollie-incasso') . '</option></select></label><p>' . esc_html__('Test gebruikt nagebootste betalingen. Mollie controleert uw account en activeert de betaalmethodes; de plugin schakelt daarna niet vanzelf naar live. Voor live zijn een livekey en vrijgave op de productiesite nodig. Wisselen stopt geen bestaande Mollie-abonnementen.', 'mollie-incasso') . '</p>';
+        echo '<h2>' . esc_html__('Account en organisatie', 'mollie-incasso') . '</h2>';
+        if (!empty($s['test_tools'])) {
+            echo '<label>' . esc_html__('Omgeving', 'mollie-incasso') . '<select name="target_mode"><option value="test" ' . selected($s['mode'], 'test', false) . '>' . esc_html__('Test — geen echt geld', 'mollie-incasso') . '</option><option value="live" ' . selected($s['mode'], 'live', false) . '>' . esc_html__('Live — echte betalingen', 'mollie-incasso') . '</option></select></label><p>' . esc_html__('Test gebruikt nagebootste betalingen. Voor live zijn een livekey en vrijgave op de productiesite nodig. Wisselen stopt geen bestaande Mollie-abonnementen.', 'mollie-incasso') . '</p>';
+        } else {
+            echo '<input type="hidden" name="target_mode" value="live"><p><strong>' . esc_html__('Omgeving: live — echte betalingen.', 'mollie-incasso') . '</strong> ' . esc_html__('Eerst risicoloos testen? Zet onder Geavanceerd de testfase aan.', 'mollie-incasso') . '</p>';
+        }
         foreach (['organization' => 'Organisatienaam', 'address' => 'Adres en organisatiegegevens', 'contact' => 'Contact en intrekken', 'privacy_url' => 'URL privacyverklaring', 'webhook_url' => 'HTTPS-webhookoverride voor reverse proxy (optioneel)', 'retention_days' => 'Bewaartermijn in dagen'] as $key => $label) {
             echo '<label>' . esc_html__($label, 'mollie-incasso') . '<input name="' . esc_attr($key) . '" value="' . esc_attr((string) $s[$key]) . '"></label>';
         }
-        foreach (['test', 'live'] as $mode) {
+        foreach (!empty($s['test_tools']) ? ['test', 'live'] : ['live'] as $mode) {
             $configured = $this->p->config->settingSecret('MOLLIE_INCASSO_' . strtoupper($mode) . '_KEY') || get_option('mi_secret_' . $mode);
             echo '<label>' . esc_html(sprintf(__('Nieuwe %s API-key (leeg = behouden)', 'mollie-incasso'), $mode)) . '<input type="password" name="key_' . esc_attr($mode) . '" value="" autocomplete="new-password" placeholder="' . esc_attr($configured ? '•••••••• — ' . __('ingesteld', 'mollie-incasso') : __('niet ingesteld', 'mollie-incasso')) . '"></label><label><input type="checkbox" name="delete_' . $mode . '" value="1">' . esc_html(sprintf(__('Opgeslagen %s-key verwijderen (omgeving/config blijft leidend)', 'mollie-incasso'), $mode)) . '</label>';
         }
@@ -639,6 +651,7 @@ final class Admin
         foreach (['notifications' => 'Statusmails voor betalingen', 'cleanup' => 'Bij uninstall opruimen, uitsluitend wanneer extern veilig en bewaarbeleid dit toestaat'] as $key => $label) {
             echo '<label><input type="checkbox" name="' . $key . '" value="1" ' . checked((bool) $s[$key], true, false) . '>' . esc_html__($label, 'mollie-incasso') . '</label>';
         }
+        echo '<details class="mi-advanced"' . (!empty($s['test_tools']) ? ' open' : '') . '><summary>' . esc_html__('Geavanceerd', 'mollie-incasso') . '</summary><label><input type="checkbox" name="test_tools" value="1" ' . checked(!empty($s['test_tools']), true, false) . '>' . esc_html__('Testfase gebruiken: testmodus met een Mollie-testkey, en testgegevens kunnen wissen (onder Diagnose).', 'mollie-incasso') . '</label><p class="mi-help">' . esc_html__('Uitzetten kan alleen als live op deze site is vrijgegeven; de plugin gaat dan naar live.', 'mollie-incasso') . '</p></details>';
         $this->end('Instellingen opslaan', true);
         if (get_option('mi_site_binding') !== $this->p->config->binding()) {
             $this->quick('bind', 0, 'Deze installatie binden en naar testmodus zetten');
@@ -711,7 +724,7 @@ final class Admin
             echo '</td></tr>';
         }
         echo '</tbody></table></div><p>' . esc_html__('Door wp_mail geaccepteerd betekent geen gegarandeerde aflevering. Een onbekende verzenduitkomst wordt niet automatisch opnieuw verstuurd: controleer uw mailserverlog. Kies "Markeer als verzonden" alleen als de mail aantoonbaar is verstuurd; anders "Opnieuw versturen". Een wachtende incasso gaat pas door als de vooraankondiging als verzonden geldt.', 'mollie-incasso') . '</p>';
-        if ($mode === 'test' && current_user_can('manage_options')) {
+        if ($mode === 'test' && $this->p->config->testTools() && current_user_can('manage_options')) {
             echo '<h2>' . esc_html__('Testgegevens wissen', 'mollie-incasso') . '</h2>';
             if (isset($_GET['mi_wiped'])) {
                 echo '<p><strong>' . esc_html__('Alle testgegevens zijn gewist. Instellingen en API-keys zijn behouden.', 'mollie-incasso') . '</strong></p>';

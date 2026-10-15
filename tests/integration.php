@@ -610,6 +610,51 @@ try {
         $left += (int) $store->select('SELECT COUNT(*) AS n FROM ' . $store->table($table) . ' WHERE mode="test"')[0]['n'];
     }
     check($left === 0 && $store->one('customers', $liveCustomer, 'live') !== null, 'no test rows remain and live rows are untouched');
+    // 0.4: live is the default; the test phase is an opt-in that existing test sites keep.
+    $standard = $config->settings();
+    FixtureOptions::set('mi_settings', [], false);
+    check($config->mode() === 'live' && !$config->testTools(), 'a fresh installation defaults to live with the test phase hidden');
+    FixtureOptions::set('mi_settings', ['mode' => 'test', 'organization' => 'Oud'], false);
+    check($config->mode() === 'test' && $config->testTools(), 'a site saved in test before 0.4 keeps its test phase');
+    FixtureOptions::set('mi_settings', ['mode' => 'live'], false);
+    check(!$config->testTools(), 'a site saved in live before 0.4 has no test phase');
+    $realBinding = get_option('mi_site_binding');
+    FixtureOptions::set('mi_settings', [], false);
+    FixtureOptions::set('mi_site_binding', '', false);
+    Plugin::bindSite($config);
+    check(get_option('mi_site_binding') === $config->binding() && $config->mode() === 'live', 'first activation binds the site and keeps the live default');
+    FixtureOptions::set('mi_site_binding', 'binding-of-another-site', false);
+    Plugin::bindSite($config);
+    check($config->mode() === 'test' && $config->testTools() && get_option('mi_site_binding') === $config->binding(), 'a copied site falls back to test mode with the test phase visible');
+    FixtureOptions::set('mi_site_binding', $realBinding, false);
+    $adminUser = get_users(['role' => 'administrator', 'number' => 1])[0]->ID;
+    $previousUser = get_current_user_id();
+    wp_set_current_user($adminUser);
+    $save = new ReflectionMethod(\Lukraak\MollieIncasso\Admin::class, 'saveSettings');
+    $adminScreen = new \Lukraak\MollieIncasso\Admin($p);
+    $savedPost = $_POST;
+    $_POST = ['target_mode' => 'test', 'test_tools' => '1', 'organization' => 'Testorganisatie', 'contact' => 'test@example.invalid', 'retention_days' => '1', 'webhook_url' => 'https://example.org/mi-webhook'];
+    $save->invoke($adminScreen);
+    check($config->mode() === 'test' && $config->testTools(), 'enabling the test phase allows test mode');
+    $_POST = ['target_mode' => 'test', 'organization' => 'Testorganisatie', 'contact' => 'test@example.invalid', 'retention_days' => '1', 'webhook_url' => 'https://example.org/mi-webhook'];
+    rejects(fn() => $save->invoke($adminScreen), 'live_disabled');
+    check($config->mode() === 'test' && $config->testTools(), 'turning the test phase off is refused as a whole while live is not released here');
+    $_POST = $savedPost;
+    FixtureOptions::set('mi_settings', ['mode' => 'live', 'test_tools' => 0, 'organization' => 'Testorganisatie', 'contact' => 'test@example.invalid'], false);
+    $renderGet = $_GET;
+    $_GET = ['page' => 'mollie-incasso-settings'];
+    ob_start();
+    $adminScreen->render();
+    $liveSettingsHtml = ob_get_clean();
+    check(str_contains($liveSettingsHtml, 'mi-advanced') && !str_contains($liveSettingsHtml, 'name="key_test"') && !str_contains($liveSettingsHtml, '<select name="target_mode"'), 'live default hides test key and environment switch behind Geavanceerd');
+    $_GET = ['page' => 'mollie-incasso-setup', 'step' => 2];
+    ob_start();
+    $adminScreen->render();
+    $liveWizardHtml = ob_get_clean();
+    check(str_contains($liveWizardHtml, 'name="key_live"') && str_contains($liveWizardHtml, 'MOLLIE_INCASSO_ALLOW_LIVE'), 'setup wizard asks for the live key and shows the missing wp-config lines');
+    $_GET = $renderGet;
+    wp_set_current_user($previousUser);
+    FixtureOptions::set('mi_settings', $standard, false);
     echo 'RESULT ' . $checks . " checks passed. No Mollie network requests, no real emails.\n";
 } finally {
     foreach (['customers', 'consents', 'schemes', 'mandates', 'commands', 'payments', 'subscriptions', 'tokens', 'jobs', 'notifications', 'limits', 'checkouts'] as $name) {
