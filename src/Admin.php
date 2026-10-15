@@ -11,7 +11,7 @@ final class Admin
     {
         // Menu icon as a CSS mask so it takes the menu colours (normal, hover, current) like a dashicon.
         add_action('admin_head', static function () {
-            $icon = esc_url(plugins_url('assets/menu-icon.svg', MOLLIE_INCASSO_FILE));
+            $icon = esc_url(self::asset('assets/menu-icon.svg'));
             echo '<style>#adminmenu .toplevel_page_mollie-incasso div.wp-menu-image::before{content:"";display:block;width:20px;height:20px;padding:0;margin:7px auto 0;background-color:currentColor;-webkit-mask:url(' . $icon . ') center/20px 20px no-repeat;mask:url(' . $icon . ') center/20px 20px no-repeat}</style>';
         });
         add_action('admin_menu', function () {
@@ -61,6 +61,12 @@ final class Admin
                 echo '<div class="notice notice-success"><p>' . esc_html__('Actie opgeslagen. Controleer de actuele status hieronder.', 'mollie-incasso') . '</p></div>';
             }
         });
+    }
+    /** Asset URL with the file time as version, so a changed image is never served from cache. */
+    private static function asset(string $path): string
+    {
+        $file = dirname(MOLLIE_INCASSO_FILE) . '/' . $path;
+        return add_query_arg('v', is_file($file) ? (string) filemtime($file) : MOLLIE_INCASSO_VERSION, plugins_url($path, MOLLIE_INCASSO_FILE));
     }
     private static function own(\Closure $callback): bool
     {
@@ -354,7 +360,7 @@ final class Admin
             $view = 'customers';
         }
         echo '<div class="wrap mi-admin"><div class="mi-admin-shell"><aside class="mi-admin-sidebar">';
-        echo '<a class="mi-brand" href="' . esc_url($this->url()) . '"><img src="' . esc_url(plugins_url('assets/logo.svg', MOLLIE_INCASSO_FILE)) . '" width="40" height="40" alt=""><span>' . esc_html__('Mollie Incasso', 'mollie-incasso') . '<small>' . esc_html__('Automatische incasso', 'mollie-incasso') . '</small></span></a>';
+        echo '<a class="mi-brand" href="' . esc_url($this->url()) . '"><img src="' . esc_url(self::asset('assets/logo.svg')) . '" width="40" height="40" alt=""><span>' . esc_html__('Mollie Incasso', 'mollie-incasso') . '<small>' . esc_html__('Automatische incasso', 'mollie-incasso') . '</small></span></a>';
         echo '<nav class="mi-side-nav" aria-label="' . esc_attr__('Incassobeheer', 'mollie-incasso') . '">';
         foreach ($views as $key => $item) {
             if ($key === 'customers' || $key === 'settings') {
