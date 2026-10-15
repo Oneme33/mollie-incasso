@@ -596,6 +596,20 @@ try {
     }
     check($own, 'plugin screens keep their own notices');
     $_GET = $savedGet;
+    // Test-data reset: only test rows, never live ones, and refused outside test mode.
+    $liveCustomer = $store->insert('customers', ['mode' => 'live', 'reference' => wp_generate_uuid4(), 'name' => 'Live', 'email' => 'live@example.invalid', 'scheme_id' => 1, 'status' => 'active', 'created_at' => Store::now(), 'updated_at' => Store::now()]);
+    $liveSettings = $config->settings();
+    $liveSettings['mode'] = 'live';
+    FixtureOptions::set('mi_settings', $liveSettings, false);
+    rejects(fn() => $service->wipeTestData(), 'environment_mismatch');
+    $liveSettings['mode'] = 'test';
+    FixtureOptions::set('mi_settings', $liveSettings, false);
+    check($service->wipeTestData() > 0, 'test data reset removes test records');
+    $left = 0;
+    foreach (['customers', 'consents', 'schemes', 'mandates', 'commands', 'payments', 'subscriptions', 'tokens', 'jobs', 'notifications', 'checkouts'] as $table) {
+        $left += (int) $store->select('SELECT COUNT(*) AS n FROM ' . $store->table($table) . ' WHERE mode="test"')[0]['n'];
+    }
+    check($left === 0 && $store->one('customers', $liveCustomer, 'live') !== null, 'no test rows remain and live rows are untouched');
     echo 'RESULT ' . $checks . " checks passed. No Mollie network requests, no real emails.\n";
 } finally {
     foreach (['customers', 'consents', 'schemes', 'mandates', 'commands', 'payments', 'subscriptions', 'tokens', 'jobs', 'notifications', 'limits', 'checkouts'] as $name) {

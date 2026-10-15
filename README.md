@@ -1,4 +1,4 @@
-# Mollie Incasso — testversie 0.3.2
+# Mollie Incasso — testversie 0.3.3
 
 Zelfstandige WordPress-plugin voor één organisatie en één Mollie-profiel. Nederlandse, vertaalbare interface, werkt zelfstandig, met een optionele WooCommerce-checkout; geen WooCommerce Subscriptions of externe abonnementendienst nodig. Eerste iDEAL-betaling: **€ 0,01**, expliciet `sequenceType=first` bij een nieuwe, lokaal gekoppelde Mollie Customer. Alleen een betaald verificatieverzoek en een geldig `directdebit`-mandaat activeren toestemming. De eurocent blijft bij de organisatie, is geen abonnementsperiode en wordt niet stilzwijgend verrekend of terugbetaald.
 
@@ -15,7 +15,7 @@ Zelfstandige WordPress-plugin voor één organisatie en één Mollie-profiel. Ne
 
 ## Installeren
 
-1. Upload `mollie-incasso-0.3.2.zip` via **Plugins → Nieuwe plugin → Plugin uploaden**. Bij een update kiest u de bestaande plugin te vervangen; verwijderen is niet nodig.
+1. Upload `mollie-incasso-0.3.3.zip` via **Plugins → Nieuwe plugin → Plugin uploaden**. Bij een update kiest u de bestaande plugin te vervangen; verwijderen is niet nodig.
 2. Open **Mollie Incasso → Installatiehulp**. Stap 1: organisatie en contactgegevens. Stap 2: plak uw eigen `test_…` API-key uit Mollie Dashboard → Developers → API keys, sla op en controleer de betaalmethodes. Extra serverconfiguratie is voor normale opslag niet nodig; zie hieronder.
 3. Stap 3: geef het eerste abonnement een naam (bijvoorbeeld ‘GCC doorlopend abonnement’), bedrag en maand/kwartaal/jaar. Controleer de zichtbare voorbeeldtekst van de incassoafspraak en pas die aan. De wizard kiest automatisch starten met 14 dagen vooraankondiging. U kunt meerdere abonnementen toevoegen; bestaande afspraken blijven aan hun eigen versie gekoppeld.
 4. Stap 4: kies **aanmelden op een gewone pagina** of **via een WooCommerce-product**. Voor een pagina kunt u de shortcode kopiëren of een conceptpagina maken. Voor de winkel kunt u per regeling een eenvoudig virtueel product als concept klaarzetten. Herhaald klikken opent dezelfde pagina/product. Controleer het concept en publiceer het daarna.
@@ -153,6 +153,8 @@ WordPress **Gereedschap → Persoonsgegevens exporteren/verwijderen** is onderst
 
 Een verwijderverzoek behoudt gegevens bij actieve/onzekere afspraken, onbekende betaaluitkomsten, lopende termijn of onbereikbare externe verificatie. Beëindig eerst extern; pas na de termijn en een actuele API-controle worden klant en bijbehorende gegevens daadwerkelijk verwijderd. Betalingen bij Mollie blijven onder hun eigen bewaarbeleid vallen. Een lege lokale status stopt geen extern abonnement.
 
+**Testgegevens wissen** (Diagnose, alleen in testmodus en voor beheerders, na het intypen van `WISSEN`) verwijdert alle testklanten, -regelingen, -opdrachten, -betalingen, -abonnementen, -taken en -meldingen van deze website. Livegegevens worden nooit aangeraakt; instellingen en API-keys blijven staan; Mollie-testdata en WooCommerce-bestellingen/-producten veranderen niet.
+
 Deactivatie bewaart gegevens **en externe abonnementen**. Uninstall ruimt standaard niets op. De Action Scheduler-waarschuwing van andere plugins wordt uitsluitend op eigen incassoschermen verborgen; de externe taken en meldingen op andere schermen blijven behouden.
 
 Alleen met expliciet aangevinkte opruimkeuze, verstreken bewaartermijnen en actuele controle van alle klantafspraken kan de plugin tabellen/secrets verwijderen. Als een andere mode niet kan worden gecontroleerd, blijven gegevens behouden. Neem eerst een beveiligde back-up; verwijdering kan niet ongedaan worden gemaakt. Logbestanden bevatten alleen beperkte foutcodes, geen API-keys of volledige API-payloads. De CSV is begrensd op 500 klanten en neutraliseert spreadsheetformules.
@@ -165,10 +167,10 @@ Ontwikkelmachine: PHP 8.2+, curl/openssl/zip, Composer. Hosting heeft **geen Com
 
 ```sh
 cd mollie-incasso
-php tools/build.php /absoluut/pad/composer.phar ../artifacts/mollie-incasso-0.3.2.zip
+php tools/build.php /absoluut/pad/composer.phar ../artifacts/mollie-incasso-0.3.3.zip
 ```
 
-Met Composer op PATH: `php tools/build.php composer` (standaarduitvoer: `dist/mollie-incasso-0.3.2.zip`). De build gebruikt uitsluitend locks (`install`, geen `update`), scoped alle productiecode, controleert de SDK/CA-bundle en PHP-syntax en maakt een ZIP met gesorteerde bestanden en vaste tijdstempels/rechten. De ZIP bevat geen devtools, eigen testfixtures, secrets of ongescopete autoloaders. Zelfde bron, locks en toolomgeving produceren dezelfde ZIP. Dependencies en `.build/` zijn gegenereerd en staan niet in Git.
+Met Composer op PATH: `php tools/build.php composer` (standaarduitvoer: `dist/mollie-incasso-0.3.3.zip`). De build gebruikt uitsluitend locks (`install`, geen `update`), scoped alle productiecode, controleert de SDK/CA-bundle en PHP-syntax en maakt een ZIP met gesorteerde bestanden en vaste tijdstempels/rechten. De ZIP bevat geen devtools, eigen testfixtures, secrets of ongescopete autoloaders. Zelfde bron, locks en toolomgeving produceren dezelfde ZIP. Dependencies en `.build/` zijn gegenereerd en staan niet in Git.
 
 In dit repository is de build getest in de bestaande PHP 8.2.29 Docker-omgeving. Kopieer de pluginbron naar een tijdelijke map onder de lokaal gemounte `plugins/`, voer daar het bovenstaande PHP-buildcommando uit en kopieer de ZIP terug naar `artifacts/`. Composer 2.10.3 is daarvoor lokaal gebruikt. De bronmap buiten `plugins/` is leidend.
 

@@ -237,6 +237,17 @@ final class Admin
                     $this->p->queue->recover($id, $mode);
                     $view = 'diagnostics';
                     break;
+                case 'wipe_test':
+                    if (!current_user_can('manage_options') || $mode !== 'test') {
+                        throw new Failure('access_denied');
+                    }
+                    if ($this->field('confirm_text', 20) !== 'WISSEN') {
+                        throw new Failure('wipe_confirmation_required');
+                    }
+                    $this->p->service->wipeTestData();
+                    $view = 'diagnostics';
+                    $args = ['mi_saved' => 1, 'mi_wiped' => 1];
+                    break;
                 case 'mail_retry':
                 case 'mail_sent':
                     $this->p->mail->resolve($id, $mode, $operation === 'mail_sent');
@@ -700,6 +711,16 @@ final class Admin
             echo '</td></tr>';
         }
         echo '</tbody></table></div><p>' . esc_html__('Door wp_mail geaccepteerd betekent geen gegarandeerde aflevering. Een onbekende verzenduitkomst wordt niet automatisch opnieuw verstuurd: controleer uw mailserverlog. Kies "Markeer als verzonden" alleen als de mail aantoonbaar is verstuurd; anders "Opnieuw versturen". Een wachtende incasso gaat pas door als de vooraankondiging als verzonden geldt.', 'mollie-incasso') . '</p>';
+        if ($mode === 'test' && current_user_can('manage_options')) {
+            echo '<h2>' . esc_html__('Testgegevens wissen', 'mollie-incasso') . '</h2>';
+            if (isset($_GET['mi_wiped'])) {
+                echo '<p><strong>' . esc_html__('Alle testgegevens zijn gewist. Instellingen en API-keys zijn behouden.', 'mollie-incasso') . '</strong></p>';
+            }
+            $this->help(__('Verwijdert definitief alle klanten, toestemmingen, regelingen, opdrachten, betalingen, abonnementen, taken en meldingen uit de testmodus van deze website. Livegegevens worden nooit aangeraakt; in livemodus is deze knop niet beschikbaar. Instellingen en API-keys blijven staan. Gegevens bij Mollie (testomgeving) en WooCommerce-bestellingen of -producten worden niet gewijzigd. Dit kan niet ongedaan worden gemaakt.', 'mollie-incasso'));
+            $this->start('wipe_test');
+            echo '<label>' . esc_html__('Typ WISSEN om te bevestigen', 'mollie-incasso') . '<input name="confirm_text" autocomplete="off" required pattern="WISSEN"></label>';
+            $this->end('Alle testgegevens definitief wissen');
+        }
     }
     private function csv(string $mode): void
     {

@@ -1,4 +1,4 @@
-# Testrapport — Mollie Incasso 0.3.2
+# Testrapport — Mollie Incasso 0.3.3
 
 Lokaal uitgevoerd op 13 en 14 oktober 2026: PHP 8.2.29, WordPress 6.8.1, bestaande Docker MySQL/InnoDB. Geen live geld, echte incasso of echte klantmail gebruikt. Dit rapport is geen productiecertificering.
 
@@ -83,6 +83,10 @@ Niet getest in deze ronde: een echte Mollie-testkey met bereikbare webhook, en d
 Op de online WooCommerce-site (Mollie-testkey, echte webhooks en mail; drie testorders) werkten: betaalde verificatie met directe status ‘Actief’ op de bedankpagina, echte webhook, geldig mandaat, toestemmings- en vooraankondigingsmail (de toestemmingsmail kwam in spam), mislukte verificatie → order Failed, afgebroken betaling blijft open, winkelwagenregels en toestemmingsplicht. Het aanmaken van het abonnement werd door Mollie afgewezen; de reden werd niet bewaard. 0.3.1 lost de gevonden punten op: Mollies uitleg bij afwijzing bewaren en tonen, opnieuw proberen met nieuwe startdatum, geen zinloze mandaatcontrole na mislukte verificatie, status bijwerken vóór de bedankpagina, verificatieorders direct voltooid en zonder ‘opnieuw betalen’ na mislukking, zichtbare uitkomst van de methodecontrole, toestemmingszin één keer tonen, leesbare frequentie, Nederlandse taaknamen en maandnamen, organisatie als afzendernaam en geen meldingen van andere plugins op de eigen schermen.
 
 Lokaal: `integration.php` **133**, `sdk.php` **24**, `secrets.php` **23**, `woocommerce.php` **71 klassiek en 71 HPOS** — alle controles geslaagd. Na installatie van 0.3.1 gaf een nieuwe poging Mollies reden: *“The 'method' and 'mandateId' parameters are mutually exclusive.”* 0.3.2 stuurt bij een mandaat geen `method` meer mee (abonnementen en losse incasso’s); de nagebootste Mollie in de tests hanteert dezelfde regel, waardoor de oude code nu aantoonbaar faalt. Lokaal: `integration.php` **134**, `sdk.php` **24**, `secrets.php` **23**, `woocommerce.php` **71 klassiek en 71 HPOS**.
+
+## Testgegevens wissen (0.3.3)
+
+Nieuwe knop in Diagnose. Getest: geweigerd buiten testmodus, verwijdert alle testrecords, laat liverecords ongemoeid. Lokaal: `integration.php` **137**, overige suites ongewijzigd groen.
 
 ## Nog nodig met credentials en bereikbare hosting
 

@@ -750,6 +750,29 @@ final class Service
      * Hourly safety net next to webhooks. Work is spread over the day (id % 24) so the queue keeps
      * room for customer-facing jobs; unpaid or failed signups are never polled for mandates.
      */
+    /**
+     * Remove every test-mode record so a test site starts clean. Live rows are never touched, and the
+     * call is refused unless the plugin itself runs in test mode. Settings and API keys are kept.
+     */
+    public function wipeTestData(): int
+    {
+        if ($this->config->mode() !== 'test') {
+            throw new Failure('environment_mismatch');
+        }
+        $removed = 0;
+        $this->store->transaction(function () use (&$removed) {
+            foreach (['customers', 'consents', 'schemes', 'mandates', 'commands', 'payments', 'subscriptions', 'tokens', 'jobs', 'notifications', 'checkouts'] as $table) {
+                $removed += $this->store->query('DELETE FROM ' . $this->store->table($table) . ' WHERE mode=%s', ['test']);
+            }
+            $this->store->query('DELETE FROM ' . $this->store->table('limits'));
+        });
+        global $wpdb;
+        $wpdb->query($wpdb->prepare('DELETE FROM ' . $wpdb->options . ' WHERE option_name LIKE %s OR option_name LIKE %s OR option_name LIKE %s', $wpdb->esc_like('mi_setup_page_test_') . '%', $wpdb->esc_like('mi_wizard_plan_test_') . '%', $wpdb->esc_like('mi_woo_product_test_') . '%'));
+        foreach (['mi_last_webhook_test', 'mi_cron_error', 'mi_cleanup_blocked'] as $option) {
+            delete_option($option);
+        }
+        return $removed;
+    }
     public function maintenance(?int $hour = null): void
     {
         $mode = $this->config->mode();
