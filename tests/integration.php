@@ -651,10 +651,38 @@ try {
     ob_start();
     $adminScreen->render();
     $liveWizardHtml = ob_get_clean();
-    check(str_contains($liveWizardHtml, 'name="key_live"') && str_contains($liveWizardHtml, 'MOLLIE_INCASSO_ALLOW_LIVE'), 'setup wizard asks for the live key and shows the missing wp-config lines');
+    check(str_contains($liveWizardHtml, 'name="key_live"') && str_contains($liveWizardHtml, 'mi-live-panel') && !str_contains($liveWizardHtml, 'MOLLIE_INCASSO_ALLOW_LIVE'), 'setup wizard asks for the live key and offers Live activeren instead of wp-config work');
     $_GET = $renderGet;
     wp_set_current_user($previousUser);
     FixtureOptions::set('mi_settings', $standard, false);
+    // 0.5: live is released in the plugin ("Live activeren"), bound to this site; wp-config is optional.
+    FixtureOptions::scope('mi_live_activation', null);
+    $beforeLive = $config->settings();
+    putenv('MOLLIE_INCASSO_LIVE_KEY=live_' . str_repeat('L', 32));
+    check(!$config->liveReleased(), 'live is not released before activation');
+    $fake->methodsMissing = true;
+    rejects(fn() => $service->activateLive(1), 'methods_not_enabled');
+    check($config->mode() === 'test' && $config->liveActivation() === null, 'failed live check changes nothing');
+    $fake->methodsMissing = false;
+    $service->activateLive(1);
+    check($config->mode() === 'live' && $config->liveReleased(), 'Live activeren switches to live after a successful live check');
+    $config->assertRun('live');
+    check(true, 'live API use is allowed after activation');
+    $activation = $config->liveActivation();
+    FixtureOptions::set('mi_live_activation', ['binding' => 'copied-site'] + $activation, false);
+    check(!$config->liveReleased(), 'an activation from another site or path does not release live');
+    FixtureOptions::set('mi_live_activation', $activation, false);
+    putenv('MOLLIE_INCASSO_ALLOW_LIVE=false');
+    check(!$config->liveReleased(), 'server brake MOLLIE_INCASSO_ALLOW_LIVE=false always blocks live');
+    putenv('MOLLIE_INCASSO_ALLOW_LIVE');
+    $service->deactivateLive();
+    check($config->mode() === 'test' && $config->testTools() && $config->liveActivation() === null && !$config->liveReleased(), 'Live uitschakelen returns to the test phase');
+    putenv('MOLLIE_INCASSO_LIVE_KEY');
+    FixtureOptions::set('mi_settings', $beforeLive, false);
+    // Mail advice and test mail
+    $sentBefore = count($mails);
+    check($mail->testMail('beheer@example.invalid') && count($mails) === $sentBefore + 1 && end($mails)['to'] === 'beheer@example.invalid', 'test mail is sent to the administrator');
+    rejects(fn() => $mail->testMail('geen-adres'), 'mail_recipient_missing');
     echo 'RESULT ' . $checks . " checks passed. No Mollie network requests, no real emails.\n";
 } finally {
     foreach (['customers', 'consents', 'schemes', 'mandates', 'commands', 'payments', 'subscriptions', 'tokens', 'jobs', 'notifications', 'limits', 'checkouts'] as $name) {

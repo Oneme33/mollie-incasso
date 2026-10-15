@@ -773,6 +773,43 @@ final class Service
         }
         return $removed;
     }
+    /**
+     * "Live activeren": an administrator confirms in the plugin. The live key must work and Mollie must
+     * offer iDEAL and SEPA Direct Debit live; otherwise nothing changes. The release is bound to the
+     * URL and path of this site, so a copy of the site can never collect.
+     */
+    public function activateLive(int $userId): void
+    {
+        $config = $this->config;
+        if (wp_get_environment_type() !== 'production') {
+            throw new Failure('live_environment_not_production');
+        }
+        if ($config->liveBrake()) {
+            throw new Failure('live_disabled');
+        }
+        $config->key('live');
+        $previous = get_option('mi_live_activation', null);
+        $settings = $config->settings();
+        update_option('mi_live_activation', ['binding' => $config->binding(), 'url' => home_url(), 'user' => $userId, 'at' => Store::now()], false);
+        update_option('mi_settings', ['mode' => 'live'] + $settings, false);
+        try {
+            $this->methods('live');
+        } catch (Failure $e) {
+            update_option('mi_settings', $settings, false);
+            update_option('mi_live_activation', is_array($previous) ? $previous : [], false);
+            throw $e;
+        }
+    }
+    /** Back to the test phase; external Mollie subscriptions are not touched. */
+    public function deactivateLive(): void
+    {
+        // An empty release reads as "not released"; uninstall removes the option itself.
+        update_option('mi_live_activation', [], false);
+        $settings = $this->config->settings();
+        $settings['mode'] = 'test';
+        $settings['test_tools'] = 1;
+        update_option('mi_settings', $settings, false);
+    }
     public function maintenance(?int $hour = null): void
     {
         $mode = $this->config->mode();

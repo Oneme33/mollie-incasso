@@ -108,7 +108,10 @@ final class Admin
         if ($mode !== $this->p->config->mode() || !wp_verify_nonce($this->field('mi_nonce', 128), 'mi_admin_' . $operation . '_' . $id . '_' . $mode)) {
             wp_die(esc_html(Plugin::message('csrf_failed')), '', 403);
         }
-        $view = str_starts_with($operation, 'setup_') ? 'setup' : (in_array($operation, ['settings', 'scheme', 'bind'], true) ? 'settings' : 'customers');
+        $view = str_starts_with($operation, 'setup_') ? 'setup' : (in_array($operation, ['settings', 'scheme', 'bind', 'activate_live', 'deactivate_live'], true) ? 'settings' : (in_array($operation, ['test_mail', 'wipe_test', 'diagnose', 'queue', 'recover', 'mail_retry', 'mail_sent'], true) ? 'diagnostics' : 'customers'));
+        if ($operation === 'activate_live' && $this->field('return_view', 20) === 'setup') {
+            $view = 'setup';
+        }
         $args = ['mi_saved' => 1];
         try {
             switch ($operation) {
@@ -233,6 +236,32 @@ final class Admin
                 case 'recover':
                     $this->p->queue->recover($id, $mode);
                     $view = 'diagnostics';
+                    break;
+                case 'activate_live':
+                    if (!current_user_can('manage_options')) {
+                        throw new Failure('access_denied');
+                    }
+                    if ($this->field('confirm_live') !== '1') {
+                        throw new Failure('live_confirmation_required');
+                    }
+                    $this->p->service->activateLive(get_current_user_id());
+                    $view = $this->field('return_view', 20) === 'setup' ? 'setup' : 'settings';
+                    $args = ['mi_saved' => 1, 'mi_live' => 1] + ($view === 'setup' ? ['step' => 2] : []);
+                    break;
+                case 'deactivate_live':
+                    if (!current_user_can('manage_options')) {
+                        throw new Failure('access_denied');
+                    }
+                    $this->p->service->deactivateLive();
+                    $view = 'settings';
+                    break;
+                case 'test_mail':
+                    $user = wp_get_current_user();
+                    if (!$this->p->mail->testMail((string) $user->user_email)) {
+                        throw new Failure('wp_mail_failed');
+                    }
+                    $view = 'diagnostics';
+                    $args = ['mi_saved' => 1, 'mi_testmail' => 1];
                     break;
                 case 'wipe_test':
                     if (!current_user_can('manage_options') || $mode !== 'test' || !$this->p->config->testTools()) {
@@ -442,13 +471,6 @@ final class Admin
                 $this->help(__('Testfase: met een testkey zijn betalingen nagebootst en wordt geen echt geld gebruikt. De plugin schakelt niet vanzelf naar live.', 'mollie-incasso'));
             } else {
                 $this->help(__('Plak uw live-API-key uit Mollie Dashboard → Developers → API keys. Eerst risicoloos testen kan via Instellingen → Geavanceerd → Testfase gebruiken.', 'mollie-incasso'));
-                try {
-                    $this->p->config->assertRun('live');
-                } catch (Failure $e) {
-                    if ($e->reason === 'live_disabled') {
-                        echo '<div class="mi-help"><p>' . esc_html__('Live is op deze server nog niet vrijgegeven. Laat uw beheerder deze regels in wp-config.php zetten (boven “That’s all, stop editing”):', 'mollie-incasso') . '</p><pre>' . esc_html(implode("\n", $this->p->config->liveRequirements())) . '</pre></div>';
-                    }
-                }
             }
             $configured = false;
             try {
@@ -464,7 +486,10 @@ final class Admin
                 $this->keyHelp();
                 $this->end($mode === 'test' ? 'Testkey opslaan' : 'Livekey opslaan', true);
             }
-            if ($configured) {
+            if ($mode === 'live' && current_user_can('manage_options')) {
+                $this->livePanel('setup');
+            }
+            if ($configured && ($mode === 'test' || $this->p->config->liveReleased())) {
                 $this->quick('setup_check', 0, 'iDEAL en SEPA-incasso controleren');
                 $result = get_option('mi_methods_' . $mode, []);
                 if (!empty($result['fingerprint']) && hash_equals($result['fingerprint'], $this->p->config->fingerprint($mode))) {
@@ -626,6 +651,46 @@ final class Admin
         }
         echo '</tbody></table></div>';
     }
+    /** "Live activeren": status, requirements and the confirmation form; shared by settings and setup. */
+    private function livePanel(string $returnView): void
+    {
+        $config = $this->p->config;
+        echo '<div class="mi-live-panel" id="mi-live"><h2>' . esc_html__('Live activeren', 'mollie-incasso') . '</h2>';
+        if ($config->liveReleased() && $config->mode() === 'live') {
+            $activation = $config->liveActivation();
+            $user = $activation ? get_userdata((int) $activation['user']) : null;
+            echo '<p><strong>' . esc_html__('Live is actief: er wordt echt geld geïncasseerd.', 'mollie-incasso') . '</strong> ' . esc_html($activation ? sprintf(__('Geactiveerd op %1$s door %2$s.', 'mollie-incasso'), Notifications::date($activation['at'], true), $user ? $user->display_name : '—') : __('Vrijgegeven via de serverconfiguratie.', 'mollie-incasso')) . '</p>';
+            if ($activation) {
+                $this->help(__('Terug naar de testfase stopt geen bestaande Mollie-abonnementen; die lopen bij Mollie door tot u ze beëindigt.', 'mollie-incasso'));
+                $this->quick('deactivate_live', 0, 'Live uitschakelen en terug naar de testfase');
+            }
+            echo '</div>';
+            return;
+        }
+        if (wp_get_environment_type() !== 'production') {
+            echo '<p>' . esc_html(Plugin::message('live_environment_not_production')) . '</p></div>';
+            return;
+        }
+        if ($config->liveBrake()) {
+            echo '<p>' . esc_html__('Live is op deze server bewust geblokkeerd (MOLLIE_INCASSO_ALLOW_LIVE = false). Neem contact op met uw beheerder.', 'mollie-incasso') . '</p></div>';
+            return;
+        }
+        $hasKey = true;
+        try {
+            $config->key('live');
+        } catch (Failure $e) {
+            $hasKey = false;
+        }
+        $this->help(__('Bij activeren controleert de plugin met uw livekey of Mollie iDEAL en SEPA-incasso live aanbiedt. Lukt dat niet, dan verandert er niets. De activering geldt alleen voor deze website op dit adres; een kopie van de site kan nooit incasseren.', 'mollie-incasso'));
+        if (!$hasKey) {
+            echo '<p>' . esc_html__('Vul eerst uw live-API-key in (Mollie Dashboard → Developers → API keys) en sla op.', 'mollie-incasso') . '</p></div>';
+            return;
+        }
+        $this->start('activate_live');
+        echo '<input type="hidden" name="return_view" value="' . esc_attr($returnView) . '"><label class="mi-confirm"><input type="checkbox" name="confirm_live" value="1" required> ' . esc_html__('Ik begrijp dat vanaf nu echt geld wordt geïncasseerd van klanten die toestemming geven.', 'mollie-incasso') . '</label>';
+        $this->end('Live activeren', true);
+        echo '</div>';
+    }
     private function settings(): void
     {
         if (!current_user_can('manage_options')) {
@@ -653,6 +718,7 @@ final class Admin
         }
         echo '<details class="mi-advanced"' . (!empty($s['test_tools']) ? ' open' : '') . '><summary>' . esc_html__('Geavanceerd', 'mollie-incasso') . '</summary><label><input type="checkbox" name="test_tools" value="1" ' . checked(!empty($s['test_tools']), true, false) . '>' . esc_html__('Testfase gebruiken: testmodus met een Mollie-testkey, en testgegevens kunnen wissen (onder Diagnose).', 'mollie-incasso') . '</label><p class="mi-help">' . esc_html__('Uitzetten kan alleen als live op deze site is vrijgegeven; de plugin gaat dan naar live.', 'mollie-incasso') . '</p></details>';
         $this->end('Instellingen opslaan', true);
+        $this->livePanel('settings');
         if (get_option('mi_site_binding') !== $this->p->config->binding()) {
             $this->quick('bind', 0, 'Deze installatie binden en naar testmodus zetten');
         }
@@ -695,6 +761,20 @@ final class Admin
         }
         $this->quick('diagnose', 0, 'Beschikbare iDEAL- en directdebit-methodes controleren');
         $this->quick('queue', 0, 'Achtergrondwerk nu uitvoeren');
+        $lastTick = (string) get_option('mi_last_tick', '');
+        if ($lastTick === '' || strtotime($lastTick . ' UTC') < time() - 3 * HOUR_IN_SECONDS) {
+            echo '<div class="notice notice-warning inline"><p>' . esc_html__('De achtergrondtaken hebben langer dan drie uur niet gedraaid. WordPress start ze alleen bij websitebezoek; op een rustige site kan dat uitlopen. Tip: laat uw hostingpartij elke 5 minuten wp-cron.php aanroepen (een ‘server-cron’). Dit is niet verplicht.', 'mollie-incasso') . '</p></div>';
+        }
+        echo '<h2>' . esc_html__('E-mail', 'mollie-incasso') . '</h2>';
+        if (isset($_GET['mi_testmail'])) {
+            echo '<p><strong>' . esc_html__('De testmail is door de mailserver geaccepteerd. Controleer of hij in uw inbox staat en niet in spam.', 'mollie-incasso') . '</strong></p>';
+        }
+        if (Notifications::smtpConfigured()) {
+            echo '<p>' . esc_html__('Er lijkt een SMTP-koppeling actief te zijn. Controleer met een testmail of vooraankondigingen in de inbox aankomen.', 'mollie-incasso') . '</p>';
+        } else {
+            echo '<p>' . esc_html__('Vooraankondigingen zijn bij SEPA-incasso verplicht. Zonder geauthenticeerde verzending (SMTP met SPF/DKIM voor uw domein) belanden ze vaak in spam. Het instellen daarvan is de verantwoordelijkheid van de website-eigenaar; bijvoorbeeld met:', 'mollie-incasso') . ' <a href="https://wordpress.org/plugins/wp-mail-smtp/" target="_blank" rel="noopener noreferrer">WP Mail SMTP</a> ' . esc_html__('of', 'mollie-incasso') . ' <a href="https://wordpress.org/plugins/fluent-smtp/" target="_blank" rel="noopener noreferrer">FluentSMTP</a>.</p>';
+        }
+        $this->quick('test_mail', 0, 'Testmail naar mijzelf versturen');
         $error = get_option('mi_cron_error', []);
         if ($error) {
             echo '<p>' . esc_html(Plugin::message($error['reason'])) . ' — ' . esc_html($error['at']) . '</p>';
