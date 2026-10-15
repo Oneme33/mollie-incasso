@@ -9,8 +9,13 @@ final class Admin
     }
     public function register(): void
     {
+        // Menu icon as a CSS mask so it takes the menu colours (normal, hover, current) like a dashicon.
+        add_action('admin_head', static function () {
+            $icon = esc_url(plugins_url('assets/menu-icon.svg', MOLLIE_INCASSO_FILE));
+            echo '<style>#adminmenu .toplevel_page_mollie-incasso div.wp-menu-image::before{content:"";display:block;width:20px;height:20px;padding:0;margin:7px auto 0;background-color:currentColor;-webkit-mask:url(' . $icon . ') center/20px 20px no-repeat;mask:url(' . $icon . ') center/20px 20px no-repeat}</style>';
+        });
         add_action('admin_menu', function () {
-            add_menu_page(__('Mollie Incasso', 'mollie-incasso'), __('Mollie Incasso', 'mollie-incasso'), 'manage_mollie_incasso', 'mollie-incasso', [$this, 'render'], 'dashicons-money-alt', 57);
+            add_menu_page(__('Mollie Incasso', 'mollie-incasso'), __('Mollie Incasso', 'mollie-incasso'), 'manage_mollie_incasso', 'mollie-incasso', [$this, 'render'], 'none', 57);
             foreach (['overview' => 'Overzicht', 'customers' => 'Klanten', 'commands' => 'Incasso’s / opdrachten', 'subscriptions' => 'Abonnementen', 'settings' => 'Instellingen en regelingen', 'setup' => 'Installatiehulp', 'diagnostics' => 'Diagnose en berichten'] as $view => $label) {
                 add_submenu_page('mollie-incasso', __($label, 'mollie-incasso'), __($label, 'mollie-incasso'), 'manage_mollie_incasso', $view === 'overview' ? 'mollie-incasso' : 'mollie-incasso-' . $view, [$this, 'render']);
             }
