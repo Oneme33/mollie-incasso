@@ -2,7 +2,7 @@
 
 Zelfstandige WordPress-plugin voor één organisatie en één Mollie-profiel. Nederlandse, vertaalbare interface, werkt zelfstandig, met een optionele WooCommerce-checkout; geen WooCommerce Subscriptions of externe abonnementendienst nodig. Eerste iDEAL-betaling: **€ 0,01**, expliciet `sequenceType=first` bij een nieuwe, lokaal gekoppelde Mollie Customer. Alleen een betaald verificatieverzoek en een geldig `directdebit`-mandaat activeren toestemming. De eurocent blijft bij de organisatie, is geen abonnementsperiode en wordt niet stilzwijgend verrekend of terugbetaald.
 
-**Dit is een eerste testversie.** De lokale mocktests bewijzen niet dat uw profiel, hosting, bankverwerking of juridische afspraken geschikt zijn voor livegebruik. Er zijn tijdens ontwikkeling geen live betalingen of echte incasso’s uitgevoerd. Een Mollie-testkey en publiek bereikbaar HTTPS-adres waren niet beschikbaar voor een volledige externe test.
+**Dit is een eerste testversie.** De lokale mocktests bewijzen niet dat uw profiel, hosting, bankverwerking of juridische afspraken geschikt zijn voor livegebruik. Er zijn tijdens ontwikkeling geen live betalingen of echte incasso’s uitgevoerd. De WooCommerce-route is wel online getest met een Mollie-testkey, echte webhooks en mail; zie TESTING.md voor wat daarmee is aangetoond en wat nog open staat.
 
 ## Vereisten en aannames
 
@@ -190,7 +190,7 @@ GitHub Actions (`.github/workflows/tests.yml`) controleert bij elke push de PHP-
 
 De WooCommerce-test vereist geïnstalleerde WooCommerce-bestanden en gebruikt de echte CRUD/cart/Store API-klassen met nagebootste Mollie-antwoorden. Hij maakt alleen eigen fixtureproducten/orders en verwijdert die weer; gebruik een wegwerpdatabase. De tests gebruiken geïsoleerde tabellen en proceslokale instellingen, maar een onderbreking kan testtabellen achterlaten. Een expliciet aangemaakte test-conceptpagina wordt na de controle verwijderd. Ze gebruiken een fake gateway/SDK-HTTP-adapter en onderscheppen `wp_mail`; geen echte incasso’s of mails. De SDK-test mag een reeds aanwezige ongescopete SDK laden voor conflictcontrole.
 
-Nog uit te voeren op bereikbare HTTPS-testhosting met uw testprofiel: klant aanmelden, iDEAL-testcheckout betaald/mislukt, pending→valid mandaat controleren, echte webhook/retry, losse recurring testincasso, maand/kwartaal/jaar en maximaal aantal, gegenereerde abonnementsbetaling, eventuele mislukking/chargeback, API-stop/intrekken en een echte SMTP/cron-run. Mollie-testabonnementen kunnen door Mollie zelf na tien betalingen worden geannuleerd. Controleer de actuele testbeperkingen. Pas na deze controles, toetsing van toestemmings-/SEPA-afspraken en operationele monitoring kunt u livegang beoordelen.
+Online getest met een Mollie-testkey (WooCommerce-route): aanmelden, iDEAL-testcheckout betaald/mislukt/verlopen, mandaat, echte webhooks, mail, automatisch abonnement en intrekken. Nog uit te voeren: losse recurring testincasso en gegenereerde abonnementsbetaling op de aanbieddatum, kwartaal/jaar en maximaal aantal, eventuele mislukking/chargeback, alleen stoppen, geauthenticeerde SMTP en een cron-run zonder sitebezoek. Mollie-testabonnementen kunnen door Mollie zelf na tien betalingen worden geannuleerd. Controleer de actuele testbeperkingen. Pas na deze controles, toetsing van toestemmings-/SEPA-afspraken en operationele monitoring kunt u livegang beoordelen.
 
 ## Geverifieerde officiële bronnen
 

@@ -454,7 +454,7 @@ msgstr ""
 msgid "Deze actie past niet bij de geaccepteerde regeling."
 msgstr ""
 
-#: src/WooCommerceBridge.php:236
+#: src/WooCommerceBridge.php:247
 msgid "Deze bestelling betreft alleen de verificatiebetaling van € 0,01. Uw vaste abonnement en volgende incasso’s worden beheerd via Mollie Incasso."
 msgstr ""
 
@@ -570,7 +570,7 @@ msgstr ""
 msgid "Eenmalig € 0,01 ter verificatie; dit is geen abonnementsperiode."
 msgstr ""
 
-#: src/WooCommerceBridge.php:255
+#: src/WooCommerceBridge.php:266
 msgid "Eenmalig € 0,01 verificatie via iDEAL. Daarna het vaste bedrag volgens de incassoafspraak."
 msgstr ""
 
@@ -602,7 +602,7 @@ msgstr ""
 msgid "Er is een API-key ingesteld voor de huidige betaalmodus."
 msgstr ""
 
-#: src/WooCommerceBridge.php:240
+#: src/WooCommerceBridge.php:251
 msgid "Er is geen abonnement gestart en er wordt niets geïncasseerd. Wilt u het opnieuw proberen? Plaats dan een nieuwe bestelling van dit abonnement."
 msgstr ""
 
@@ -790,7 +790,7 @@ msgstr ""
 msgid "Incassobeheer"
 msgstr ""
 
-#: src/WooCommerceBridge.php:263
+#: src/WooCommerceBridge.php:274
 msgid "Incassoregeling (%s)"
 msgstr ""
 
@@ -1110,7 +1110,7 @@ msgstr ""
 msgid "Netto excl. kosten"
 msgstr ""
 
-#: src/WooCommerceBridge.php:263
+#: src/WooCommerceBridge.php:274
 msgid "Niet gekoppeld"
 msgstr ""
 
@@ -1206,7 +1206,7 @@ msgstr ""
 msgid "Optioneel voor uw beheerder: de API-key rechtstreeks op de server instellen of een aparte encryptiesleutel gebruiken via wp-config.php, het bestaande configuratiebestand van WordPress. Dit is niet nodig voor normaal opslaan via WordPress. Een op de server ingestelde API-key heeft voorrang op dit formulier."
 msgstr ""
 
-#: src/WooCommerceBridge.php:262
+#: src/WooCommerceBridge.php:273
 msgid "Optionele incassoaanmelding: gebruik een eenvoudig virtueel product. Het afrekenbedrag is € 0,01; vervolgbetalingen lopen via Mollie Incasso."
 msgstr ""
 
@@ -1458,7 +1458,7 @@ msgstr ""
 msgid "Uw Mollie-API-key is nodig om uw account te verbinden. Plak de key in het veld en klik op Opslaan. De plugin regelt de versleuteling automatisch. U hoeft geen bestand aan te maken of serverinstellingen te wijzigen."
 msgstr ""
 
-#: src/WooCommerceBridge.php:243
+#: src/WooCommerceBridge.php:254
 msgid "Uw betaling wordt voorbereid. Vernieuw deze pagina later; maak geen tweede bestelling aan."
 msgstr ""
 
@@ -1474,7 +1474,7 @@ msgstr ""
 msgid "Uw gegevens"
 msgstr ""
 
-#: src/WooCommerceBridge.php:236
+#: src/WooCommerceBridge.php:247
 msgid "Uw incassoaanmelding"
 msgstr ""
 
@@ -1550,7 +1550,7 @@ msgstr ""
 msgid "Verificatie mislukt of teruggedraaid"
 msgstr ""
 
-#: src/WooCommerceBridge.php:242
+#: src/WooCommerceBridge.php:253
 msgid "Verificatie via iDEAL afronden"
 msgstr ""
 

@@ -219,12 +219,23 @@ final class WooCommerceBridge
         if(!$order || $order->get_payment_method()!=='mollie_incasso')return;
         $key=isset($_GET['key']) && is_string($_GET['key']) ? wp_unslash($_GET['key']) : '';
         if (!$key || !hash_equals($order->get_order_key(),$key)) return;
-        $rows=$this->plugin->store->select('SELECT * FROM '.$this->plugin->store->table('checkouts').' WHERE order_id=%d AND mode=%s',[$id,$this->mode()]);
-        if(!$rows || !$rows[0]['customer_id'] || $rows[0]['state']!=='pending')return;
-        try {
-            $this->plugin->store->limit('return-sync:'.$rows[0]['customer_id'],10,600);
-            if($this->plugin->service->firstPaymentState((int)$rows[0]['customer_id'],$this->mode(),true)!=='unknown') $this->sync((int)$rows[0]['customer_id'],$this->mode());
-        } catch(Failure $e) {}
+        try { $this->refreshEnrollment($id); } catch(Failure $e) {}
+    }
+    /**
+     * Bring order and consent up to date for the shopper who just returned. The webhook may already
+     * have completed the order while the mandate check is still queued, so both are checked.
+     */
+    public function refreshEnrollment(int $orderId): void
+    {
+        $rows=$this->plugin->store->select('SELECT * FROM '.$this->plugin->store->table('checkouts').' WHERE order_id=%d AND mode=%s',[$orderId,$this->mode()]);
+        if(!$rows || !$rows[0]['customer_id'] || $rows[0]['state']==='canceled')return;
+        $cid=(int)$rows[0]['customer_id'];
+        $orderPending=$rows[0]['state']==='pending';
+        $consentPending=in_array($this->plugin->service->customer($cid,$this->mode())['status'],['pending','mandate_pending'],true);
+        if(!$orderPending && !$consentPending)return;
+        $this->plugin->store->limit('return-sync:'.$cid,10,600);
+        $state=$this->plugin->service->firstPaymentState($cid,$this->mode(),true);
+        if($orderPending && $state!=='unknown') $this->sync($cid,$this->mode());
     }
     public function orderStatus(int $id): void
     {
