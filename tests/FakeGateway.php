@@ -7,6 +7,7 @@ final class FakeGateway implements Gateway
 {
     public array $customers = [], $payments = [], $subs = [], $mandateRows = [], $keys = [], $calls = [];
     public bool $timeout = false, $cancelFails = false, $revokeFails = false, $hideFind = false, $readFails = false, $rejectSubscription = false, $methodsMissing = false;
+    public ?\Closure $duringPreflight = null;
     public ?\Closure $duringCreate = null;
     public function methods(string $sequence, int $cents = 1): array
     {
@@ -14,6 +15,13 @@ final class FakeGateway implements Gateway
             return [];
         }
         return $sequence === 'first' ? ['ideal'] : ['directdebit'];
+    }
+    public function preflightMethods(): array
+    {
+        if ($this->duringPreflight) {
+            ($this->duringPreflight)();
+        }
+        return ['first' => $this->methods('first'), 'recurring' => $this->methods('recurring')];
     }
     private function create(string $kind, array $body, string $key): array
     {

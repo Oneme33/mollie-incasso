@@ -788,17 +788,14 @@ final class Service
             throw new Failure('live_disabled');
         }
         $config->key('live');
-        $previous = get_option('mi_live_activation', null);
-        $settings = $config->settings();
-        update_option('mi_live_activation', ['binding' => $config->binding(), 'url' => home_url(), 'user' => $userId, 'at' => Store::now()], false);
-        update_option('mi_settings', ['mode' => 'live'] + $settings, false);
-        try {
-            $this->methods('live');
-        } catch (Failure $e) {
-            update_option('mi_settings', $settings, false);
-            update_option('mi_live_activation', is_array($previous) ? $previous : [], false);
-            throw $e;
+        // Check first, release after: until Mollie confirms, nothing anywhere can run in live.
+        $methods = ($this->gatewayFactory)('live')->preflightMethods();
+        if (!in_array('ideal', $methods['first'], true) || !in_array('directdebit', $methods['recurring'], true)) {
+            throw new Failure('methods_not_enabled');
         }
+        update_option('mi_methods_live', ['checked_at' => Store::now(), 'fingerprint' => $config->fingerprint('live')] + $methods, false);
+        update_option('mi_live_activation', ['binding' => $config->binding(), 'url' => home_url(), 'user' => $userId, 'at' => Store::now()], false);
+        update_option('mi_settings', ['mode' => 'live'] + $config->settings(), false);
     }
     /** Back to the test phase; external Mollie subscriptions are not touched. */
     public function deactivateLive(): void

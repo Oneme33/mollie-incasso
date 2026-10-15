@@ -24,9 +24,12 @@ final class MollieGateway implements Gateway
             throw new Failure('sdk_initialization_failed');
         }
     }
-    private function call(callable $callback, bool $mutates = false): mixed
+    private function call(callable $callback, bool $mutates = false, bool $preflight = false): mixed
     {
-        $this->config->assertRun($this->mode, $mutates);
+        // Only the read-only methods preflight may run before live is released.
+        if (!$preflight) {
+            $this->config->assertRun($this->mode, $mutates);
+        }
         try {
             return $callback();
         } catch (Failure $e) {
@@ -88,13 +91,19 @@ final class MollieGateway implements Gateway
     }
     public function methods(string $sequence, int $cents = 1): array
     {
-        return $this->call(function () use ($sequence, $cents) {
-            $result = [];
-            foreach ($this->client->methods->allEnabled(['sequenceType' => $sequence, 'amount' => Money::api($cents), 'locale' => 'nl_NL']) as $method) {
-                $result[] = $method->id;
-            }
-            return $result;
-        });
+        return $this->call(fn() => $this->enabledMethods($sequence, $cents));
+    }
+    public function preflightMethods(): array
+    {
+        return $this->call(fn() => ['first' => $this->enabledMethods('first', 1), 'recurring' => $this->enabledMethods('recurring', 1)], false, true);
+    }
+    private function enabledMethods(string $sequence, int $cents): array
+    {
+        $result = [];
+        foreach ($this->client->methods->allEnabled(['sequenceType' => $sequence, 'amount' => Money::api($cents), 'locale' => 'nl_NL']) as $method) {
+            $result[] = $method->id;
+        }
+        return $result;
     }
     public function createCustomer(array $payload, string $key): array
     {

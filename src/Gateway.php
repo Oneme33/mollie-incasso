@@ -5,6 +5,8 @@ namespace Lukraak\MollieIncasso;
 interface Gateway
 {
     public function methods(string $sequence, int $cents = 1): array;
+    /** Read-only check of the enabled first/recurring methods, allowed before live is released. */
+    public function preflightMethods(): array;
     public function createCustomer(array $payload, string $key): array;
     public function createPayment(array $payload, string $key): array;
     public function payment(string $id): array;

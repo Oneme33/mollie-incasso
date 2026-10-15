@@ -73,6 +73,20 @@ try {
     expect((new MollieGateway($config, 'test', $older))->find('customer', '', 'ref', 'instance', gmdate('Y-m-d H:i:s')) === null, 'reconciliation stops at resources older than the uncertain create');
     $older = MollieApiClient::fake([$prefix . 'GetPaginatedCustomerRequest' => $list('customers', [['resource' => 'customer', 'id' => 'cst_new00001', 'createdAt' => gmdate('c'), 'metadata' => $metadata]])]);
     expect((new MollieGateway($config, 'test', $older))->find('customer', '', 'ref', 'instance', gmdate('Y-m-d H:i:s', time() - 60))['id'] === 'cst_new00001', 'reconciliation still finds the recent uncertain create');
+    // Before live is released only the read-only preflight may reach Mollie with the live key.
+    putenv('MOLLIE_INCASSO_LIVE_KEY=live_' . str_repeat('L', 32));
+    $methodsList = fn() => $list('methods', [['resource' => 'method', 'id' => 'ideal', 'status' => 'activated'], ['resource' => 'method', 'id' => 'directdebit', 'status' => 'activated']]);
+    $liveMock = MollieApiClient::fake([$prefix . 'GetEnabledMethodsRequest' => new \Lukraak\MollieIncasso\Vendor\Mollie\Api\Fake\SequenceMockResponse($methodsList(), $methodsList())]);
+    $liveGateway = new MollieGateway($config, 'live', $liveMock);
+    $preflight = $liveGateway->preflightMethods();
+    expect(in_array('ideal', $preflight['first'], true) && in_array('directdebit', $preflight['recurring'], true), 'live methods preflight works before live is released');
+    try {
+        $liveGateway->methods('recurring');
+        throw new RuntimeException('Expected refusal');
+    } catch (Failure $e) {
+        expect($e->reason === 'environment_mismatch', 'ordinary live calls stay refused until live is released');
+    }
+    putenv('MOLLIE_INCASSO_LIVE_KEY');
     $rejecting = MollieApiClient::fake([$prefix . 'CreateSubscriptionRequest' => MockResponse::error(422, 'Unprocessable Entity', 'The start date is invalid for klant@example.com, see https://docs.mollie.com/x', 'startDate')]);
     try {
         (new MollieGateway($config, 'test', $rejecting))->createSubscription('cst_12345678', $body, 'reject-key');

@@ -639,6 +639,15 @@ try {
     $_POST = ['target_mode' => 'test', 'organization' => 'Testorganisatie', 'contact' => 'test@example.invalid', 'retention_days' => '1', 'webhook_url' => 'https://example.org/mi-webhook'];
     rejects(fn() => $save->invoke($adminScreen), 'live_disabled');
     check($config->mode() === 'test' && $config->testTools(), 'turning the test phase off is refused as a whole while live is not released here');
+    // Review of PR #3: the real live form sends the hidden target_mode=live together with the new checkbox.
+    FixtureOptions::set('mi_settings', ['mode' => 'live', 'test_tools' => 0, 'organization' => 'Testorganisatie', 'contact' => 'test@example.invalid'], false);
+    $_POST = ['target_mode' => 'live', 'test_tools' => '1', 'organization' => 'Testorganisatie', 'contact' => 'test@example.invalid', 'retention_days' => '1', 'webhook_url' => 'https://example.org/mi-webhook'];
+    $save->invoke($adminScreen);
+    check($config->mode() === 'test' && $config->testTools(), 'a fresh live installation can switch the test phase on from the real form');
+    FixtureOptions::set('mi_settings', ['mode' => 'live', 'test_tools' => 0, 'organization' => 'Oud', 'contact' => 'test@example.invalid'], false);
+    $_POST = ['target_mode' => 'live', 'organization' => 'Nieuw', 'contact' => 'test@example.invalid', 'retention_days' => '1', 'webhook_url' => 'https://example.org/mi-webhook'];
+    $save->invoke($adminScreen);
+    check($config->settings()['organization'] === 'Nieuw' && $config->mode() === 'live', 'a fresh live installation saves its settings before live is activated');
     $_POST = $savedPost;
     FixtureOptions::set('mi_settings', ['mode' => 'live', 'test_tools' => 0, 'organization' => 'Testorganisatie', 'contact' => 'test@example.invalid'], false);
     $renderGet = $_GET;
@@ -664,7 +673,14 @@ try {
     rejects(fn() => $service->activateLive(1), 'methods_not_enabled');
     check($config->mode() === 'test' && $config->liveActivation() === null, 'failed live check changes nothing');
     $fake->methodsMissing = false;
+    // Review of PR #3: nothing may run in live while Mollie is still being asked.
+    $seenDuringCheck = null;
+    $fake->duringPreflight = function () use ($config, &$seenDuringCheck) {
+        $seenDuringCheck = ['released' => $config->liveReleased(), 'mode' => $config->mode()];
+    };
     $service->activateLive(1);
+    $fake->duringPreflight = null;
+    check($seenDuringCheck === ['released' => false, 'mode' => 'test'], 'live is released only after the methods check, never during it');
     check($config->mode() === 'live' && $config->liveReleased(), 'Live activeren switches to live after a successful live check');
     $config->assertRun('live');
     check(true, 'live API use is allowed after activation');

@@ -301,7 +301,12 @@ final class Admin
         }
         $old = $this->p->config->settings();
         $testTools = $this->field('test_tools') === '1';
-        $new = ['mode' => $testTools && $this->field('target_mode') === 'test' ? 'test' : 'live', 'test_tools' => $testTools ? 1 : 0, 'organization' => sanitize_text_field($this->field('organization', 190)), 'address' => sanitize_textarea_field($this->field('address')), 'contact' => sanitize_textarea_field($this->field('contact')), 'privacy_url' => esc_url_raw($this->field('privacy_url')), 'notifications' => $this->field('notifications') === '1' ? 1 : 0, 'cleanup' => $this->field('cleanup') === '1' ? 1 : 0, 'retention_days' => max(1, min(10950, (int) $this->field('retention_days', 8))), 'webhook_url' => esc_url_raw($this->field('webhook_url'))];
+        // Switching the test phase on means testing: the environment select only appears afterwards.
+        $mode = $testTools && (empty($old['test_tools']) || $this->field('target_mode') === 'test') ? 'test' : 'live';
+        if ($mode === 'live' && $old['mode'] !== 'live' && !$this->p->config->liveReleased()) {
+            throw new Failure('live_disabled');
+        }
+        $new = ['mode' => $mode, 'test_tools' => $testTools ? 1 : 0, 'organization' => sanitize_text_field($this->field('organization', 190)), 'address' => sanitize_textarea_field($this->field('address')), 'contact' => sanitize_textarea_field($this->field('contact')), 'privacy_url' => esc_url_raw($this->field('privacy_url')), 'notifications' => $this->field('notifications') === '1' ? 1 : 0, 'cleanup' => $this->field('cleanup') === '1' ? 1 : 0, 'retention_days' => max(1, min(10950, (int) $this->field('retention_days', 8))), 'webhook_url' => esc_url_raw($this->field('webhook_url'))];
         foreach (['test', 'live'] as $mode) {
             $key = trim($this->field('key_' . $mode, 120));
             if ($key && !preg_match('/^' . $mode . '_[A-Za-z0-9]{30,100}$/D', $key)) {
@@ -315,6 +320,10 @@ final class Admin
             }
         }
         update_option('mi_settings', $new, false);
+        if ($new['mode'] === 'live' && !$this->p->config->liveReleased()) {
+            // Staying in unreleased live (fresh install): settings are saved, nothing can run yet.
+            return;
+        }
         try {
             $this->p->config->assertRun($new['mode']);
         } catch (Failure $e) {
