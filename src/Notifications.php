@@ -7,7 +7,7 @@ final class Notifications
     public function __construct(private readonly Store $store, private readonly Config $config, private readonly Tokens $tokens, private readonly Queue $queue)
     {
     }
-    /** Readable Dutch date: plain dates are Amsterdam calendar dates, datetimes are stored in UTC. */
+    /** Readable date in the plugin language: plain dates are Amsterdam calendar dates, datetimes are stored in UTC. */
     public static function date(?string $value, bool $utc = false): string
     {
         if (!$value) {
@@ -19,11 +19,16 @@ final class Notifications
         } catch (\Exception $e) {
             return sanitize_text_field($value);
         }
-        // Dates follow the language of the plugin texts: the Dutch source until a translation is loaded.
-        if (is_textdomain_loaded('mollie-incasso') && !str_starts_with(determine_locale(), 'nl')) {
-            return wp_date($utc ? 'j F Y H:i' : 'j F Y', $date->getTimestamp(), $zone);
-        }
+        // Dates follow the language of the plugin texts, not the WordPress language.
+        $text = Plugin::textLocale();
         $local = $date->setTimezone($zone);
+        if (!str_starts_with($text, 'nl')) {
+            if ($text === determine_locale()) {
+                return wp_date($utc ? 'j F Y H:i' : 'j F Y', $date->getTimestamp(), $zone);
+            }
+            // English texts on a site in another language: PHP month names are English.
+            return $local->format($utc ? 'j F Y H:i' : 'j F Y');
+        }
         $months = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
         return $local->format('j') . ' ' . $months[(int) $local->format('n') - 1] . ' ' . $local->format('Y') . ($utc ? ' ' . $local->format('H:i') : '');
     }

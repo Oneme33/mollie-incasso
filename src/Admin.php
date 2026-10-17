@@ -278,13 +278,16 @@ final class Admin
                     if (!current_user_can('manage_options') || $mode !== 'test' || !$this->p->config->testTools()) {
                         throw new Failure('access_denied');
                     }
-                    if ($this->field('confirm_text', 20) !== 'WISSEN') {
+                    if (strtoupper(trim($this->field('confirm_text', 20))) !== Plugin::wipeWord()) {
                         throw new Failure('wipe_confirmation_required');
                     }
                     $this->p->service->wipeTestData();
                     $view = 'diagnostics';
                     $args = ['mi_saved' => 1, 'mi_wiped' => 1];
                     break;
+                case 'test_outcome':
+                    wp_redirect($this->p->service->testOutcomeUrl($id, $mode), 303, 'Mollie Incasso');
+                    exit;
                 case 'mail_retry':
                 case 'mail_sent':
                     $this->p->mail->resolve($id, $mode, $operation === 'mail_sent');
@@ -317,7 +320,8 @@ final class Admin
         if ($mode === 'live' && $old['mode'] !== 'live' && !$this->p->config->liveReleased()) {
             throw new Failure('live_disabled');
         }
-        $new = ['mode' => $mode, 'test_tools' => $testTools ? 1 : 0, 'organization' => sanitize_text_field($this->field('organization', 190)), 'address' => sanitize_textarea_field($this->field('address')), 'contact' => sanitize_textarea_field($this->field('contact')), 'privacy_url' => esc_url_raw($this->field('privacy_url')), 'notifications' => $this->field('notifications') === '1' ? 1 : 0, 'cleanup' => $this->field('cleanup') === '1' ? 1 : 0, 'retention_days' => max(1, min(10950, (int) $this->field('retention_days', 8))), 'webhook_url' => esc_url_raw($this->field('webhook_url'))];
+        $language = $this->field('language', 8);
+        $new = ['mode' => $mode, 'test_tools' => $testTools ? 1 : 0, 'language' => in_array($language, ['nl_NL', 'en_US'], true) ? $language : 'auto', 'organization' => sanitize_text_field($this->field('organization', 190)), 'address' => sanitize_textarea_field($this->field('address')), 'contact' => sanitize_textarea_field($this->field('contact')), 'privacy_url' => esc_url_raw($this->field('privacy_url')), 'notifications' => $this->field('notifications') === '1' ? 1 : 0, 'cleanup' => $this->field('cleanup') === '1' ? 1 : 0, 'retention_days' => max(1, min(10950, (int) $this->field('retention_days', 8))), 'webhook_url' => esc_url_raw($this->field('webhook_url'))];
         foreach (['test', 'live'] as $mode) {
             $key = trim($this->field('key_' . $mode, 120));
             if ($key && !preg_match('/^' . $mode . '_[A-Za-z0-9]{30,100}$/D', $key)) {
@@ -644,6 +648,9 @@ final class Admin
             echo '</td></tr>';
         }
         echo '</tbody></table></div><h2>' . esc_html__('Incasso’s en betalingen', 'mollie-incasso') . '</h2><div class="mi-scroll"><table class="widefat striped"><thead><tr>';
+        if ($mode === 'test') {
+            $this->help(__('Testfase: Mollie rondt een test-incasso nooit vanzelf af. Kies met Testuitkomst kiezen zelf betaald of mislukt, en bij een betaalde incasso een stornering; Mollie stuurt daarna de webhook zoals bij een echte incasso.', 'mollie-incasso'));
+        }
         foreach (['Mollie-ID', 'Klant', 'Bedrag', 'Status', 'Refund / stornering', 'Netto excl. kosten', 'Datum / fout'] as $h) {
             echo '<th>' . esc_html__($h, 'mollie-incasso') . '</th>';
         }
@@ -651,7 +658,11 @@ final class Admin
         foreach ($this->p->store->rows('payments', $mode) as $p) {
             $c = $this->p->store->one('customers', (int) $p['customer_id'], $mode);
             $net = $p['status'] === 'paid' ? (int) $p['amount'] - (int) $p['refunded'] - (int) $p['charged_back'] : 0;
-            echo '<tr><td>' . esc_html($p['remote_id']) . '</td><td>' . esc_html($c['name'] ?? '') . '</td><td>' . esc_html(Money::eur((int) $p['amount'])) . '</td><td>' . esc_html(Plugin::status($p['status'])) . '</td><td>' . esc_html(Money::eur((int) $p['refunded']) . ' / ' . Money::eur((int) $p['charged_back'])) . '</td><td>' . esc_html(Money::eur($net)) . '</td><td>' . esc_html($p['created_at'] . ' UTC — ' . $p['failure']) . '</td></tr>';
+            echo '<tr><td>' . esc_html($p['remote_id']) . '</td><td>' . esc_html($c['name'] ?? '') . '</td><td>' . esc_html(Money::eur((int) $p['amount'])) . '</td><td>' . esc_html(Plugin::status($p['status'])) . '</td><td>' . esc_html(Money::eur((int) $p['refunded']) . ' / ' . Money::eur((int) $p['charged_back'])) . '</td><td>' . esc_html(Money::eur($net)) . '</td><td>' . esc_html($p['created_at'] . ' UTC — ' . $p['failure']);
+            if ($mode === 'test' && in_array($p['status'], ['open', 'pending', 'paid'], true) && $p['kind'] !== 'first') {
+                $this->quick('test_outcome', (int) $p['id'], 'Testuitkomst kiezen');
+            }
+            echo '</td></tr>';
         }
         echo '</tbody></table></div>';
     }
@@ -770,6 +781,12 @@ final class Admin
         // Geavanceerd
         $this->section(__('Geavanceerd', 'mollie-incasso'), !empty($s['test_tools']) ? __('Testfase aan', 'mollie-incasso') : '');
         echo '<label><input type="checkbox" name="test_tools" value="1" ' . checked(!empty($s['test_tools']), true, false) . '>' . esc_html__('Testfase gebruiken: testmodus met een Mollie-testkey, en testgegevens kunnen wissen (onder Diagnose).', 'mollie-incasso') . '</label><p class="mi-help">' . esc_html__('Uitzetten kan alleen als live op deze site is vrijgegeven; de plugin gaat dan naar live.', 'mollie-incasso') . '</p>';
+        $language = (string) ($s['language'] ?? 'auto');
+        echo '<label>' . esc_html__('Taal van de plugin', 'mollie-incasso') . '<select name="language">';
+        foreach (['auto' => __('Automatisch (taal van WordPress)', 'mollie-incasso'), 'nl_NL' => 'Nederlands', 'en_US' => 'English'] as $value => $label) {
+            echo '<option value="' . esc_attr($value) . '" ' . selected($language, $value, false) . '>' . esc_html($label) . '</option>';
+        }
+        echo '</select></label><p class="mi-help">' . esc_html__('Geldt voor beheerschermen, aanmeldformulier en mails van deze plugin.', 'mollie-incasso') . '</p>';
         echo '<label>' . esc_html__('HTTPS-webhookoverride voor reverse proxy (optioneel)', 'mollie-incasso') . '<input name="webhook_url" value="' . esc_attr((string) $s['webhook_url']) . '"></label>';
         $this->sectionEnd();
         $this->end('Instellingen opslaan', true);
@@ -901,7 +918,7 @@ final class Admin
             }
             $this->help(__('Verwijdert definitief alle klanten, toestemmingen, regelingen, opdrachten, betalingen, abonnementen, taken en meldingen uit de testmodus van deze website. Livegegevens worden nooit aangeraakt; in livemodus is deze knop niet beschikbaar. Instellingen en API-keys blijven staan. Gegevens bij Mollie (testomgeving) en WooCommerce-bestellingen of -producten worden niet gewijzigd. Dit kan niet ongedaan worden gemaakt.', 'mollie-incasso'));
             $this->start('wipe_test');
-            echo '<label>' . esc_html__('Typ WISSEN om te bevestigen', 'mollie-incasso') . '<input name="confirm_text" autocomplete="off" required pattern="WISSEN"></label>';
+            echo '<label>' . esc_html(sprintf(__('Typ %s om te bevestigen', 'mollie-incasso'), Plugin::wipeWord())) . '<input name="confirm_text" autocomplete="off" required></label>';
             $this->end('Alle testgegevens definitief wissen');
             $this->sectionEnd();
         }

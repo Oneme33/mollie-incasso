@@ -147,15 +147,21 @@ try {
     check($fake->calls['payment'] === $count && $store->one('commands', (int) $command['id'], 'test')['state'] === 'completed', 'timeout after send reconciles, no duplicate charge');
     $payment = $store->select('SELECT * FROM ' . $store->table('payments') . ' WHERE command_id=%d', [(int) $command['id']])[0];
     $pid = $payment['remote_id'];
+    check(str_starts_with($service->testOutcomeUrl((int) $payment['id'], 'test'), 'https://www.mollie.com/'), 'test phase offers the Mollie test outcome page for a pending debit');
+    rejects(fn() => $service->testOutcomeUrl((int) $payment['id'], 'live'), 'test_outcome_unavailable');
+    $verification = $store->select('SELECT id FROM ' . $store->table('payments') . " WHERE mode='test' AND kind='first' LIMIT 1")[0];
+    rejects(fn() => $service->testOutcomeUrl((int) $verification['id'], 'test'), 'test_outcome_unavailable');
     $fake->payments[$pid]['status'] = 'failed';
     $fake->payments[$pid]['failure'] = 'MD01';
     $service->syncPayment($pid, 'test');
     check($store->find('payments', 'remote_id', $pid, 'test')['failure'] === 'MD01', 'failed debit and failure reason visible');
+    rejects(fn() => $service->testOutcomeUrl((int) $payment['id'], 'test'), 'test_outcome_unavailable');
     $fake->payments[$pid]['status'] = 'paid';
     $fake->payments[$pid]['amountChargedBack']['value'] = '15.00';
     $service->syncPayment($pid, 'test');
     $financial = $store->find('payments', 'remote_id', $pid, 'test');
     check($financial['status'] === 'paid' && (int) $financial['charged_back'] === 1500, 'chargeback retained separately alongside paid status');
+    check(str_starts_with($service->testOutcomeUrl((int) $payment['id'], 'test'), 'https://www.mollie.com/'), 'test phase still offers the test page for a paid debit, to simulate a chargeback');
     $c = activate(signup($fixed));
     $subCommand = $service->prepare((int) $c['id'], 'test', 'subscription', 2500, 'Lidmaatschap', $date, wp_generate_uuid4());
     $service->confirm((int) $subCommand['id'], 'test');
@@ -596,6 +602,31 @@ try {
     }
     check($own, 'plugin screens keep their own notices');
     $_GET = $savedGet;
+    // Plugin language: fixed English, fixed Dutch, and auto maps any English variant to en_US.
+    $translationFile = dirname(MOLLIE_INCASSO_FILE) . '/languages/mollie-incasso-en_US.mo';
+    if (is_file($translationFile)) {
+        Plugin::loadLanguage('en_US');
+        check(__('Testuitkomst kiezen', 'mollie-incasso') === 'Choose test outcome', 'language setting English shows the English translation');
+        Plugin::loadLanguage('nl_NL');
+        check(__('Testuitkomst kiezen', 'mollie-incasso') === 'Testuitkomst kiezen', 'language setting Dutch keeps Dutch on an English site');
+        $forceEn = static fn() => 'en';
+        add_filter('locale', $forceEn);
+        Plugin::loadLanguage('auto');
+        check(__('Testuitkomst kiezen', 'mollie-incasso') === 'Choose test outcome', 'automatic language uses English for a plain en locale');
+        load_textdomain('mi-other-domain', '/nonexistent.mo');
+        check(__('Testuitkomst kiezen', 'mollie-incasso') === 'Choose test outcome', 'English stays visible after another plugin loads its texts for the plain en locale');
+        remove_filter('locale', $forceEn);
+        $forceNl = static fn() => 'nl_NL';
+        add_filter('locale', $forceNl);
+        Plugin::loadLanguage('en_US');
+        load_textdomain('mi-other-domain', '/nonexistent.mo');
+        check(__('Testuitkomst kiezen', 'mollie-incasso') === 'Choose test outcome', 'language setting English works on a Dutch site');
+        check(Notifications::date('2026-10-29') === '29 October 2026', 'English plugin language shows English dates on a Dutch site');
+        remove_filter('locale', $forceNl);
+        Plugin::loadLanguage('nl_NL');
+    } else {
+        echo "SKIP language checks: no installed translation file\n";
+    }
     // Test-data reset: only test rows, never live ones, and refused outside test mode.
     $liveCustomer = $store->insert('customers', ['mode' => 'live', 'reference' => wp_generate_uuid4(), 'name' => 'Live', 'email' => 'live@example.invalid', 'scheme_id' => 1, 'status' => 'active', 'created_at' => Store::now(), 'updated_at' => Store::now()]);
     $liveSettings = $config->settings();

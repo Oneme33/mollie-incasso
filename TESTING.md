@@ -1,4 +1,4 @@
-# Testrapport — Mollie Incasso 0.5.0
+# Testrapport — Mollie Incasso 1.0.0
 
 Lokaal uitgevoerd op 13 en 14 oktober 2026: PHP 8.2.29, WordPress 6.8.1, bestaande Docker MySQL/InnoDB. Geen live geld, echte incasso of echte klantmail gebruikt. Dit rapport is geen productiecertificering.
 
@@ -112,3 +112,9 @@ Nog niet aangetoond:
 6. Juridische beoordeling van toestemmingstekst, SEPA-voorwaarden en vooraankondigingstermijn; ook de taal van de teksten op een Engelstalige winkel.
 
 Geen live geld gebruiken voor deze acceptatie. Schakel live pas afzonderlijk in na succesvolle externe tests en operationele afspraken.
+
+## Online test en 1.0.0
+
+Online op geertruida.net (testkey, 15 tot 17 oktober 2026): aanmelding met verificatiebetaling van € 0,01 via iDEAL en echte webhook, mandaat, mails, automatisch Mollie-abonnement en intrekken via de statuslink zijn bewezen. De losse incasso van € 1 is op de geplande dag automatisch naar Mollie gestuurd en geaccepteerd; het abonnement staat actief bij Mollie. Mollie rondt een test-incasso nooit vanzelf af (status blijft in behandeling). Daarom biedt de testfase nu **Testuitkomst kiezen** bij een incasso in behandeling: dat opent de testpagina van Mollie (`changePaymentState`), waarna Mollie de webhook stuurt zoals bij een echte incasso. Getest: alleen in testmodus, alleen voor incasso's in behandeling of betaald (zodat ook een stornering te simuleren is), nooit voor de verificatiebetaling, alleen naar een mollie.com-adres. De echte afronding (betaald, mislukt, stornering) wordt bevestigd in de live pilot met een klein bedrag.
+
+Engelse vertaling (`en_US` en `en_GB`) toegevoegd, met een taalkeuze onder Instellingen → Geavanceerd (automatisch, Nederlands of English); automatisch gebruikt Engels voor elke Engelse WordPress-taal, ook een kale `en`. Lokaal: `integration.php` **171**, `sdk.php` **26**, `secrets.php` **23**, `woocommerce.php` **73 klassiek en 73 HPOS**.

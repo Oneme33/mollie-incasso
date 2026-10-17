@@ -50,6 +50,7 @@ final class FakeGateway implements Gateway
         $row = $body + ['id' => $id, 'mode' => 'test', 'status' => $kind === 'subscription' ? 'active' : 'open', 'amountRefunded' => ['currency' => 'EUR', 'value' => '0.00'], 'amountChargedBack' => ['currency' => 'EUR', 'value' => '0.00']];
         if ($kind === 'payment' && isset($body['mandateId'])) {
             $row['method'] = 'directdebit';
+            $row['change_state'] = 'https://www.mollie.com/checkout/test-mode?method=directdebit&token=' . $id;
         }
         if ($kind === 'payment' && $body['sequenceType'] === 'first') {
             $row['checkout'] = 'https://www.mollie.com/checkout/' . $id;

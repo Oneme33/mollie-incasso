@@ -74,6 +74,7 @@ final class MollieGateway implements Gateway
     {
         $data = $this->data($r, ['id', 'mode', 'status', 'customerId', 'subscriptionId', 'mandateId', 'method', 'sequenceType', 'metadata', 'amount', 'amountRefunded', 'amountChargedBack', 'createdAt', 'paidAt']);
         $data['checkout'] = $r->_links->checkout->href ?? null;
+        $data['change_state'] = $r->_links->changePaymentState->href ?? null;
         $code = (string) ($r->details->failureReason ?? $r->details->failureMessage ?? '');
         $data['failure'] = preg_match('/^[A-Z0-9_-]{1,40}$/D', $code) ? $code : ($r->status === 'failed' ? 'payment_failed' : '');
         return $data;
