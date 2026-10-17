@@ -147,6 +147,10 @@ try {
     check($fake->calls['payment'] === $count && $store->one('commands', (int) $command['id'], 'test')['state'] === 'completed', 'timeout after send reconciles, no duplicate charge');
     $payment = $store->select('SELECT * FROM ' . $store->table('payments') . ' WHERE command_id=%d', [(int) $command['id']])[0];
     $pid = $payment['remote_id'];
+    check(str_starts_with($service->testOutcomeUrl((int) $payment['id'], 'test'), 'https://www.mollie.com/'), 'test phase offers the Mollie test outcome page for a pending debit');
+    rejects(fn() => $service->testOutcomeUrl((int) $payment['id'], 'live'), 'test_outcome_unavailable');
+    $verification = $store->select('SELECT id FROM ' . $store->table('payments') . " WHERE mode='test' AND kind='first' LIMIT 1")[0];
+    rejects(fn() => $service->testOutcomeUrl((int) $verification['id'], 'test'), 'test_outcome_unavailable');
     $fake->payments[$pid]['status'] = 'failed';
     $fake->payments[$pid]['failure'] = 'MD01';
     $service->syncPayment($pid, 'test');

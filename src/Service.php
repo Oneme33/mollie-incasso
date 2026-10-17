@@ -448,6 +448,18 @@ final class Service
             $this->mail->schedule($mode, (int) $customer['id'], 'admin_alert', 'admin:' . $p['id'] . ':' . $data['status'] . ':' . $data['charged_back'], $data);
         }
     }
+    public function testOutcomeUrl(int $paymentId, string $mode): string
+    {
+        $row = $mode === 'test' ? $this->store->one('payments', $paymentId, 'test') : null;
+        if (!$row || $row['kind'] === 'first' || !in_array($row['status'], ['open', 'pending'], true)) {
+            throw new Failure('test_outcome_unavailable');
+        }
+        $url = (string) ($this->api('test')->payment($row['remote_id'])['change_state'] ?? '');
+        if (!preg_match('#^https://(www\.)?mollie\.com/#', $url)) {
+            throw new Failure('test_outcome_unavailable');
+        }
+        return $url;
+    }
     public function syncPayment(string $id, string $mode): void
     {
         $api = $this->api($mode);
