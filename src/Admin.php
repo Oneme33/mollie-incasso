@@ -278,7 +278,7 @@ final class Admin
                     if (!current_user_can('manage_options') || $mode !== 'test' || !$this->p->config->testTools()) {
                         throw new Failure('access_denied');
                     }
-                    if ($this->field('confirm_text', 20) !== 'WISSEN') {
+                    if (strtoupper(trim($this->field('confirm_text', 20))) !== Plugin::wipeWord()) {
                         throw new Failure('wipe_confirmation_required');
                     }
                     $this->p->service->wipeTestData();
@@ -911,7 +911,7 @@ final class Admin
             }
             $this->help(__('Verwijdert definitief alle klanten, toestemmingen, regelingen, opdrachten, betalingen, abonnementen, taken en meldingen uit de testmodus van deze website. Livegegevens worden nooit aangeraakt; in livemodus is deze knop niet beschikbaar. Instellingen en API-keys blijven staan. Gegevens bij Mollie (testomgeving) en WooCommerce-bestellingen of -producten worden niet gewijzigd. Dit kan niet ongedaan worden gemaakt.', 'mollie-incasso'));
             $this->start('wipe_test');
-            echo '<label>' . esc_html__('Typ WISSEN om te bevestigen', 'mollie-incasso') . '<input name="confirm_text" autocomplete="off" required pattern="WISSEN"></label>';
+            echo '<label>' . esc_html(sprintf(__('Typ %s om te bevestigen', 'mollie-incasso'), Plugin::wipeWord())) . '<input name="confirm_text" autocomplete="off" required></label>';
             $this->end('Alle testgegevens definitief wissen');
             $this->sectionEnd();
         }
