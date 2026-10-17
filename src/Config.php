@@ -15,7 +15,7 @@ final class Config
         if (isset($stored['mode']) && !array_key_exists('test_tools', $stored)) {
             $stored['test_tools'] = $stored['mode'] === 'test' ? 1 : 0;
         }
-        $settings = wp_parse_args($stored, ['mode' => 'live', 'test_tools' => 0, 'organization' => '', 'address' => '', 'contact' => '', 'privacy_url' => '', 'notifications' => 1, 'cleanup' => 0, 'retention_days' => 2555, 'webhook_url' => '']);
+        $settings = wp_parse_args($stored, ['mode' => 'live', 'test_tools' => 0, 'language' => 'auto', 'organization' => '', 'address' => '', 'contact' => '', 'privacy_url' => '', 'notifications' => 1, 'cleanup' => 0, 'retention_days' => 2555, 'webhook_url' => '']);
         if ($settings['mode'] === 'test') {
             $settings['test_tools'] = 1;
         }

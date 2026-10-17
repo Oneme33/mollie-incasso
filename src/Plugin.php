@@ -81,9 +81,32 @@ final class Plugin
             wp_schedule_event(time() + 300, 'hourly', 'mi_maintenance');
         }
     }
+    // Plugin language: auto follows WordPress (any English variant uses en_US), or a fixed choice.
+    // Loaded explicitly: the just-in-time loader only looks for the exact WordPress locale.
+    public static function loadLanguage(string $choice): void
+    {
+        unload_textdomain('mollie-incasso', $choice !== 'nl_NL');
+        if ($choice === 'nl_NL') {
+            // Dutch is the source language: also block just-in-time loading of a translation file.
+            $GLOBALS['l10n_unloaded'] = (array) ($GLOBALS['l10n_unloaded'] ?? []);
+            $GLOBALS['l10n_unloaded']['mollie-incasso'] = true;
+            return;
+        }
+        $own = dirname(MOLLIE_INCASSO_FILE) . '/languages/';
+        $locale = $choice === 'en_US' ? 'en_US' : determine_locale();
+        if (str_starts_with($locale, 'en') && !is_file($own . 'mollie-incasso-' . $locale . '.mo')) {
+            $locale = 'en_US';
+        }
+        foreach ([WP_LANG_DIR . '/plugins/', $own] as $dir) {
+            if (load_textdomain('mollie-incasso', $dir . 'mollie-incasso-' . $locale . '.mo', $locale)) {
+                return;
+            }
+        }
+        load_plugin_textdomain('mollie-incasso', false, dirname(plugin_basename(MOLLIE_INCASSO_FILE)) . '/languages');
+    }
     public function boot(): void
     {
-        load_plugin_textdomain('mollie-incasso', false, dirname(plugin_basename(MOLLIE_INCASSO_FILE)) . '/languages');
+        self::loadLanguage((string) ($this->config->settings()['language'] ?? 'auto'));
         if ((int) get_option('mi_schema') !== Store::SCHEMA_VERSION) {
             $this->store->install();
         }

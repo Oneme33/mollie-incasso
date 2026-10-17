@@ -138,7 +138,7 @@ De vooraankondigingstermijn is bij maandelijkse abonnementen maximaal 21 dagen, 
 
 In de testfase rondt Mollie een incasso nooit vanzelf af; die blijft in behandeling. Kies bij **Incasso's** met **Testuitkomst kiezen** zelf of de incasso betaald, mislukt of gestorneerd wordt. Mollie stuurt daarna de webhook zoals bij een echte incasso.
 
-**Talen:** de plugin is in het Nederlands geschreven en heeft een Engelse vertaling (`en_US`, `en_GB`) in `languages/`. Nieuwe vertalingen maakt u vanuit `languages/mollie-incasso.pot`.
+**Talen:** de plugin is in het Nederlands geschreven en heeft een Engelse vertaling (`en_US`, `en_GB`) in `languages/`. Onder **Instellingen → Geavanceerd → Taal van de plugin** kiest u Automatisch (volgt WordPress; elke Engelse taal geeft Engels), Nederlands of English. Nieuwe vertalingen maakt u vanuit `languages/mollie-incasso.pot`.
 
 **Live activeren** (Instellingen of installatiehulp, vanaf 0.5): vul de livekey in, vink aan dat er vanaf nu echt geld wordt geïncasseerd en klik op **Live activeren**. De plugin controleert met de livekey of Mollie iDEAL en SEPA-incasso live aanbiedt; lukt dat niet, dan verandert er niets. De activering wordt met gebruiker en tijdstip vastgelegd en geldt alleen voor deze website op dit adres en serverpad. **Live uitschakelen** zet de site terug in de testfase; lopende Mollie-abonnementen blijven bestaan. Er is geen serverwerk nodig. Live is nooit mogelijk op een site met `WP_ENVIRONMENT_TYPE` staging/development/local of op een gekopieerde site. Optioneel voor beheerders:
 

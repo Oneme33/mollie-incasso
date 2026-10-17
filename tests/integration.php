@@ -600,6 +600,22 @@ try {
     }
     check($own, 'plugin screens keep their own notices');
     $_GET = $savedGet;
+    // Plugin language: fixed English, fixed Dutch, and auto maps any English variant to en_US.
+    $translationFile = dirname(MOLLIE_INCASSO_FILE) . '/languages/mollie-incasso-en_US.mo';
+    if (is_file($translationFile)) {
+        Plugin::loadLanguage('en_US');
+        check(__('Testuitkomst kiezen', 'mollie-incasso') === 'Choose test outcome', 'language setting English shows the English translation');
+        Plugin::loadLanguage('nl_NL');
+        check(__('Testuitkomst kiezen', 'mollie-incasso') === 'Testuitkomst kiezen', 'language setting Dutch keeps Dutch on an English site');
+        $forceEn = static fn() => 'en';
+        add_filter('locale', $forceEn);
+        Plugin::loadLanguage('auto');
+        check(__('Testuitkomst kiezen', 'mollie-incasso') === 'Choose test outcome', 'automatic language uses English for a plain en locale');
+        remove_filter('locale', $forceEn);
+        Plugin::loadLanguage('nl_NL');
+    } else {
+        echo "SKIP language checks: no installed translation file\n";
+    }
     // Test-data reset: only test rows, never live ones, and refused outside test mode.
     $liveCustomer = $store->insert('customers', ['mode' => 'live', 'reference' => wp_generate_uuid4(), 'name' => 'Live', 'email' => 'live@example.invalid', 'scheme_id' => 1, 'status' => 'active', 'created_at' => Store::now(), 'updated_at' => Store::now()]);
     $liveSettings = $config->settings();

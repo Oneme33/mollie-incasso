@@ -320,7 +320,8 @@ final class Admin
         if ($mode === 'live' && $old['mode'] !== 'live' && !$this->p->config->liveReleased()) {
             throw new Failure('live_disabled');
         }
-        $new = ['mode' => $mode, 'test_tools' => $testTools ? 1 : 0, 'organization' => sanitize_text_field($this->field('organization', 190)), 'address' => sanitize_textarea_field($this->field('address')), 'contact' => sanitize_textarea_field($this->field('contact')), 'privacy_url' => esc_url_raw($this->field('privacy_url')), 'notifications' => $this->field('notifications') === '1' ? 1 : 0, 'cleanup' => $this->field('cleanup') === '1' ? 1 : 0, 'retention_days' => max(1, min(10950, (int) $this->field('retention_days', 8))), 'webhook_url' => esc_url_raw($this->field('webhook_url'))];
+        $language = $this->field('language', 8);
+        $new = ['mode' => $mode, 'test_tools' => $testTools ? 1 : 0, 'language' => in_array($language, ['nl_NL', 'en_US'], true) ? $language : 'auto', 'organization' => sanitize_text_field($this->field('organization', 190)), 'address' => sanitize_textarea_field($this->field('address')), 'contact' => sanitize_textarea_field($this->field('contact')), 'privacy_url' => esc_url_raw($this->field('privacy_url')), 'notifications' => $this->field('notifications') === '1' ? 1 : 0, 'cleanup' => $this->field('cleanup') === '1' ? 1 : 0, 'retention_days' => max(1, min(10950, (int) $this->field('retention_days', 8))), 'webhook_url' => esc_url_raw($this->field('webhook_url'))];
         foreach (['test', 'live'] as $mode) {
             $key = trim($this->field('key_' . $mode, 120));
             if ($key && !preg_match('/^' . $mode . '_[A-Za-z0-9]{30,100}$/D', $key)) {
@@ -780,6 +781,12 @@ final class Admin
         // Geavanceerd
         $this->section(__('Geavanceerd', 'mollie-incasso'), !empty($s['test_tools']) ? __('Testfase aan', 'mollie-incasso') : '');
         echo '<label><input type="checkbox" name="test_tools" value="1" ' . checked(!empty($s['test_tools']), true, false) . '>' . esc_html__('Testfase gebruiken: testmodus met een Mollie-testkey, en testgegevens kunnen wissen (onder Diagnose).', 'mollie-incasso') . '</label><p class="mi-help">' . esc_html__('Uitzetten kan alleen als live op deze site is vrijgegeven; de plugin gaat dan naar live.', 'mollie-incasso') . '</p>';
+        $language = (string) ($s['language'] ?? 'auto');
+        echo '<label>' . esc_html__('Taal van de plugin', 'mollie-incasso') . '<select name="language">';
+        foreach (['auto' => __('Automatisch (taal van WordPress)', 'mollie-incasso'), 'nl_NL' => 'Nederlands', 'en_US' => 'English'] as $value => $label) {
+            echo '<option value="' . esc_attr($value) . '" ' . selected($language, $value, false) . '>' . esc_html($label) . '</option>';
+        }
+        echo '</select></label><p class="mi-help">' . esc_html__('Geldt voor beheerschermen, aanmeldformulier en mails van deze plugin.', 'mollie-incasso') . '</p>';
         echo '<label>' . esc_html__('HTTPS-webhookoverride voor reverse proxy (optioneel)', 'mollie-incasso') . '<input name="webhook_url" value="' . esc_attr((string) $s['webhook_url']) . '"></label>';
         $this->sectionEnd();
         $this->end('Instellingen opslaan', true);
