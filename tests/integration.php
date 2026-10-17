@@ -155,11 +155,13 @@ try {
     $fake->payments[$pid]['failure'] = 'MD01';
     $service->syncPayment($pid, 'test');
     check($store->find('payments', 'remote_id', $pid, 'test')['failure'] === 'MD01', 'failed debit and failure reason visible');
+    rejects(fn() => $service->testOutcomeUrl((int) $payment['id'], 'test'), 'test_outcome_unavailable');
     $fake->payments[$pid]['status'] = 'paid';
     $fake->payments[$pid]['amountChargedBack']['value'] = '15.00';
     $service->syncPayment($pid, 'test');
     $financial = $store->find('payments', 'remote_id', $pid, 'test');
     check($financial['status'] === 'paid' && (int) $financial['charged_back'] === 1500, 'chargeback retained separately alongside paid status');
+    check(str_starts_with($service->testOutcomeUrl((int) $payment['id'], 'test'), 'https://www.mollie.com/'), 'test phase still offers the test page for a paid debit, to simulate a chargeback');
     $c = activate(signup($fixed));
     $subCommand = $service->prepare((int) $c['id'], 'test', 'subscription', 2500, 'Lidmaatschap', $date, wp_generate_uuid4());
     $service->confirm((int) $subCommand['id'], 'test');
@@ -619,6 +621,7 @@ try {
         Plugin::loadLanguage('en_US');
         load_textdomain('mi-other-domain', '/nonexistent.mo');
         check(__('Testuitkomst kiezen', 'mollie-incasso') === 'Choose test outcome', 'language setting English works on a Dutch site');
+        check(Notifications::date('2026-10-29') === '29 October 2026', 'English plugin language shows English dates on a Dutch site');
         remove_filter('locale', $forceNl);
         Plugin::loadLanguage('nl_NL');
     } else {

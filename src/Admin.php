@@ -649,7 +649,7 @@ final class Admin
         }
         echo '</tbody></table></div><h2>' . esc_html__('Incasso’s en betalingen', 'mollie-incasso') . '</h2><div class="mi-scroll"><table class="widefat striped"><thead><tr>';
         if ($mode === 'test') {
-            $this->help(__('Testfase: Mollie rondt een test-incasso nooit vanzelf af. Kies met Testuitkomst kiezen zelf betaald, mislukt of gestorneerd; Mollie stuurt daarna de webhook zoals bij een echte incasso.', 'mollie-incasso'));
+            $this->help(__('Testfase: Mollie rondt een test-incasso nooit vanzelf af. Kies met Testuitkomst kiezen zelf betaald of mislukt, en bij een betaalde incasso een stornering; Mollie stuurt daarna de webhook zoals bij een echte incasso.', 'mollie-incasso'));
         }
         foreach (['Mollie-ID', 'Klant', 'Bedrag', 'Status', 'Refund / stornering', 'Netto excl. kosten', 'Datum / fout'] as $h) {
             echo '<th>' . esc_html__($h, 'mollie-incasso') . '</th>';
@@ -659,7 +659,7 @@ final class Admin
             $c = $this->p->store->one('customers', (int) $p['customer_id'], $mode);
             $net = $p['status'] === 'paid' ? (int) $p['amount'] - (int) $p['refunded'] - (int) $p['charged_back'] : 0;
             echo '<tr><td>' . esc_html($p['remote_id']) . '</td><td>' . esc_html($c['name'] ?? '') . '</td><td>' . esc_html(Money::eur((int) $p['amount'])) . '</td><td>' . esc_html(Plugin::status($p['status'])) . '</td><td>' . esc_html(Money::eur((int) $p['refunded']) . ' / ' . Money::eur((int) $p['charged_back'])) . '</td><td>' . esc_html(Money::eur($net)) . '</td><td>' . esc_html($p['created_at'] . ' UTC — ' . $p['failure']);
-            if ($mode === 'test' && in_array($p['status'], ['open', 'pending'], true) && $p['kind'] !== 'first') {
+            if ($mode === 'test' && in_array($p['status'], ['open', 'pending', 'paid'], true) && $p['kind'] !== 'first') {
                 $this->quick('test_outcome', (int) $p['id'], 'Testuitkomst kiezen');
             }
             echo '</td></tr>';

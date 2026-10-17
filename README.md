@@ -136,7 +136,7 @@ De vooraankondigingstermijn is bij maandelijkse abonnementen maximaal 21 dagen, 
 
 **Live is de standaard** voor nieuwe installaties. De testfase (testmodus, testkey en testgegevens wissen) is een keuze onder **Instellingen → Geavanceerd**, standaard uit; installaties die vóór 0.4 in testmodus stonden houden de testfase aan. Records, tokens, keys en jobs zijn per mode gescheiden.
 
-In de testfase rondt Mollie een incasso nooit vanzelf af; die blijft in behandeling. Kies bij **Incasso's** met **Testuitkomst kiezen** zelf of de incasso betaald, mislukt of gestorneerd wordt. Mollie stuurt daarna de webhook zoals bij een echte incasso.
+In de testfase rondt Mollie een incasso nooit vanzelf af; die blijft in behandeling. Kies bij **Incasso's** met **Testuitkomst kiezen** zelf of de incasso betaald of mislukt wordt; bij een betaalde incasso kunt u zo ook een stornering simuleren. Datums volgen de taal van de plugin. Mollie stuurt daarna de webhook zoals bij een echte incasso.
 
 **Talen:** de plugin is in het Nederlands geschreven en heeft een Engelse vertaling (`en_US`, `en_GB`) in `languages/`. Onder **Instellingen → Geavanceerd → Taal van de plugin** kiest u Automatisch (volgt WordPress; elke Engelse taal geeft Engels), Nederlands of English. Nieuwe vertalingen maakt u vanuit `languages/mollie-incasso.pot`.
 

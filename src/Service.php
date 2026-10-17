@@ -451,7 +451,7 @@ final class Service
     public function testOutcomeUrl(int $paymentId, string $mode): string
     {
         $row = $mode === 'test' ? $this->store->one('payments', $paymentId, 'test') : null;
-        if (!$row || $row['kind'] === 'first' || !in_array($row['status'], ['open', 'pending'], true)) {
+        if (!$row || $row['kind'] === 'first' || !in_array($row['status'], ['open', 'pending', 'paid'], true)) {
             throw new Failure('test_outcome_unavailable');
         }
         $url = (string) ($this->api('test')->payment($row['remote_id'])['change_state'] ?? '');
