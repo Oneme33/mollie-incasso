@@ -93,12 +93,14 @@ final class Plugin
             return;
         }
         $own = dirname(MOLLIE_INCASSO_FILE) . '/languages/';
-        $locale = $choice === 'en_US' ? 'en_US' : determine_locale();
+        // WordPress keeps translations per active locale, so the file is stored under that locale even when it is another one.
+        $active = determine_locale();
+        $locale = $choice === 'en_US' ? 'en_US' : $active;
         if (str_starts_with($locale, 'en') && !is_file($own . 'mollie-incasso-' . $locale . '.mo')) {
             $locale = 'en_US';
         }
         foreach ([WP_LANG_DIR . '/plugins/', $own] as $dir) {
-            if (load_textdomain('mollie-incasso', $dir . 'mollie-incasso-' . $locale . '.mo', $locale)) {
+            if (load_textdomain('mollie-incasso', $dir . 'mollie-incasso-' . $locale . '.mo', $active)) {
                 return;
             }
         }

@@ -611,7 +611,15 @@ try {
         add_filter('locale', $forceEn);
         Plugin::loadLanguage('auto');
         check(__('Testuitkomst kiezen', 'mollie-incasso') === 'Choose test outcome', 'automatic language uses English for a plain en locale');
+        load_textdomain('mi-other-domain', '/nonexistent.mo');
+        check(__('Testuitkomst kiezen', 'mollie-incasso') === 'Choose test outcome', 'English stays visible after another plugin loads its texts for the plain en locale');
         remove_filter('locale', $forceEn);
+        $forceNl = static fn() => 'nl_NL';
+        add_filter('locale', $forceNl);
+        Plugin::loadLanguage('en_US');
+        load_textdomain('mi-other-domain', '/nonexistent.mo');
+        check(__('Testuitkomst kiezen', 'mollie-incasso') === 'Choose test outcome', 'language setting English works on a Dutch site');
+        remove_filter('locale', $forceNl);
         Plugin::loadLanguage('nl_NL');
     } else {
         echo "SKIP language checks: no installed translation file\n";
