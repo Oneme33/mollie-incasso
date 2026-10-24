@@ -762,6 +762,14 @@ try {
     check($piet['status'] !== 'active', 'a mandate Mollie rejects never makes the customer collectable');
     $fake->mandateRejected = false;
     check($service->importMandate('test', $club, 'Piet', 'piet@example.invalid', 'NL91ABNA0417164300', '2024-02-01', '', 1) === 'imported' && $service->customer((int) $piet['id'], 'test')['status'] === 'active', 'a rejected import can be retried for the same customer');
+    // Live iDEAL can return a direct iDEAL payment page instead of a mollie.com checkout.
+    $fake->alterCreated = ['checkout' => 'https://ext.pay.ideal.nl/payment/abc123'];
+    $idealSignup = signup($club, 'ideal@example.invalid');
+    check($idealSignup['payment']['checkout_url'] === 'https://ext.pay.ideal.nl/payment/abc123', 'an official iDEAL payment page is accepted as checkout link');
+    $fake->alterCreated = ['checkout' => 'https://evil.example/pay'];
+    rejects(fn() => signup($club, 'vreemd@example.invalid'), 'invalid_checkout_url');
+    $strange = $store->select('SELECT * FROM ' . $store->table('commands') . " WHERE mode='test' AND kind='first' ORDER BY id DESC LIMIT 1")[0];
+    check($strange['state'] === 'blocked' && $strange['error_detail'] === 'host=evil.example', 'a checkout link to another domain is refused and its domain shown');
     // A payment Mollie returns differently than requested is blocked visibly, with what Mollie returned.
     $fake->alterCreated = ['method' => 'wero'];
     rejects(fn() => signup($club, 'afwijkend@example.invalid'), 'payment_method_mismatch');

@@ -519,8 +519,13 @@ final class Service
         $checkout = $p['checkout'] ?? '';
         if ($checkout) {
             $host = wp_parse_url($checkout, PHP_URL_HOST);
-            if (!str_starts_with($checkout, 'https://') || $host !== 'mollie.com' && !str_ends_with((string) $host, '.mollie.com')) {
-                throw new Failure('invalid_checkout_url');
+            // Customers are only sent to Mollie or, for iDEAL in live mode, straight to the official iDEAL payment pages.
+            $allowed = false;
+            foreach (['mollie.com', 'ideal.nl'] as $domain) {
+                $allowed = $allowed || $host === $domain || str_ends_with((string) $host, '.' . $domain);
+            }
+            if (!str_starts_with($checkout, 'https://') || !$allowed) {
+                throw new Failure('invalid_checkout_url', false, false, 'host=' . sanitize_text_field((string) $host));
             }
         }
         $data = ['mode' => $mode, 'remote_id' => $p['id'], 'customer_id' => (int) $customer['id'], 'command_id' => $command ? (int) $command['id'] : null, 'subscription_id' => $subscription['remote_id'] ?? null, 'kind' => $command ? $command['kind'] === 'first' ? 'first' : 'manual' : 'subscription', 'amount' => Money::cents((string) $p['amount']['value']), 'status' => sanitize_key($p['status']), 'refunded' => !empty($p['amountRefunded']['value']) ? Money::cents($p['amountRefunded']['value'], true) : 0, 'charged_back' => !empty($p['amountChargedBack']['value']) ? Money::cents($p['amountChargedBack']['value'], true) : 0, 'failure' => sanitize_text_field($p['failure'] ?? ''), 'checkout_url' => $checkout ?: null, 'created_at' => $existing['created_at'] ?? Store::now(), 'checked_at' => Store::now()];
