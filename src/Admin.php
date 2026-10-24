@@ -255,6 +255,7 @@ final class Admin
                     if ($this->field('confirm_live') !== '1') {
                         throw new Failure('live_confirmation_required');
                     }
+                    $this->storeKey('live', $this->field('key_live', 120));
                     $this->p->service->activateLive(get_current_user_id());
                     $view = $this->field('return_view', 20) === 'setup' ? 'setup' : 'settings';
                     $args = ['mi_saved' => 1, 'mi_live' => 1] + ($view === 'setup' ? ['step' => 2] : []);
@@ -300,13 +301,24 @@ final class Admin
                     throw new Failure('invalid_command');
             }
         } catch (Failure $e) {
-            $args = ['mi_error' => $e->reason];
+            $args = ['mi_error' => $e->reason] + (in_array($e->reason, ['live_needs_activation', 'methods_not_enabled', 'invalid_api_key'], true) && in_array($operation, ['settings', 'activate_live'], true) ? ['mi_live' => 1] : []);
             if ($view === 'setup') {
                 $args['step'] = $operation === 'setup_profile' ? 1 : ($operation === 'setup_plan' ? 3 : (in_array($operation,['setup_page','setup_product'],true) ? 4 : 2));
             }
         }
         wp_safe_redirect($this->url($view, $args), 303);
         exit;
+    }
+    private function storeKey(string $mode, string $key): void
+    {
+        $key = trim($key);
+        if ($key === '') {
+            return;
+        }
+        if (!preg_match('/^' . $mode . '_[A-Za-z0-9]{30,100}$/D', $key)) {
+            throw new Failure('invalid_api_key');
+        }
+        update_option('mi_secret_' . $mode, $this->p->config->encrypt($key), false);
     }
     private function saveSettings(): void
     {
@@ -317,22 +329,20 @@ final class Admin
         $testTools = $this->field('test_tools') === '1';
         // Switching the test phase on means testing: the environment select only appears afterwards.
         $mode = $testTools && (empty($old['test_tools']) || $this->field('target_mode') === 'test') ? 'test' : 'live';
-        if ($mode === 'live' && $old['mode'] !== 'live' && !$this->p->config->liveReleased()) {
-            throw new Failure('live_disabled');
-        }
         $language = $this->field('language', 8);
         $new = ['mode' => $mode, 'test_tools' => $testTools ? 1 : 0, 'language' => in_array($language, ['nl_NL', 'en_US'], true) ? $language : 'auto', 'organization' => sanitize_text_field($this->field('organization', 190)), 'address' => sanitize_textarea_field($this->field('address')), 'contact' => sanitize_textarea_field($this->field('contact')), 'privacy_url' => esc_url_raw($this->field('privacy_url')), 'notifications' => $this->field('notifications') === '1' ? 1 : 0, 'cleanup' => $this->field('cleanup') === '1' ? 1 : 0, 'retention_days' => max(1, min(10950, (int) $this->field('retention_days', 8))), 'webhook_url' => esc_url_raw($this->field('webhook_url'))];
-        foreach (['test', 'live'] as $mode) {
-            $key = trim($this->field('key_' . $mode, 120));
-            if ($key && !preg_match('/^' . $mode . '_[A-Za-z0-9]{30,100}$/D', $key)) {
-                throw new Failure('invalid_api_key');
+        foreach (['test', 'live'] as $keyMode) {
+            $this->storeKey($keyMode, $this->field('key_' . $keyMode, 120));
+            if ($this->field('delete_' . $keyMode) === '1') {
+                delete_option('mi_secret_' . $keyMode);
             }
-            if ($key) {
-                update_option('mi_secret_' . $mode, $this->p->config->encrypt($key), false);
-            }
-            if ($this->field('delete_' . $mode) === '1') {
-                delete_option('mi_secret_' . $mode);
-            }
+        }
+        // Live needs the activation step: everything else is saved, the mode stays as it was.
+        if ($mode === 'live' && $old['mode'] !== 'live' && !$this->p->config->liveReleased()) {
+            $new['mode'] = $old['mode'];
+            $new['test_tools'] = $old['test_tools'];
+            update_option('mi_settings', $new, false);
+            throw new Failure('live_needs_activation');
         }
         update_option('mi_settings', $new, false);
         if ($new['mode'] === 'live' && !$this->p->config->liveReleased()) {
@@ -716,11 +726,10 @@ final class Admin
             $hasKey = false;
         }
         $this->help(__('Bij activeren controleert de plugin met uw livekey of Mollie iDEAL en SEPA-incasso live aanbiedt. Lukt dat niet, dan verandert er niets. De activering geldt alleen voor deze website op dit adres; een kopie van de site kan nooit incasseren.', 'mollie-incasso'));
-        if (!$hasKey) {
-            echo '<p>' . esc_html__('Vul eerst uw live-API-key in (Mollie Dashboard → Developers → API keys) en sla op.', 'mollie-incasso') . '</p></div>';
-            return;
-        }
         $this->start('activate_live');
+        if (!$hasKey) {
+            echo '<label>' . esc_html__('Live-API-key (Mollie Dashboard → Developers → API keys)', 'mollie-incasso') . '<input type="password" name="key_live" value="" autocomplete="new-password" placeholder="live_…" required></label>';
+        }
         echo '<input type="hidden" name="return_view" value="' . esc_attr($returnView) . '"><label class="mi-confirm"><input type="checkbox" name="confirm_live" value="1" required> ' . esc_html__('Ik begrijp dat vanaf nu echt geld wordt geïncasseerd van klanten die toestemming geven.', 'mollie-incasso') . '</label>';
         $this->end('Live activeren', true);
         echo '</div>';

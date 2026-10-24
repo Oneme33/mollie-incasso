@@ -667,8 +667,13 @@ try {
     $_POST = ['target_mode' => 'test', 'test_tools' => '1', 'organization' => 'Testorganisatie', 'contact' => 'test@example.invalid', 'retention_days' => '1', 'webhook_url' => 'https://example.org/mi-webhook'];
     $save->invoke($adminScreen);
     check($config->mode() === 'test' && $config->testTools(), 'enabling the test phase allows test mode');
+    $liveSecretBefore = get_option('mi_secret_live', null);
+    $_POST = ['target_mode' => 'live', 'test_tools' => '1', 'key_live' => 'live_' . str_repeat('A', 30), 'organization' => 'Testorganisatie', 'contact' => 'test@example.invalid', 'retention_days' => '1', 'webhook_url' => 'https://example.org/mi-webhook'];
+    rejects(fn() => $save->invoke($adminScreen), 'live_needs_activation');
+    check($config->mode() === 'test' && $config->testTools() && get_option('mi_secret_live') && get_option('mi_secret_live') !== $liveSecretBefore, 'choosing live before activation still saves the live key and keeps test mode');
+    $liveSecretBefore === null ? delete_option('mi_secret_live') : FixtureOptions::set('mi_secret_live', $liveSecretBefore, false);
     $_POST = ['target_mode' => 'test', 'organization' => 'Testorganisatie', 'contact' => 'test@example.invalid', 'retention_days' => '1', 'webhook_url' => 'https://example.org/mi-webhook'];
-    rejects(fn() => $save->invoke($adminScreen), 'live_disabled');
+    rejects(fn() => $save->invoke($adminScreen), 'live_needs_activation');
     check($config->mode() === 'test' && $config->testTools(), 'turning the test phase off is refused as a whole while live is not released here');
     // Review of PR #3: the real live form sends the hidden target_mode=live together with the new checkbox.
     FixtureOptions::set('mi_settings', ['mode' => 'live', 'test_tools' => 0, 'organization' => 'Testorganisatie', 'contact' => 'test@example.invalid'], false);
@@ -687,6 +692,7 @@ try {
     $adminScreen->render();
     $liveSettingsHtml = ob_get_clean();
     check(str_contains($liveSettingsHtml, 'mi-section') && str_contains($liveSettingsHtml, 'Geavanceerd') && !str_contains($liveSettingsHtml, 'name="key_test"') && !str_contains($liveSettingsHtml, '<select name="target_mode"'), 'live default hides test key and environment switch behind Geavanceerd');
+    check(str_contains($liveSettingsHtml, 'placeholder="live_…" required') && str_contains($liveSettingsHtml, 'name="confirm_live"'), 'Live activeren asks for the live key in the same step when none is stored');
     $_GET = ['page' => 'mollie-incasso-setup', 'step' => 2];
     ob_start();
     $adminScreen->render();

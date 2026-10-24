@@ -12,15 +12,15 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "X-Domain: mollie-incasso\n"
 
-#: src/Admin.php:764
+#: src/Admin.php:773
 msgid "API-key ingesteld"
 msgstr "API key set"
 
-#: src/Admin.php:764
+#: src/Admin.php:773
 msgid "API-key ontbreekt"
 msgstr "API key missing"
 
-#: src/Admin.php:603
+#: src/Admin.php:613
 msgid "Aanbieddatum / eerste abonnementsdatum"
 msgstr "Submission date / first subscription date"
 
@@ -40,7 +40,7 @@ msgstr "Open sign-up form"
 msgid "Aanmelding niet beschikbaar in deze betaalmodus."
 msgstr "Sign-up is not available in this payment mode."
 
-#: src/Admin.php:478
+#: src/Admin.php:488
 msgid "Aanmelding plaatsen"
 msgstr "Submit sign-up"
 
@@ -48,11 +48,11 @@ msgstr "Submit sign-up"
 msgid "Aanmelding wordt verwerkt; probeer het verwijderverzoek later opnieuw."
 msgstr "The sign-up is being processed; please try the deletion request again later."
 
-#: src/Admin.php:410
+#: src/Admin.php:420
 msgid "Aanmeldingen en vastgelegde toestemmingen"
 msgstr "Sign-ups and recorded consents"
 
-#: src/Admin.php:673
+#: src/Admin.php:683
 msgid "Abonnement"
 msgstr "Subscription"
 
@@ -60,19 +60,19 @@ msgstr "Subscription"
 msgid "Abonnement automatisch starten"
 msgstr "Start subscription automatically"
 
-#: src/Admin.php:682 src/Frontend.php:320 src/Plugin.php:194
+#: src/Admin.php:692 src/Frontend.php:320 src/Plugin.php:194
 msgid "Abonnement beëindigen"
 msgstr "End subscription"
 
-#: src/Admin.php:478
+#: src/Admin.php:488
 msgid "Abonnement instellen"
 msgstr "Set up subscription"
 
-#: src/Admin.php:533
+#: src/Admin.php:543
 msgid "Abonnement opslaan en verder"
 msgstr "Save subscription and continue"
 
-#: src/Admin.php:469
+#: src/Admin.php:479
 msgid "Abonnement voor het product"
 msgstr "Subscription for the product"
 
@@ -80,23 +80,23 @@ msgstr "Subscription for the product"
 msgid "Abonnement: %1$s per %2$s, startdatum %3$s. De verificatiebetaling van € 0,01 is geen abonnementsperiode."
 msgstr "Subscription: %1$s per %2$s, start date %3$s. The €0.01 verification payment is not a subscription period."
 
-#: src/Admin.php:19 src/Admin.php:362 src/Frontend.php:436
+#: src/Admin.php:19 src/Admin.php:372 src/Frontend.php:436
 msgid "Abonnementen"
 msgstr "Subscriptions"
 
-#: src/Admin.php:846 src/Admin.php:866
+#: src/Admin.php:855 src/Admin.php:875
 msgid "Achtergrondtaken"
 msgstr "Background tasks"
 
-#: src/Admin.php:867
+#: src/Admin.php:876
 msgid "Achtergrondtaken controleren webhooks, versturen mails en sturen opdrachten naar Mollie. Een mislukte taak opnieuw controleren maakt niet automatisch een tweede incasso."
 msgstr "Background tasks check webhooks, send emails, and send instructions to Mollie. Rechecking a failed task does not automatically create a second direct debit."
 
-#: src/Admin.php:875
+#: src/Admin.php:884
 msgid "Achtergrondwerk nu uitvoeren"
 msgstr "Run background work now"
 
-#: src/Admin.php:625
+#: src/Admin.php:635
 msgid "Actie"
 msgstr "Action"
 
@@ -104,15 +104,15 @@ msgstr "Action"
 msgid "Actie opgeslagen. Controleer de actuele status hieronder."
 msgstr "Action saved. Check the current status below."
 
-#: src/Admin.php:795 src/Plugin.php:180
+#: src/Admin.php:804 src/Plugin.php:180
 msgid "Actief"
 msgstr "Active"
 
-#: src/Admin.php:571 src/Admin.php:673
+#: src/Admin.php:581 src/Admin.php:683
 msgid "Acties"
 msgstr "Actions"
 
-#: src/Admin.php:410
+#: src/Admin.php:420
 msgid "Actieve abonnementen"
 msgstr "Active subscriptions"
 
@@ -120,55 +120,55 @@ msgstr "Active subscriptions"
 msgid "Activeer Mollie Incasso per site, niet netwerkbreed."
 msgstr "Activate Mollie Incasso per site, not network-wide."
 
-#: src/Admin.php:487 src/Admin.php:757
+#: src/Admin.php:497 src/Admin.php:766
 msgid "Adres en organisatiegegevens"
 msgstr "Address and organization details"
 
-#: src/Admin.php:900
+#: src/Admin.php:909
 msgid "Afhandelen"
 msgstr "Resolve"
 
-#: src/Admin.php:922
+#: src/Admin.php:931
 msgid "Alle testgegevens definitief wissen"
 msgstr "Permanently delete all test data"
 
-#: src/Admin.php:917
+#: src/Admin.php:926
 msgid "Alle testgegevens zijn gewist. Instellingen en API-keys zijn behouden."
 msgstr "All test data has been deleted. Settings and API keys have been kept."
 
-#: src/Admin.php:740
+#: src/Admin.php:749
 msgid "Alleen beheerders met instellingenrechten kunnen dit wijzigen."
 msgstr "Only administrators with settings permissions can change this."
 
-#: src/Admin.php:915
+#: src/Admin.php:924
 msgid "Alleen in de testfase"
 msgstr "Only in the test phase"
 
-#: src/Admin.php:786
+#: src/Admin.php:795
 msgid "Automatisch (taal van WordPress)"
 msgstr "Automatic (WordPress language)"
 
-#: src/Admin.php:367
+#: src/Admin.php:377
 msgid "Automatische incasso"
 msgstr "Automatic direct debit"
 
-#: src/Admin.php:625 src/Admin.php:654 src/Frontend.php:401
+#: src/Admin.php:635 src/Admin.php:664 src/Frontend.php:401
 msgid "Bedrag"
 msgstr "Amount"
 
-#: src/Admin.php:811
+#: src/Admin.php:820
 msgid "Bedrag / berekeningswijze"
 msgstr "Amount / calculation method"
 
-#: src/Admin.php:673
+#: src/Admin.php:683
 msgid "Bedrag / frequentie"
 msgstr "Amount / frequency"
 
-#: src/Admin.php:803
+#: src/Admin.php:812
 msgid "Bedrag / type"
 msgstr "Amount / type"
 
-#: src/Admin.php:603
+#: src/Admin.php:613
 msgid "Bedrag in EUR"
 msgstr "Amount in EUR"
 
@@ -176,15 +176,15 @@ msgstr "Amount in EUR"
 msgid "Bedrag: %s. %s"
 msgstr "Amount: %s. %s"
 
-#: src/Admin.php:371
+#: src/Admin.php:381
 msgid "Beheer"
 msgstr "Management"
 
-#: src/Admin.php:362
+#: src/Admin.php:372
 msgid "Beheer vaste bedragen en de periodieke afspraken die Mollie uitvoert."
 msgstr "Manage fixed amounts and the recurring agreements that Mollie executes."
 
-#: src/Admin.php:520
+#: src/Admin.php:530
 msgid "Beide betaalmethodes beschikbaar bij de laatste controle: %s UTC. Dit is geen volledige betaaltest."
 msgstr "Both payment methods were available at the last check: %s UTC. This is not a full payment test."
 
@@ -192,7 +192,7 @@ msgstr "Both payment methods were available at the last check: %s UTC. This is n
 msgid "Bekijk de klant onder Mollie Incasso → Klanten. De plugin probeert niet zelf opnieuw te incasseren."
 msgstr "View the customer under Mollie Incasso → Customers. The plugin does not try to collect again on its own."
 
-#: src/Admin.php:362
+#: src/Admin.php:372
 msgid "Bekijk toestemmingen en machtigingen, of bereid een nieuwe incasso voor."
 msgstr "View consents and mandates, or prepare a new direct debit."
 
@@ -200,15 +200,15 @@ msgstr "View consents and mandates, or prepare a new direct debit."
 msgid "Bekijk uw status of trek uw toestemming in via deze persoonlijke link (7 dagen geldig):"
 msgstr "View your status or withdraw your consent via this personal link (valid for 7 days):"
 
-#: src/Admin.php:569
+#: src/Admin.php:579
 msgid "Beperkte CSV-export (maximaal 500 klanten)"
 msgstr "Limited CSV export (maximum 500 customers)"
 
-#: src/Admin.php:863
+#: src/Admin.php:872
 msgid "Beschikbare iDEAL- en directdebit-methodes controleren"
 msgstr "Check available iDEAL and direct debit methods"
 
-#: src/Admin.php:809
+#: src/Admin.php:818
 msgid "Bestaande toestemming blijft aan de geaccepteerde versie gekoppeld. De voorbeeldteksten zijn een startpunt en moeten voor uw organisatie worden beoordeeld."
 msgstr "Existing consent remains linked to the accepted version. The sample texts are a starting point and must be reviewed for your organization."
 
@@ -232,11 +232,11 @@ msgstr "Payment status: %1$s. Amount: %2$s. Refunded: %3$s. Chargeback: %4$s."
 msgid "Betaling controleren"
 msgstr "Check payment"
 
-#: src/Admin.php:811
+#: src/Admin.php:820
 msgid "Betaling voor het afgesproken lidmaatschap."
 msgstr "Payment for the agreed membership."
 
-#: src/Admin.php:531
+#: src/Admin.php:541
 msgid "Betaling voor het gekozen lidmaatschap."
 msgstr "Payment for the selected membership."
 
@@ -252,7 +252,7 @@ msgstr "Confirm that real money will be collected from now on."
 msgid "Bevestig een expliciet afgesproken afwijkende vooraankondigingstermijn."
 msgstr "Confirm a deviating pre-notification period that has been explicitly agreed."
 
-#: src/Admin.php:778
+#: src/Admin.php:787
 msgid "Bewaartermijn in dagen"
 msgstr "Retention period in days"
 
@@ -260,35 +260,35 @@ msgstr "Retention period in days"
 msgid "Beëindigen nog niet voltooid"
 msgstr "Termination not yet completed"
 
-#: src/Admin.php:646
+#: src/Admin.php:656
 msgid "Bij Mollie controleren"
 msgstr "Check with Mollie"
 
-#: src/Admin.php:718
+#: src/Admin.php:728
 msgid "Bij activeren controleert de plugin met uw livekey of Mollie iDEAL en SEPA-incasso live aanbiedt. Lukt dat niet, dan verandert er niets. De activering geldt alleen voor deze website op dit adres; een kopie van de site kan nooit incasseren."
 msgstr "On activation, the plugin uses your live key to check whether Mollie offers iDEAL and SEPA direct debit live. If that fails, nothing changes. Activation applies only to this website at this address; a copy of the site can never collect payments."
 
-#: src/Admin.php:779
+#: src/Admin.php:788
 msgid "Bij uninstall opruimen, uitsluitend wanneer extern veilig en bewaarbeleid dit toestaat"
 msgstr "Clean up on uninstall, only when external safety and retention policy allow it"
 
-#: src/Admin.php:529
+#: src/Admin.php:539
 msgid "Bijvoorbeeld GCC doorlopend abonnement"
 msgstr "For example: GCC ongoing subscription"
 
-#: src/Admin.php:548
+#: src/Admin.php:558
 msgid "Conceptpagina maken"
 msgstr "Create draft page"
 
-#: src/Admin.php:371
+#: src/Admin.php:381
 msgid "Configuratie"
 msgstr "Configuration"
 
-#: src/Admin.php:487
+#: src/Admin.php:497
 msgid "Contact / hoe toestemming intrekken"
 msgstr "Contact / how to withdraw consent"
 
-#: src/Admin.php:757
+#: src/Admin.php:766
 msgid "Contact en intrekken"
 msgstr "Contact and withdrawal"
 
@@ -296,23 +296,23 @@ msgstr "Contact and withdrawal"
 msgid "Contact: %s"
 msgstr "Contact: %s"
 
-#: src/Admin.php:530
+#: src/Admin.php:540
 msgid "Controleer de afspraak die uw klant accepteert"
 msgstr "Review the agreement your customer accepts"
 
-#: src/Admin.php:362
+#: src/Admin.php:372
 msgid "Controleer opdrachten, betaalstatussen en de actuele financiële situatie."
 msgstr "Check instructions, payment statuses, and the current financial situation."
 
-#: src/Admin.php:618
+#: src/Admin.php:628
 msgid "Controleer vóór bevestiging"
 msgstr "Check before confirming"
 
-#: src/Admin.php:362
+#: src/Admin.php:372
 msgid "Controleer webhooks, achtergrondtaken en de verzending van meldingen."
 msgstr "Check webhooks, background tasks, and the sending of notifications."
 
-#: src/Admin.php:643
+#: src/Admin.php:653
 msgid "Controleren"
 msgstr "Check"
 
@@ -320,15 +320,15 @@ msgstr "Check"
 msgid "Cookies kunnen niet veilig worden gezet. Sluit de aanmeldpagina uit van caching."
 msgstr "Cookies cannot be set securely. Exclude the sign-up page from caching."
 
-#: src/Admin.php:625 src/Frontend.php:397
+#: src/Admin.php:635 src/Frontend.php:397
 msgid "Datum"
 msgstr "Date"
 
-#: src/Admin.php:654
+#: src/Admin.php:664
 msgid "Datum / fout"
 msgstr "Date / error"
 
-#: src/Admin.php:618
+#: src/Admin.php:628
 msgid "Datum:"
 msgstr "Date:"
 
@@ -340,7 +340,7 @@ msgstr "The sign-up must be a separate €0.01 order, without VAT, shipping, dis
 msgid "De abonnementsstartdatum is verstreken. Er is geen nieuw abonnement aangemaakt."
 msgstr "The subscription start date has passed. No new subscription was created."
 
-#: src/Admin.php:869
+#: src/Admin.php:878
 msgid "De achtergrondtaken hebben langer dan drie uur niet gedraaid. WordPress start ze alleen bij websitebezoek; op een rustige site kan dat uitlopen. Tip: laat uw hostingpartij elke 5 minuten wp-cron.php aanroepen (een ‘server-cron’). Dit is niet verplicht."
 msgstr "Background tasks have not run for more than three hours. WordPress only starts them on website visits; on a quiet site this can take longer. Tip: ask your hosting provider to call wp-cron.php every 5 minutes (a \"server cron\"). This is not required."
 
@@ -388,15 +388,19 @@ msgstr "The bundled SDK is missing. Install the built ZIP."
 msgid "De gekoppelde WooCommerce-bestelling ontbreekt. Controleer de aanmelding."
 msgstr "The linked WooCommerce order is missing. Check the sign-up."
 
-#: src/Admin.php:532
+#: src/Plugin.php:227
+msgid "De instellingen en een eventuele live-key zijn opgeslagen. Live staat nog niet aan: rond dat af bij Live activeren hieronder."
+msgstr "The settings and any live key have been saved. Live is not on yet: complete this under Activate live below."
+
+#: src/Admin.php:542
 msgid "De klant betaalt eerst € 0,01 ter verificatie. Na een geldige machtiging plannen we de eerste incasso met minimaal 14 dagen vooraankondiging. Pas de voorbeeldteksten aan uw eigen afspraken aan."
 msgstr "The customer first pays €0.01 for verification. After a valid mandate, we schedule the first direct debit with at least 14 days' pre-notification. Adjust the sample texts to your own agreements."
 
-#: src/Admin.php:418
+#: src/Admin.php:428
 msgid "De klant betaalt één keer € 0,01 via iDEAL. Een gecontroleerde betaling én geldige machtiging zijn nodig voordat incasso mogelijk wordt."
 msgstr "The customer pays €0.01 once via iDEAL. A verified payment and a valid mandate are both required before direct debit becomes possible."
 
-#: src/Admin.php:418
+#: src/Admin.php:428
 msgid "De klant geeft toestemming"
 msgstr "The customer gives consent"
 
@@ -420,7 +424,7 @@ msgstr "The optional encryption key on the server is invalid. Ask your administr
 msgid "De regeling of toestemmingsinformatie is veranderd. Herlaad het formulier."
 msgstr "The plan or consent information has changed. Reload the form."
 
-#: src/Admin.php:892
+#: src/Admin.php:901
 msgid "De testmail is door de mailserver geaccepteerd. Controleer of hij in uw inbox staat en niet in spam."
 msgstr "The test email was accepted by the mail server. Check that it is in your inbox and not in spam."
 
@@ -452,7 +456,7 @@ msgstr "The outcome of sending is unknown. Automatic resending is blocked to avo
 msgid "De vooraankondiging is nog niet door de mailserver geaccepteerd. De opdracht wacht."
 msgstr "The pre-notification has not yet been accepted by the mail server. The instruction is waiting."
 
-#: src/Admin.php:618
+#: src/Admin.php:628
 msgid "De vooraankondiging wordt eerst verzonden. Zonder geaccepteerde mailverzending start de opdracht niet."
 msgstr "The pre-notification is sent first. Without an accepted email delivery, the instruction does not start."
 
@@ -468,7 +472,7 @@ msgstr "The webshop sign-up could not be found. Please contact the organization.
 msgid "Deactiveren stopt geen Mollie-abonnementen. Beëindig afspraken eerst in de plugin."
 msgstr "Deactivating does not stop Mollie subscriptions. End agreements in the plugin first."
 
-#: src/Admin.php:386
+#: src/Admin.php:396
 msgid "Deactiveren stopt geen externe abonnementen. Een aangemaakte incasso is nog niet betaald. Statussen en vooraankondigingen vereisen een werkende cron."
 msgstr "Deactivating does not stop external subscriptions. A created direct debit has not been paid yet. Statuses and pre-notifications require a working cron."
 
@@ -484,15 +488,15 @@ msgstr "This action does not match the accepted plan."
 msgid "Deze bestelling betreft alleen de verificatiebetaling van € 0,01. Uw vaste abonnement en volgende incasso’s worden beheerd via Mollie Incasso."
 msgstr "This order concerns only the €0.01 verification payment. Your fixed subscription and subsequent direct debits are managed via Mollie Incasso."
 
-#: src/Admin.php:484
+#: src/Admin.php:494
 msgid "Deze gegevens staan bij de toestemming en in de klantmails. Vermeld duidelijk namens wie u incasseert en waar klanten terechtkunnen."
 msgstr "These details appear with the consent and in the customer emails. State clearly on whose behalf you collect payments and where customers can turn to."
 
-#: src/Admin.php:756
+#: src/Admin.php:765
 msgid "Deze gegevens staan in de incassoafspraak die klanten accepteren en in de mails."
 msgstr "These details appear in the direct debit agreement that customers accept and in the emails."
 
-#: src/Admin.php:747
+#: src/Admin.php:756
 msgid "Deze installatie binden en naar testmodus zetten"
 msgstr "Bind this installation and switch to test mode"
 
@@ -516,7 +520,7 @@ msgstr "This plan is not available. Reload the form."
 msgid "Deze website staat ingesteld als test- of stagingomgeving (WP_ENVIRONMENT_TYPE). Live is daar nooit mogelijk."
 msgstr "This website is configured as a test or staging environment (WP_ENVIRONMENT_TYPE). Live is never possible there."
 
-#: src/Admin.php:19 src/Admin.php:362
+#: src/Admin.php:19 src/Admin.php:372
 msgid "Diagnose en berichten"
 msgstr "Diagnostics and messages"
 
@@ -528,7 +532,7 @@ msgstr "This is a test email from Mollie Incasso. If this email arrives in your 
 msgid "Dit product is niet gekoppeld aan een regeling voor de huidige test- of livemodus."
 msgstr "This product is not linked to a plan for the current test or live mode."
 
-#: src/Admin.php:811
+#: src/Admin.php:820
 msgid "Doel"
 msgstr "Purpose"
 
@@ -540,15 +544,15 @@ msgstr "Marked as sent by an administrator after review."
 msgid "Door mailserver geaccepteerd"
 msgstr "Accepted by mail server"
 
-#: src/Admin.php:911
+#: src/Admin.php:920
 msgid "Door wp_mail geaccepteerd betekent geen gegarandeerde aflevering. Een onbekende verzenduitkomst wordt niet automatisch opnieuw verstuurd: controleer uw mailserverlog. Kies \"Markeer als verzonden\" alleen als de mail aantoonbaar is verstuurd; anders \"Opnieuw versturen\". Een wachtende incasso gaat pas door als de vooraankondiging als verzonden geldt."
 msgstr "Accepted by wp_mail does not mean guaranteed delivery. An unknown sending outcome is not automatically resent: check your mail server log. Choose \"Mark as sent\" only if the email demonstrably was sent; otherwise choose \"Resend\". A waiting direct debit only proceeds once the pre-notification counts as sent."
 
-#: src/Admin.php:416
+#: src/Admin.php:426
 msgid "Doorloop de vier stappen, of beheer alles rechtstreeks via Instellingen."
 msgstr "Go through the four steps, or manage everything directly via Settings."
 
-#: src/Admin.php:847 src/Admin.php:890
+#: src/Admin.php:856 src/Admin.php:899
 msgid "E-mail"
 msgstr "Email"
 
@@ -556,7 +560,7 @@ msgstr "Email"
 msgid "E-mailadres"
 msgstr "Email address"
 
-#: src/Admin.php:821
+#: src/Admin.php:830
 msgid "Een afwijkende vooraankondigingstermijn is expliciet met de klant afgesproken en opgenomen in deze regeling."
 msgstr "A deviating pre-notification period was explicitly agreed with the customer and included in this plan."
 
@@ -572,7 +576,7 @@ msgstr "Another process is in progress. Please try again later."
 msgid "Een betaalde verificatiebetaling is nog niet aangetoond."
 msgstr "A paid verification payment has not yet been demonstrated."
 
-#: src/Admin.php:552
+#: src/Admin.php:562
 msgid "Een conceptpagina wordt niet gepubliceerd. Controleer het formulier en doorloop daarna een echte Mollie-testbetaling, webhook en mail. Pas na die controles beoordeelt u livegang."
 msgstr "A draft page is not published. Check the form, then go through a real Mollie test payment, webhook, and email. Only after those checks should you consider going live."
 
@@ -580,7 +584,7 @@ msgstr "A draft page is not published. Check the form, then go through a real Mo
 msgid "Een eerdere opdracht is nog onzeker. Reconcileer die eerst."
 msgstr "A previous instruction is still uncertain. Reconcile it first."
 
-#: src/Admin.php:465
+#: src/Admin.php:475
 msgid "Een gewoon virtueel product kan de aanmelding starten. De klant rekent eenmalig € 0,01 af en accepteert de incassoafspraak in dezelfde checkout. Vervolgbetalingen lopen via Mollie Incasso; WooCommerce Subscriptions is niet nodig."
 msgstr "A regular virtual product can start the sign-up. The customer pays €0.01 once and accepts the direct debit agreement in the same checkout. Subsequent payments run via Mollie Incasso; WooCommerce Subscriptions is not needed."
 
@@ -588,19 +592,19 @@ msgstr "A regular virtual product can start the sign-up. The customer pays €0.
 msgid "Een incasso vraagt aandacht. Klant: %1$s (%2$s). Mollie-betaling: %3$s. Status: %4$s. Bedrag: %5$s. Stornering: %6$s. Foutcode: %7$s."
 msgstr "A direct debit needs attention. Customer: %1$s (%2$s). Mollie payment: %3$s. Status: %4$s. Amount: %5$s. Chargeback: %6$s. Error code: %7$s."
 
-#: src/Admin.php:362
+#: src/Admin.php:372
 msgid "Een korte rondleiding om uw koppeling in te stellen. U kunt deze altijd overslaan."
 msgstr "A short tour to set up your connection. You can always skip it."
 
-#: src/Admin.php:568
+#: src/Admin.php:578
 msgid "Een machtiging is de toestemming bij Mollie om van de rekening te incasseren. Pas bij een geldige machtiging en bevestigde eerste betaling wordt een klant actief."
 msgstr "A mandate is the permission at Mollie to collect from the account. Only with a valid mandate and a confirmed first payment does a customer become active."
 
-#: src/Admin.php:623
+#: src/Admin.php:633
 msgid "Een opdracht is uw verzoek om te incasseren; een betaling is het resultaat bij Mollie. In behandeling betekent nog niet betaald. Een onbekende uitkomst moet eerst worden gecontroleerd."
 msgstr "An instruction is your request to collect; a payment is the result at Mollie. Pending does not mean paid yet. An unknown outcome must be checked first."
 
-#: src/Admin.php:802
+#: src/Admin.php:811
 msgid "Een regeling beschrijft waarvoor, hoeveel en wanneer een klant toestemming geeft. De naam is zichtbaar in het aanmeldformulier. Gebruik een nieuwe versie als de afspraken veranderen."
 msgstr "A plan describes what, how much, and when a customer gives consent. The name is visible in the sign-up form. Use a new version when the agreements change."
 
@@ -620,15 +624,15 @@ msgstr "One-time €0.01 verification via iDEAL. Then the fixed amount according
 msgid "Eenmalige iDEAL-verificatie voor een gekoppeld abonnementproduct. De API-key en abonnementen beheert u bij Mollie Incasso."
 msgstr "One-time iDEAL verification for a linked subscription product. You manage the API key and subscriptions in Mollie Incasso."
 
-#: src/Admin.php:529
+#: src/Admin.php:539
 msgid "Elk jaar"
 msgstr "Every year"
 
-#: src/Admin.php:529 src/Plugin.php:215
+#: src/Admin.php:539 src/Plugin.php:215
 msgid "Elk kwartaal"
 msgstr "Every quarter"
 
-#: src/Admin.php:529
+#: src/Admin.php:539
 msgid "Elke maand"
 msgstr "Every month"
 
@@ -636,7 +640,7 @@ msgstr "Every month"
 msgid "Elke minuut (Mollie Incasso)"
 msgstr "Every minute (Mollie Incasso)"
 
-#: src/Admin.php:786
+#: src/Admin.php:795
 msgid "English"
 msgstr "English"
 
@@ -644,7 +648,7 @@ msgstr "English"
 msgid "Er is al een lopend of voorbereid abonnement voor deze klant. Rond dat eerst af."
 msgstr "There is already an ongoing or prepared subscription for this customer. Finish that first."
 
-#: src/Admin.php:506
+#: src/Admin.php:516
 msgid "Er is een API-key ingesteld voor de huidige betaalmodus."
 msgstr "An API key has been set for the current payment mode."
 
@@ -652,7 +656,7 @@ msgstr "An API key has been set for the current payment mode."
 msgid "Er is geen abonnement gestart en er wordt niets geïncasseerd. Wilt u het opnieuw proberen? Plaats dan een nieuwe bestelling van dit abonnement."
 msgstr "No subscription has been started and nothing will be collected. Want to try again? Then place a new order for this subscription."
 
-#: src/Admin.php:895
+#: src/Admin.php:904
 msgid "Er lijkt een SMTP-koppeling actief te zijn. Controleer met een testmail of vooraankondigingen in de inbox aankomen."
 msgstr "An SMTP integration appears to be active. Check with a test email whether pre-notifications arrive in the inbox."
 
@@ -662,19 +666,19 @@ msgstr "An SMTP integration appears to be active. Check with a test email whethe
 msgid "Europe/Amsterdam"
 msgstr "Europe/Amsterdam"
 
-#: src/Admin.php:811
+#: src/Admin.php:820
 msgid "Expliciete toestemmingstekst"
 msgstr "Explicit consent text"
 
-#: src/Admin.php:375
+#: src/Admin.php:385
 msgid "Eén overzicht voor uw incassoafspraken."
 msgstr "One overview for your direct debit agreements."
 
-#: src/Admin.php:900
+#: src/Admin.php:909
 msgid "Fout"
 msgstr "Error"
 
-#: src/Admin.php:876
+#: src/Admin.php:885
 msgid "Fout / herstel"
 msgstr "Error / recovery"
 
@@ -682,11 +686,11 @@ msgstr "Error / recovery"
 msgid "Frequentie / aanleiding: %s"
 msgstr "Frequency / reason: %s"
 
-#: src/Admin.php:811
+#: src/Admin.php:820
 msgid "Frequentie of aanleiding"
 msgstr "Frequency or reason"
 
-#: src/Admin.php:696
+#: src/Admin.php:706
 msgid "Geactiveerd op %1$s door %2$s."
 msgstr "Activated on %1$s by %2$s."
 
@@ -702,15 +706,15 @@ msgstr "Check canceled webshop sign-up"
 msgid "Geautoriseerd, nog niet betaald"
 msgstr "Authorized, not yet paid"
 
-#: src/Admin.php:782
+#: src/Admin.php:791
 msgid "Geavanceerd"
 msgstr "Advanced"
 
-#: src/Admin.php:534
+#: src/Admin.php:544
 msgid "Geavanceerde regelingen en losse incasso’s"
 msgstr "Advanced plans and one-off direct debits"
 
-#: src/Admin.php:900
+#: src/Admin.php:909
 msgid "Gebeurtenis"
 msgstr "Event"
 
@@ -738,11 +742,11 @@ msgstr "Give consent to the described direct debit agreement before you pay."
 msgid "Geef toestemming voor de beschreven incassoafspraak."
 msgstr "Give consent to the described direct debit agreement."
 
-#: src/Admin.php:847 src/Admin.php:890
+#: src/Admin.php:856 src/Admin.php:899
 msgid "Geen SMTP herkend"
 msgstr "No SMTP detected"
 
-#: src/Admin.php:583
+#: src/Admin.php:593
 msgid "Geen machtiging"
 msgstr "No mandate"
 
@@ -754,7 +758,7 @@ msgstr "No access"
 msgid "Geen toegang tot deze gegevens."
 msgstr "No access to this data."
 
-#: src/Admin.php:114 src/Admin.php:355
+#: src/Admin.php:114 src/Admin.php:365
 msgid "Geen toegang."
 msgstr "No access."
 
@@ -766,11 +770,11 @@ msgstr "Data retained: external agreements or payment outcomes are still active/
 msgid "Geldig"
 msgstr "Valid"
 
-#: src/Admin.php:789
+#: src/Admin.php:798
 msgid "Geldt voor beheerschermen, aanmeldformulier en mails van deze plugin."
 msgstr "Applies to the admin screens, sign-up form and emails of this plugin."
 
-#: src/Admin.php:932
+#: src/Admin.php:941
 msgid "Gemaskeerde rekening"
 msgstr "Masked account"
 
@@ -778,7 +782,7 @@ msgstr "Masked account"
 msgid "Gepland"
 msgstr "Scheduled"
 
-#: src/Admin.php:790
+#: src/Admin.php:799
 msgid "HTTPS-webhookoverride voor reverse proxy (optioneel)"
 msgstr "HTTPS webhook override for reverse proxy (optional)"
 
@@ -790,11 +794,11 @@ msgstr "Restart the deletion request."
 msgid "Het bedrag valt buiten de geaccepteerde regeling."
 msgstr "The amount falls outside the accepted plan."
 
-#: src/Admin.php:470
+#: src/Admin.php:480
 msgid "Het product wordt als concept klaargezet: controleer het en publiceer het daarna. De gekoppelde betaalmethode verschijnt alleen voor dit product. Reken abonnementaanmeldingen apart af, zonder andere producten, kortingscodes of toeslagen."
 msgstr "The product is set up as a draft: review it and then publish it. The linked payment method appears only for this product. Pay for subscription sign-ups separately, without other products, discount codes, or surcharges."
 
-#: src/Admin.php:456
+#: src/Admin.php:466
 msgid "Het vaste bedrag voor dit abonnement. De verificatiebetaling van € 0,01 staat hier los van."
 msgstr "The fixed amount for this subscription. The €0.01 verification payment is separate from this."
 
@@ -802,7 +806,7 @@ msgstr "The fixed amount for this subscription. The €0.01 verification payment
 msgid "Het virtuele product kon niet worden opgeslagen."
 msgstr "The virtual product could not be saved."
 
-#: src/Admin.php:811
+#: src/Admin.php:820
 msgid "Het vooraf aangekondigde bedrag volgens onze overeenkomst."
 msgstr "The pre-announced amount according to our agreement."
 
@@ -810,31 +814,31 @@ msgstr "The pre-announced amount according to our agreement."
 msgid "Hieronder vindt u uw beveiligde link om uw eigen status te bekijken, een abonnement te stoppen of toestemming in te trekken."
 msgstr "Below you will find your secure link to view your own status, stop a subscription, or withdraw consent."
 
-#: src/Admin.php:531
+#: src/Admin.php:541
 msgid "Hoe kan de klant stoppen?"
 msgstr "How can the customer stop?"
 
-#: src/Admin.php:811
+#: src/Admin.php:820
 msgid "Hoe toestemming kan worden ingetrokken"
 msgstr "How consent can be withdrawn"
 
-#: src/Admin.php:529
+#: src/Admin.php:539
 msgid "Hoe vaak incasseren?"
 msgstr "How often to collect?"
 
-#: src/Admin.php:416
+#: src/Admin.php:426
 msgid "Hulp bij het instellen?"
 msgstr "Need help setting up?"
 
-#: src/Admin.php:724
+#: src/Admin.php:733
 msgid "Ik begrijp dat vanaf nu echt geld wordt geïncasseerd van klanten die toestemming geven."
 msgstr "I understand that real money will be collected from now on from customers who give consent."
 
-#: src/Admin.php:811
+#: src/Admin.php:820
 msgid "Ik geef deze organisatie toestemming om de hiervoor beschreven bedragen via SEPA Direct Debit van mijn rekening te incasseren."
 msgstr "I authorize this organization to collect the amounts described above from my account via SEPA Direct Debit."
 
-#: src/Admin.php:531
+#: src/Admin.php:541
 msgid "Ik geef deze organisatie toestemming om het hierboven genoemde bedrag met de gekozen frequentie via SEPA Direct Debit van mijn rekening te incasseren."
 msgstr "I authorize this organization to collect the amount stated above at the selected frequency from my account via SEPA Direct Debit."
 
@@ -854,7 +858,7 @@ msgstr "I want to withdraw my consent and end the associated subscriptions. Dire
 msgid "In behandeling"
 msgstr "Pending"
 
-#: src/Admin.php:846
+#: src/Admin.php:855
 msgid "In orde"
 msgstr "OK"
 
@@ -866,7 +870,7 @@ msgstr "Collecting is not yet permitted for this customer."
 msgid "Incasso beëindigd"
 msgstr "Direct debit ended"
 
-#: src/Admin.php:368
+#: src/Admin.php:378
 msgid "Incassobeheer"
 msgstr "Direct debit management"
 
@@ -874,7 +878,7 @@ msgstr "Direct debit management"
 msgid "Incassoregeling (%s)"
 msgstr "Direct debit plan (%s)"
 
-#: src/Admin.php:362
+#: src/Admin.php:372
 msgid "Incasso’s"
 msgstr "Direct debits"
 
@@ -882,11 +886,11 @@ msgstr "Direct debits"
 msgid "Incasso’s / opdrachten"
 msgstr "Direct debits / instructions"
 
-#: src/Admin.php:650
+#: src/Admin.php:660
 msgid "Incasso’s en betalingen"
 msgstr "Direct debits and payments"
 
-#: src/Admin.php:410
+#: src/Admin.php:420
 msgid "Incasso’s in behandeling"
 msgstr "Pending direct debits"
 
@@ -894,7 +898,7 @@ msgstr "Pending direct debits"
 msgid "Ingetrokken"
 msgstr "Withdrawn"
 
-#: src/Admin.php:410
+#: src/Admin.php:420
 msgid "Ingezonden, nog niet als betaald bevestigd"
 msgstr "Submitted, not yet confirmed as paid"
 
@@ -902,27 +906,27 @@ msgstr "Submitted, not yet confirmed as paid"
 msgid "Inschakelen"
 msgstr "Enable"
 
-#: src/Admin.php:19 src/Admin.php:362
+#: src/Admin.php:19 src/Admin.php:372
 msgid "Installatiehulp"
 msgstr "Setup wizard"
 
-#: src/Admin.php:416
+#: src/Admin.php:426
 msgid "Installatiehulp openen"
 msgstr "Open setup wizard"
 
-#: src/Admin.php:559
+#: src/Admin.php:569
 msgid "Installatiehulp verlaten"
 msgstr "Leave setup wizard"
 
-#: src/Admin.php:477
+#: src/Admin.php:487
 msgid "Installatiestappen"
 msgstr "Setup steps"
 
-#: src/Admin.php:362
+#: src/Admin.php:372
 msgid "Instellingen"
 msgstr "Settings"
 
-#: src/Admin.php:421
+#: src/Admin.php:431
 msgid "Instellingen bekijken"
 msgstr "View settings"
 
@@ -930,7 +934,7 @@ msgstr "View settings"
 msgid "Instellingen en regelingen"
 msgstr "Settings and plans"
 
-#: src/Admin.php:792
+#: src/Admin.php:801
 msgid "Instellingen opslaan"
 msgstr "Save settings"
 
@@ -938,7 +942,7 @@ msgstr "Save settings"
 msgid "Intrekken nog niet voltooid"
 msgstr "Withdrawal not yet completed"
 
-#: src/Admin.php:821
+#: src/Admin.php:830
 msgid "Jaar"
 msgstr "Year"
 
@@ -946,7 +950,7 @@ msgstr "Year"
 msgid "Jaarlijks"
 msgstr "Yearly"
 
-#: src/Admin.php:418
+#: src/Admin.php:428
 msgid "Kies bij Klanten een losse opdracht of vast abonnement. De klant krijgt eerst een vooraankondiging; een verzonden incasso is nog niet betaald."
 msgstr "Under Customers, choose a one-off instruction or a fixed subscription. The customer first receives a pre-notification; a submitted direct debit is not yet paid."
 
@@ -954,7 +958,7 @@ msgstr "Under Customers, choose a one-off instruction or a fixed subscription. T
 msgid "Kies een geldige toekomstige datum met voldoende tijd voor de afgesproken vooraankondiging."
 msgstr "Choose a valid future date with enough time for the agreed pre-notification."
 
-#: src/Admin.php:605
+#: src/Admin.php:615
 msgid "Kies een toekomstige datum die past bij de afgesproken vooraankondigingstermijn, standaard 14 dagen. Een abonnement begint niet op de verificatiedag."
 msgstr "Choose a future date that fits the agreed pre-notification period, 14 days by default. A subscription does not start on the verification day."
 
@@ -962,15 +966,15 @@ msgstr "Choose a future date that fits the agreed pre-notification period, 14 da
 msgid "Kies een vaste regeling met automatisch starten ingeschakeld."
 msgstr "Choose a fixed plan with automatic start enabled."
 
-#: src/Admin.php:536
+#: src/Admin.php:546
 msgid "Kies hoe klanten zich aanmelden"
 msgstr "Choose how customers sign up"
 
-#: src/Admin.php:571 src/Admin.php:625 src/Admin.php:654 src/Admin.php:673
+#: src/Admin.php:581 src/Admin.php:635 src/Admin.php:664 src/Admin.php:683
 msgid "Klant"
 msgstr "Customer"
 
-#: src/Admin.php:596
+#: src/Admin.php:606
 msgid "Klant en geaccepteerde regeling"
 msgstr "Customer and accepted plan"
 
@@ -978,11 +982,11 @@ msgstr "Customer and accepted plan"
 msgid "Klantaanmaak"
 msgstr "Customer creation"
 
-#: src/Admin.php:19 src/Admin.php:362 src/Admin.php:410
+#: src/Admin.php:19 src/Admin.php:372 src/Admin.php:420
 msgid "Klanten"
 msgstr "Customers"
 
-#: src/Admin.php:447
+#: src/Admin.php:457
 msgid "Kopieer eerst de testkey (begint met test_). Hiermee test u zonder echt geld."
 msgstr "First copy the test key (starts with test_). This lets you test without real money."
 
@@ -990,7 +994,7 @@ msgstr "First copy the test key (starts with test_). This lets you test without 
 msgid "Kortingscodes gelden niet voor de verificatiebetaling van € 0,01."
 msgstr "Discount codes do not apply to the €0.01 verification payment."
 
-#: src/Admin.php:821
+#: src/Admin.php:830
 msgid "Kwartaal"
 msgstr "Quarter"
 
@@ -998,23 +1002,23 @@ msgstr "Quarter"
 msgid "Laat dit veld leeg"
 msgstr "Leave this field empty"
 
-#: src/Admin.php:861
+#: src/Admin.php:870
 msgid "Laatste methodecontrole (%1$s): eerste betaling %2$s; terugkerende incasso %3$s."
 msgstr "Last method check (%1$s): first payment %2$s; recurring direct debit %3$s."
 
-#: src/Admin.php:866
+#: src/Admin.php:875
 msgid "Laatste run %s"
 msgstr "Last run %s"
 
-#: src/Admin.php:848
+#: src/Admin.php:857
 msgid "Laatste webhook %s"
 msgstr "Last webhook %s"
 
-#: src/Admin.php:859
+#: src/Admin.php:868
 msgid "Laatste webhook:"
 msgstr "Last webhook:"
 
-#: src/Admin.php:846
+#: src/Admin.php:855
 msgid "Lang niet gedraaid"
 msgstr "Not run for a long time"
 
@@ -1022,23 +1026,23 @@ msgstr "Not run for a long time"
 msgid "Lax"
 msgstr "Lax"
 
-#: src/Admin.php:418
+#: src/Admin.php:428
 msgid "Leg uw regeling vast"
 msgstr "Record your plan"
 
-#: src/Admin.php:811
+#: src/Admin.php:820
 msgid "Lidmaatschap"
 msgstr "Membership"
 
-#: src/Admin.php:764
+#: src/Admin.php:773
 msgid "Live"
 msgstr "Live"
 
-#: src/Admin.php:692 src/Admin.php:725 src/Admin.php:795
+#: src/Admin.php:702 src/Admin.php:734 src/Admin.php:804
 msgid "Live activeren"
 msgstr "Activate live"
 
-#: src/Admin.php:696
+#: src/Admin.php:706
 msgid "Live is actief: er wordt echt geld geïncasseerd."
 msgstr "Live is active: real money is being collected."
 
@@ -1046,43 +1050,47 @@ msgstr "Live is active: real money is being collected."
 msgid "Live is nog niet geactiveerd voor deze website. Gebruik Instellingen → Live activeren."
 msgstr "Live has not been activated for this website yet. Use Settings → Activate live."
 
-#: src/Admin.php:709
+#: src/Admin.php:719
 msgid "Live is op deze server bewust geblokkeerd (MOLLIE_INCASSO_ALLOW_LIVE = false). Neem contact op met uw beheerder."
 msgstr "Live has been deliberately blocked on this server (MOLLIE_INCASSO_ALLOW_LIVE = false). Please contact your administrator."
 
-#: src/Admin.php:699
+#: src/Admin.php:709
 msgid "Live uitschakelen en terug naar de testfase"
 msgstr "Disable live and return to the test phase"
 
-#: src/Admin.php:766
+#: src/Admin.php:775
 msgid "Live — echte betalingen"
 msgstr "Live — real payments"
 
-#: src/Admin.php:511
+#: src/Admin.php:731
+msgid "Live-API-key (Mollie Dashboard → Developers → API keys)"
+msgstr "Live API key (Mollie Dashboard → Developers → API keys)"
+
+#: src/Admin.php:521
 msgid "Livekey opslaan"
 msgstr "Save live key"
 
-#: src/Admin.php:603 src/Plugin.php:188
+#: src/Admin.php:613 src/Plugin.php:188
 msgid "Losse incasso"
 msgstr "One-off direct debit"
 
-#: src/Admin.php:604
+#: src/Admin.php:614
 msgid "Losse incasso: u kiest één bedrag en datum. Vast abonnement: Mollie incasseert het afgesproken bedrag elke maand, elk kwartaal of elk jaar."
 msgstr "One-off direct debit: you choose a single amount and date. Fixed subscription: Mollie collects the agreed amount every month, every quarter, or every year."
 
-#: src/Admin.php:821
+#: src/Admin.php:830
 msgid "Losse incasso’s"
 msgstr "One-off direct debits"
 
-#: src/Admin.php:540
+#: src/Admin.php:550
 msgid "Maak eerst een regeling bij stap 3."
 msgstr "First create a plan in step 3."
 
-#: src/Admin.php:468
+#: src/Admin.php:478
 msgid "Maak eerst een vaste regeling met automatisch starten ingeschakeld. Daarna kunt u hier het product klaarzetten."
 msgstr "First create a fixed plan with automatic start enabled. After that you can set up the product here."
 
-#: src/Admin.php:821
+#: src/Admin.php:830
 msgid "Maand"
 msgstr "Month"
 
@@ -1090,7 +1098,7 @@ msgstr "Month"
 msgid "Maandelijks"
 msgstr "Monthly"
 
-#: src/Admin.php:811
+#: src/Admin.php:820
 msgid "Maandelijks, of uitsluitend na een afzonderlijke aankondiging conform de gekozen regeling."
 msgstr "Monthly, or only after a separate notice in accordance with the selected plan."
 
@@ -1102,19 +1110,19 @@ msgstr "Email is being submitted"
 msgid "Mandaat controleren"
 msgstr "Check mandate"
 
-#: src/Admin.php:906
+#: src/Admin.php:915
 msgid "Markeer als verzonden"
 msgstr "Mark as sent"
 
-#: src/Admin.php:811
+#: src/Admin.php:820
 msgid "Maximum aantal betalingen (optioneel, maximaal 10000)"
 msgstr "Maximum number of payments (optional, maximum 10000)"
 
-#: src/Admin.php:447
+#: src/Admin.php:457
 msgid "Meestal gebruikt de plugin de bestaande WordPress-beveiligingssleutels. Zijn die niet bruikbaar, dan maakt hij bij het opslaan zelf een afgeschermd sleutelbestand in wp-content/.mollie-incasso-keys. Bewaar bij back-ups daarom ook wp-config.php en deze map veilig. Verlies van de gebruikte sleutel maakt opgeslagen API-keys onleesbaar. Een livekey invoeren geeft livebetalingen nog niet vrij."
 msgstr "The plugin usually uses the existing WordPress security keys. If those cannot be used, it creates a protected key file itself in wp-content/.mollie-incasso-keys when saving. When making backups, therefore, also keep wp-config.php and this folder safe. Losing the key that was used makes stored API keys unreadable. Entering a live key does not yet enable live payments."
 
-#: src/Admin.php:635
+#: src/Admin.php:645
 msgid "Melding van Mollie:"
 msgstr "Message from Mollie:"
 
@@ -1122,15 +1130,15 @@ msgstr "Message from Mollie:"
 msgid "Melding verzenden"
 msgstr "Send notification"
 
-#: src/Admin.php:776
+#: src/Admin.php:785
 msgid "Meldingen en bewaren"
 msgstr "Notifications and retention"
 
-#: src/Admin.php:856
+#: src/Admin.php:865
 msgid "Methodes gecontroleerd op %s"
 msgstr "Methods checked on %s"
 
-#: src/Admin.php:856
+#: src/Admin.php:865
 msgid "Methodes nog niet gecontroleerd"
 msgstr "Methods not yet checked"
 
@@ -1138,15 +1146,15 @@ msgstr "Methods not yet checked"
 msgid "Mislukt"
 msgstr "Failed"
 
-#: src/Admin.php:848
+#: src/Admin.php:857
 msgid "Mollie"
 msgstr "Mollie"
 
-#: src/Admin.php:447 src/Admin.php:523
+#: src/Admin.php:457 src/Admin.php:533
 msgid "Mollie Dashboard openen"
 msgstr "Open Mollie Dashboard"
 
-#: src/Admin.php:18 src/Admin.php:289 src/Admin.php:367 src/Frontend.php:220
+#: src/Admin.php:18 src/Admin.php:290 src/Admin.php:377 src/Frontend.php:220
 #: src/Frontend.php:280 src/Notifications.php:190 src/Privacy.php:13
 #: src/Privacy.php:18 src/Privacy.php:24 src/Privacy.php:65
 msgid "Mollie Incasso"
@@ -1176,7 +1184,7 @@ msgstr "Mollie is temporarily rate-limiting requests. The task will be checked a
 msgid "Mollie biedt voor deze betaling geen testuitkomst aan. Dat kan alleen in de testfase bij een incasso die in behandeling of betaald is."
 msgstr "Mollie offers no test outcome for this payment. This is only possible in the test phase for a direct debit that is pending or paid."
 
-#: src/Admin.php:856
+#: src/Admin.php:865
 msgid "Mollie en webhook"
 msgstr "Mollie and webhook"
 
@@ -1196,35 +1204,35 @@ msgstr "Mollie could not be reached reliably. The action has not been completed 
 msgid "Mollie kon niet worden bereikt om de verificatiebetaling te controleren. De toestemming blijft voorlopig staan; de annulering wordt opnieuw gecontroleerd."
 msgstr "Mollie could not be reached to check the verification payment. Consent remains in place for now; the cancellation will be checked again."
 
-#: src/Admin.php:478
+#: src/Admin.php:488
 msgid "Mollie koppelen"
 msgstr "Connect Mollie"
 
-#: src/Admin.php:509
+#: src/Admin.php:519
 msgid "Mollie live-API-key"
 msgstr "Mollie live API key"
 
-#: src/Admin.php:509
+#: src/Admin.php:519
 msgid "Mollie test-API-key"
 msgstr "Mollie test API key"
 
-#: src/Admin.php:410
+#: src/Admin.php:420
 msgid "Mollie verzorgt de volgende termijnen"
 msgstr "Mollie handles the following installments"
 
-#: src/Admin.php:671
+#: src/Admin.php:681
 msgid "Mollie voert deze vaste incassoafspraken uit. Stoppen beëindigt toekomstige termijnen; een incasso die al is ingezonden moet afzonderlijk worden behandeld."
 msgstr "Mollie executes these fixed direct debit agreements. Stopping ends future installments; a direct debit that has already been submitted must be handled separately."
 
-#: src/Admin.php:654
+#: src/Admin.php:664
 msgid "Mollie-ID"
 msgstr "Mollie ID"
 
-#: src/Admin.php:932
+#: src/Admin.php:941
 msgid "Mollie-klant"
 msgstr "Mollie customer"
 
-#: src/Admin.php:764
+#: src/Admin.php:773
 msgid "Mollie-koppeling"
 msgstr "Mollie connection"
 
@@ -1236,31 +1244,31 @@ msgstr "MollieIncasso/"
 msgid "Na de verificatie en een geldige machtiging start uw vaste abonnement automatisch. De eerste incasso vindt ten minste %d kalenderdagen na bevestiging plaats; u ontvangt het bedrag en de exacte datum vooraf per e-mail."
 msgstr "After the verification and a valid mandate, your fixed subscription starts automatically. The first direct debit takes place at least %d calendar days after confirmation; you will receive the amount and the exact date in advance by email."
 
-#: src/Admin.php:811 src/Admin.php:932 src/Frontend.php:145
+#: src/Admin.php:820 src/Admin.php:941 src/Frontend.php:145
 msgid "Naam"
 msgstr "Name"
 
-#: src/Admin.php:803
+#: src/Admin.php:812
 msgid "Naam / versie"
 msgstr "Name / version"
 
-#: src/Admin.php:529
+#: src/Admin.php:539
 msgid "Naam van het abonnement"
 msgstr "Name of the subscription"
 
-#: src/Admin.php:421
+#: src/Admin.php:431
 msgid "Naar klanten"
 msgstr "To customers"
 
-#: src/Admin.php:786
+#: src/Admin.php:795
 msgid "Nederlands"
 msgstr "Nederlands"
 
-#: src/Admin.php:654
+#: src/Admin.php:664
 msgid "Netto excl. kosten"
 msgstr "Net excl. fees"
 
-#: src/Admin.php:795
+#: src/Admin.php:804
 msgid "Niet geactiveerd"
 msgstr "Not activated"
 
@@ -1268,43 +1276,43 @@ msgstr "Not activated"
 msgid "Niet gekoppeld"
 msgstr "Not linked"
 
-#: src/Admin.php:771
+#: src/Admin.php:780
 msgid "Nieuwe %s API-key (leeg = behouden)"
 msgstr "New %s API key (empty = keep)"
 
-#: src/Admin.php:593
+#: src/Admin.php:603
 msgid "Nieuwe incasso of vast abonnement"
 msgstr "New direct debit or fixed subscription"
 
-#: src/Admin.php:809
+#: src/Admin.php:818
 msgid "Nieuwe regeling of nieuwe versie toevoegen"
 msgstr "Add new plan or new version"
 
-#: src/Admin.php:526
+#: src/Admin.php:536
 msgid "Nog een abonnement toevoegen"
 msgstr "Add another subscription"
 
-#: src/Admin.php:848
+#: src/Admin.php:857
 msgid "Nog geen webhook ontvangen"
 msgstr "No webhook received yet"
 
-#: src/Admin.php:755
+#: src/Admin.php:764
 msgid "Nog invullen"
 msgstr "To be completed"
 
-#: src/Admin.php:465
+#: src/Admin.php:475
 msgid "Of aanmelden via uw webshop"
 msgstr "Or sign up via your webshop"
 
-#: src/Admin.php:766 src/Admin.php:932
+#: src/Admin.php:775 src/Admin.php:941
 msgid "Omgeving"
 msgstr "Environment"
 
-#: src/Admin.php:768
+#: src/Admin.php:777
 msgid "Omgeving: live — echte betalingen. Eerst risicoloos testen? Zet onder Geavanceerd de testfase aan."
 msgstr "Environment: live — real payments. Want to test risk-free first? Turn on the test phase under Advanced."
 
-#: src/Admin.php:603
+#: src/Admin.php:613
 msgid "Omschrijving / doel"
 msgstr "Description / purpose"
 
@@ -1316,19 +1324,19 @@ msgstr "Invalid"
 msgid "Onvoltooide webshopaanmeldingen"
 msgstr "Incomplete webshop sign-ups"
 
-#: src/Admin.php:410
+#: src/Admin.php:420
 msgid "Onzekere opdrachten en mislukte achtergrondtaken"
 msgstr "Uncertain instructions and failed background tasks"
 
-#: src/Admin.php:625
+#: src/Admin.php:635
 msgid "Opdracht"
 msgstr "Instruction"
 
-#: src/Admin.php:619
+#: src/Admin.php:629
 msgid "Opdracht bevestigen"
 msgstr "Confirm instruction"
 
-#: src/Admin.php:606
+#: src/Admin.php:616
 msgid "Opdracht controleren"
 msgstr "Check instruction"
 
@@ -1336,7 +1344,7 @@ msgstr "Check instruction"
 msgid "Opdracht naar Mollie sturen"
 msgstr "Send instruction to Mollie"
 
-#: src/Admin.php:624
+#: src/Admin.php:634
 msgid "Opdrachten"
 msgstr "Instructions"
 
@@ -1344,7 +1352,7 @@ msgstr "Instructions"
 msgid "Open het beveiligde aanmeldformulier om toestemming te geven."
 msgstr "Open the secure sign-up form to give consent."
 
-#: src/Admin.php:447
+#: src/Admin.php:457
 msgid "Open uw Mollie Dashboard en ga naar Developers → API keys."
 msgstr "Open your Mollie Dashboard and go to Developers → API keys."
 
@@ -1352,23 +1360,23 @@ msgstr "Open your Mollie Dashboard and go to Developers → API keys."
 msgid "Opgeschort door Mollie"
 msgstr "Suspended by Mollie"
 
-#: src/Admin.php:771
+#: src/Admin.php:780
 msgid "Opgeslagen %s-key verwijderen (omgeving/config blijft leidend)"
 msgstr "Delete stored %s key (environment/config remains authoritative)"
 
-#: src/Admin.php:638
+#: src/Admin.php:648
 msgid "Opnieuw proberen met nieuwe startdatum"
 msgstr "Retry with new start date"
 
-#: src/Admin.php:904
+#: src/Admin.php:913
 msgid "Opnieuw versturen"
 msgstr "Resend"
 
-#: src/Admin.php:490
+#: src/Admin.php:500
 msgid "Opslaan en verder"
 msgstr "Save and continue"
 
-#: src/Admin.php:447
+#: src/Admin.php:457
 msgid "Optioneel voor uw beheerder: de API-key rechtstreeks op de server instellen of een aparte encryptiesleutel gebruiken via wp-config.php, het bestaande configuratiebestand van WordPress. Dit is niet nodig voor normaal opslaan via WordPress. Een op de server ingestelde API-key heeft voorrang op dit formulier."
 msgstr "Optional for your administrator: set the API key directly on the server or use a separate encryption key via wp-config.php, the existing WordPress configuration file. This is not needed for normal saving via WordPress. An API key set on the server takes precedence over this form."
 
@@ -1376,7 +1384,7 @@ msgstr "Optional for your administrator: set the API key directly on the server 
 msgid "Optionele incassoaanmelding: gebruik een eenvoudig virtueel product. Het afrekenbedrag is € 0,01; vervolgbetalingen lopen via Mollie Incasso."
 msgstr "Optional direct debit sign-up: use a simple virtual product. The checkout amount is €0.01; subsequent payments run via Mollie Incasso."
 
-#: src/Admin.php:478 src/Admin.php:755
+#: src/Admin.php:488 src/Admin.php:764
 msgid "Organisatie"
 msgstr "Organization"
 
@@ -1384,11 +1392,11 @@ msgstr "Organization"
 msgid "Organisatie: %s — %s"
 msgstr "Organization: %s — %s"
 
-#: src/Admin.php:487 src/Admin.php:757
+#: src/Admin.php:497 src/Admin.php:766
 msgid "Organisatienaam"
 msgstr "Organization name"
 
-#: src/Admin.php:19 src/Admin.php:362
+#: src/Admin.php:19 src/Admin.php:372
 msgid "Overzicht"
 msgstr "Overview"
 
@@ -1396,23 +1404,23 @@ msgstr "Overview"
 msgid "PHP 8.2, curl en openssl zijn vereist."
 msgstr "PHP 8.2, curl, and openssl are required."
 
-#: src/Admin.php:585
+#: src/Admin.php:595
 msgid "Persoonlijke link mailen"
 msgstr "Email personal link"
 
-#: src/Admin.php:537
+#: src/Admin.php:547
 msgid "Plaats de shortcode in een WordPress-pagina. Een klant ziet uw afspraken en kan expliciet toestemming geven via de eerste iDEAL-betaling van € 0,01."
 msgstr "Place the shortcode in a WordPress page. A customer sees your agreements and can give explicit consent via the first iDEAL payment of €0.01."
 
-#: src/Admin.php:447
+#: src/Admin.php:457
 msgid "Plak de key hierboven en sla op. Controleer daarna iDEAL en SEPA-incasso met de controleknop. Deze controle test de verbinding en betaalmethodes, niet de volledige betaling."
 msgstr "Paste the key above and save. Then check iDEAL and SEPA direct debit with the check button. This check tests the connection and payment methods, not the full payment."
 
-#: src/Admin.php:497
+#: src/Admin.php:507
 msgid "Plak uw live-API-key uit Mollie Dashboard → Developers → API keys. Eerst risicoloos testen kan via Instellingen → Geavanceerd → Testfase gebruiken."
 msgstr "Paste your live API key from Mollie Dashboard → Developers → API keys. To test risk-free first, use Settings → Advanced → Use test phase."
 
-#: src/Admin.php:876
+#: src/Admin.php:885
 msgid "Pogingen / eerstvolgende run"
 msgstr "Attempts / next run"
 
@@ -1428,19 +1436,19 @@ msgstr "Queue processed; check failed tasks in the admin."
 msgid "Referrer-Policy: no-referrer"
 msgstr "Referrer-Policy: no-referrer"
 
-#: src/Admin.php:654
+#: src/Admin.php:664
 msgid "Refund / stornering"
 msgstr "Refund / chargeback"
 
-#: src/Admin.php:571
+#: src/Admin.php:581
 msgid "Regeling"
 msgstr "Plan"
 
-#: src/Admin.php:822
+#: src/Admin.php:831
 msgid "Regeling opslaan"
 msgstr "Save plan"
 
-#: src/Admin.php:801
+#: src/Admin.php:810
 msgid "Regelingen"
 msgstr "Plans"
 
@@ -1448,7 +1456,7 @@ msgstr "Plans"
 msgid "Reken één abonnementaanmelding apart af, zonder andere producten of extra aantallen."
 msgstr "Pay for one subscription sign-up separately, without other products or extra quantities."
 
-#: src/Admin.php:571
+#: src/Admin.php:581
 msgid "Rekeningindicatie"
 msgstr "Account indication"
 
@@ -1456,7 +1464,7 @@ msgstr "Account indication"
 msgid "Reply-To: "
 msgstr "Reply-To: "
 
-#: src/Admin.php:847 src/Admin.php:890
+#: src/Admin.php:856 src/Admin.php:899
 msgid "SMTP actief"
 msgstr "SMTP active"
 
@@ -1468,20 +1476,20 @@ msgstr "Kind"
 msgid "Stappen van uw aanmelding"
 msgstr "Steps of your sign-up"
 
-#: src/Admin.php:673
+#: src/Admin.php:683
 msgid "Start / volgende datum"
 msgstr "Start / next date"
 
-#: src/Admin.php:418
+#: src/Admin.php:428
 msgid "Start een incasso of abonnement"
 msgstr "Start a direct debit or subscription"
 
-#: src/Admin.php:625 src/Admin.php:654 src/Admin.php:673 src/Admin.php:900
-#: src/Admin.php:932 src/Frontend.php:403
+#: src/Admin.php:635 src/Admin.php:664 src/Admin.php:683 src/Admin.php:909
+#: src/Admin.php:941 src/Frontend.php:403
 msgid "Status"
 msgstr "Status"
 
-#: src/Admin.php:584 src/Admin.php:680
+#: src/Admin.php:594 src/Admin.php:690
 msgid "Status ophalen"
 msgstr "Retrieve status"
 
@@ -1489,11 +1497,11 @@ msgstr "Retrieve status"
 msgid "Status van uw incasso"
 msgstr "Status of your direct debit"
 
-#: src/Admin.php:776
+#: src/Admin.php:785
 msgid "Statusmails %1$s · bewaartermijn %2$d dagen"
 msgstr "Status emails %1$s · retention period %2$d days"
 
-#: src/Admin.php:777
+#: src/Admin.php:786
 msgid "Statusmails voor betalingen"
 msgstr "Status emails for payments"
 
@@ -1505,19 +1513,19 @@ msgstr "Set a publicly accessible HTTPS webhook address."
 msgid "Stel eerst de juiste Mollie API-key in."
 msgstr "First set the correct Mollie API key."
 
-#: src/Admin.php:526
+#: src/Admin.php:536
 msgid "Stel uw eerste abonnement in"
 msgstr "Set up your first subscription"
 
-#: src/Admin.php:883
+#: src/Admin.php:892
 msgid "Taak opnieuw controleren"
 msgstr "Recheck task"
 
-#: src/Admin.php:785
+#: src/Admin.php:794
 msgid "Taal van de plugin"
 msgstr "Plugin language"
 
-#: src/Admin.php:410
+#: src/Admin.php:420
 msgid "Te controleren"
 msgstr "To be checked"
 
@@ -1525,7 +1533,7 @@ msgstr "To be checked"
 msgid "Te veel verzoeken. Probeer later opnieuw."
 msgstr "Too many requests. Please try again later."
 
-#: src/Admin.php:698
+#: src/Admin.php:708
 msgid "Terug naar de testfase stopt geen bestaande Mollie-abonnementen; die lopen bij Mollie door tot u ze beëindigt."
 msgstr "Returning to the test phase does not stop existing Mollie subscriptions; they continue at Mollie until you end them."
 
@@ -1537,39 +1545,39 @@ msgstr "Refunded / chargeback"
 msgid "Terugkeren van de betaalpagina is geen betaalbewijs. De status hierboven volgt uit servercontroles bij Mollie. Mailverzending is geen garantie op aflevering."
 msgstr "Returning from the payment page is not proof of payment. The status above results from server checks at Mollie. Sending an email is no guarantee of delivery."
 
-#: src/Admin.php:766
+#: src/Admin.php:775
 msgid "Test — geen echt geld"
 msgstr "Test — no real money"
 
-#: src/Admin.php:782
+#: src/Admin.php:791
 msgid "Testfase aan"
 msgstr "Test phase on"
 
-#: src/Admin.php:783
+#: src/Admin.php:792
 msgid "Testfase gebruiken: testmodus met een Mollie-testkey, en testgegevens kunnen wissen (onder Diagnose)."
 msgstr "Use test phase: test mode with a Mollie test key, with the ability to delete test data (under Diagnostics)."
 
-#: src/Admin.php:652
+#: src/Admin.php:662
 msgid "Testfase: Mollie rondt een test-incasso nooit vanzelf af. Kies met Testuitkomst kiezen zelf betaald of mislukt, en bij een betaalde incasso een stornering; Mollie stuurt daarna de webhook zoals bij een echte incasso."
 msgstr "Test phase: Mollie never settles a test direct debit by itself. Use Choose test outcome to set it to paid or failed, and to simulate a chargeback on a paid direct debit; Mollie then sends the webhook just like for a real direct debit."
 
-#: src/Admin.php:495
+#: src/Admin.php:505
 msgid "Testfase: met een testkey zijn betalingen nagebootst en wordt geen echt geld gebruikt. De plugin schakelt niet vanzelf naar live."
 msgstr "Test phase: payments are simulated with a test key and no real money is used. The plugin does not switch to live on its own."
 
-#: src/Admin.php:915
+#: src/Admin.php:924
 msgid "Testgegevens wissen"
 msgstr "Delete test data"
 
-#: src/Admin.php:511
+#: src/Admin.php:521
 msgid "Testkey opslaan"
 msgstr "Save test key"
 
-#: src/Admin.php:899
+#: src/Admin.php:908
 msgid "Testmail naar mijzelf versturen"
 msgstr "Send test email to myself"
 
-#: src/Admin.php:764
+#: src/Admin.php:773
 msgid "Testmodus"
 msgstr "Test mode"
 
@@ -1577,7 +1585,7 @@ msgstr "Test mode"
 msgid "Testmodus: er worden geen echte incasso’s uitgevoerd."
 msgstr "Test mode: no real direct debits are executed."
 
-#: src/Admin.php:663
+#: src/Admin.php:673
 msgid "Testuitkomst kiezen"
 msgstr "Choose test outcome"
 
@@ -1585,7 +1593,7 @@ msgstr "Choose test outcome"
 msgid "Toestemming"
 msgstr "Consent"
 
-#: src/Admin.php:571
+#: src/Admin.php:581
 msgid "Toestemming / machtiging"
 msgstr "Consent / mandate"
 
@@ -1601,12 +1609,12 @@ msgstr "Give consent and pay €0.01"
 msgid "Toestemming geven via iDEAL (€ 0,01)"
 msgstr "Give consent via iDEAL (€0.01)"
 
-#: src/Admin.php:587 src/Frontend.php:320 src/Frontend.php:452
+#: src/Admin.php:597 src/Frontend.php:320 src/Frontend.php:452
 #: src/Plugin.php:193
 msgid "Toestemming intrekken"
 msgstr "Withdraw consent"
 
-#: src/Admin.php:436
+#: src/Admin.php:446
 msgid "Toestemming voor automatische incasso"
 msgstr "Consent for automatic direct debit"
 
@@ -1614,7 +1622,7 @@ msgstr "Consent for automatic direct debit"
 msgid "Toestemming voor automatische incasso bevestigd"
 msgstr "Consent for automatic direct debit confirmed"
 
-#: src/Admin.php:531
+#: src/Admin.php:541
 msgid "Toestemmingstekst"
 msgstr "Consent text"
 
@@ -1622,27 +1630,27 @@ msgstr "Consent text"
 msgid "Typ %s om het wissen van de testgegevens te bevestigen."
 msgstr "Type %s to confirm that the test data will be deleted."
 
-#: src/Admin.php:921
+#: src/Admin.php:930
 msgid "Typ %s om te bevestigen"
 msgstr "Type %s to confirm"
 
-#: src/Admin.php:821
+#: src/Admin.php:830
 msgid "Type"
 msgstr "Type"
 
-#: src/Admin.php:876
+#: src/Admin.php:885
 msgid "Type / status"
 msgstr "Type / status"
 
-#: src/Admin.php:603
+#: src/Admin.php:613
 msgid "Type opdracht"
 msgstr "Instruction type"
 
-#: src/Admin.php:594
+#: src/Admin.php:604
 msgid "U bereidt hier alleen een opdracht voor. Op het volgende scherm controleert u klant, bedrag en doel; pas na bevestiging wordt de vooraankondiging verzonden."
 msgstr "Here you are only preparing an instruction. On the next screen you check the customer, amount, and purpose; the pre-notification is sent only after confirmation."
 
-#: src/Admin.php:527
+#: src/Admin.php:537
 msgid "U kunt meerdere abonnementen aanbieden. Deze stap voegt een nieuw abonnement toe; bestaande afspraken blijven bewaard. Klanten kunnen na hun verificatie automatisch starten."
 msgstr "You can offer multiple subscriptions. This step adds a new subscription; existing agreements are kept. After their verification, customers can start automatically."
 
@@ -1650,7 +1658,7 @@ msgstr "You can offer multiple subscriptions. This step adds a new subscription;
 msgid "U wordt doorgestuurd naar Mollie. Toestemming wordt pas actief na een gecontroleerde betaling en een geldige machtiging."
 msgstr "You will be redirected to Mollie. Consent only becomes active after a verified payment and a valid mandate."
 
-#: src/Admin.php:487
+#: src/Admin.php:497
 msgid "URL privacyverklaring (optioneel)"
 msgstr "Privacy statement URL (optional)"
 
@@ -1662,11 +1670,11 @@ msgstr "Outcome unknown outside the safe retry period or after a key change. Che
 msgid "Uitkomst onbekend; controle vereist"
 msgstr "Outcome unknown; check required"
 
-#: src/Admin.php:783
+#: src/Admin.php:792
 msgid "Uitzetten kan alleen als live op deze site is vrijgegeven; de plugin gaat dan naar live."
 msgstr "Disabling is only possible if live has been released on this site; the plugin then goes to live."
 
-#: src/Admin.php:446
+#: src/Admin.php:456
 msgid "Uw Mollie-API-key is nodig om uw account te verbinden. Plak de key in het veld en klik op Opslaan. De plugin regelt de versleuteling automatisch. U hoeft geen bestand aan te maken of serverinstellingen te wijzigen."
 msgstr "Your Mollie API key is needed to connect your account. Paste the key into the field and click Save. The plugin handles the encryption automatically. You do not need to create a file or change server settings."
 
@@ -1694,7 +1702,7 @@ msgstr "Your direct debit sign-up"
 msgid "Uw incassoafspraak"
 msgstr "Your direct debit agreement"
 
-#: src/Admin.php:362
+#: src/Admin.php:372
 msgid "Uw incassoafspraken in één oogopslag."
 msgstr "Your direct debit agreements at a glance."
 
@@ -1714,19 +1722,19 @@ msgstr "Your request has been processed at Mollie. Direct debits that were alrea
 msgid "Uw verzoek is ontvangen. Externe verwerking is nog niet voltooid; nieuwe lokale incasso’s zijn geblokkeerd."
 msgstr "Your request has been received. External processing has not been completed yet; new local direct debits are blocked."
 
-#: src/Admin.php:603 src/Admin.php:821 src/Plugin.php:189
+#: src/Admin.php:613 src/Admin.php:830 src/Plugin.php:189
 msgid "Vast abonnement"
 msgstr "Fixed subscription"
 
-#: src/Admin.php:820
+#: src/Admin.php:829
 msgid "Vast abonnement automatisch starten na verificatie en geldige machtiging (alleen bij vast bedrag)."
 msgstr "Start fixed subscription automatically after verification and a valid mandate (only for a fixed amount)."
 
-#: src/Admin.php:811
+#: src/Admin.php:820
 msgid "Vast bedrag of maximaal bedrag bij losse incasso"
 msgstr "Fixed amount or maximum amount for a one-off direct debit"
 
-#: src/Admin.php:529
+#: src/Admin.php:539
 msgid "Vast bedrag per periode (€)"
 msgstr "Fixed amount per period (€)"
 
@@ -1734,11 +1742,11 @@ msgstr "Fixed amount per period (€)"
 msgid "Vast incasso-abonnement bevestigd"
 msgstr "Fixed direct debit subscription confirmed"
 
-#: src/Admin.php:821
+#: src/Admin.php:830
 msgid "Vaste frequentie"
 msgstr "Fixed frequency"
 
-#: src/Admin.php:811
+#: src/Admin.php:820
 msgid "Vaste regelingscode (dezelfde code maakt een nieuwe versie)"
 msgstr "Fixed plan code (the same code creates a new version)"
 
@@ -1746,11 +1754,11 @@ msgstr "Fixed plan code (the same code creates a new version)"
 msgid "Veld: "
 msgstr "Field: "
 
-#: src/Admin.php:493
+#: src/Admin.php:503
 msgid "Verbind uw Mollie-account"
 msgstr "Connect your Mollie account"
 
-#: src/Admin.php:362
+#: src/Admin.php:372
 msgid "Verbind uw account en leg vast waarmee uw klanten akkoord gaan."
 msgstr "Connect your account and record what your customers agree to."
 
@@ -1786,27 +1794,27 @@ msgstr "Expired"
 msgid "Verwerkt"
 msgstr "Processed"
 
-#: src/Admin.php:919
+#: src/Admin.php:928
 msgid "Verwijdert definitief alle klanten, toestemmingen, regelingen, opdrachten, betalingen, abonnementen, taken en meldingen uit de testmodus van deze website. Livegegevens worden nooit aangeraakt; in livemodus is deze knop niet beschikbaar. Instellingen en API-keys blijven staan. Gegevens bij Mollie (testomgeving) en WooCommerce-bestellingen of -producten worden niet gewijzigd. Dit kan niet ongedaan worden gemaakt."
 msgstr "Permanently deletes all customers, consents, plans, instructions, payments, subscriptions, tasks, and notifications from the test mode of this website. Live data is never touched; in live mode this button is not available. Settings and API keys are kept. Data at Mollie (test environment) and WooCommerce orders or products are not changed. This cannot be undone."
 
-#: src/Admin.php:900
+#: src/Admin.php:909
 msgid "Verzonden meldingen"
 msgstr "Sent notifications"
 
-#: src/Admin.php:531
+#: src/Admin.php:541
 msgid "Via de persoonlijke statuslink of door contact op te nemen met de organisatie."
 msgstr "Via the personal status link or by contacting the organization."
 
-#: src/Admin.php:811
+#: src/Admin.php:820
 msgid "Via uw persoonlijke statuslink of door contact met ons op te nemen."
 msgstr "Via your personal status link or by contacting us."
 
-#: src/Admin.php:469
+#: src/Admin.php:479
 msgid "Virtueel product klaarzetten"
 msgstr "Set up virtual product"
 
-#: src/Admin.php:561
+#: src/Admin.php:571
 msgid "Volgende stap"
 msgstr "Next step"
 
@@ -1818,7 +1826,7 @@ msgstr "Completed"
 msgid "Vooraankondiging automatische incasso"
 msgstr "Pre-notification of automatic direct debit"
 
-#: src/Admin.php:811
+#: src/Admin.php:820
 msgid "Vooraankondiging in kalenderdagen"
 msgstr "Pre-notification in calendar days"
 
@@ -1826,15 +1834,15 @@ msgstr "Pre-notification in calendar days"
 msgid "Vooraankondiging: %d kalenderdagen vóór het aanbieden van de incasso."
 msgstr "Pre-notification: %d calendar days before the direct debit is submitted."
 
-#: src/Admin.php:897
+#: src/Admin.php:906
 msgid "Vooraankondigingen zijn bij SEPA-incasso verplicht. Zonder geauthenticeerde verzending (SMTP met SPF/DKIM voor uw domein) belanden ze vaak in spam. Het instellen daarvan is de verantwoordelijkheid van de website-eigenaar; bijvoorbeeld met:"
 msgstr "Pre-notifications are mandatory for SEPA direct debit. Without authenticated sending (SMTP with SPF/DKIM for your domain), they often end up in spam. Setting this up is the responsibility of the website owner; for example with:"
 
-#: src/Admin.php:557
+#: src/Admin.php:567
 msgid "Vorige"
 msgstr "Previous"
 
-#: src/Admin.php:696
+#: src/Admin.php:706
 msgid "Vrijgegeven via de serverconfiguratie."
 msgstr "Released via the server configuration."
 
@@ -1842,17 +1850,13 @@ msgstr "Released via the server configuration."
 msgid "Vul alle verplichte regelingsgegevens en een geldig bedrag in."
 msgstr "Fill in all required plan details and a valid amount."
 
-#: src/Admin.php:418
+#: src/Admin.php:428
 msgid "Vul de organisatie, bedragen en afspraken in bij Instellingen. Plaats daarna het aanmeldformulier op uw website."
 msgstr "Enter the organization, amounts, and agreements under Settings. Then place the sign-up form on your website."
 
 #: src/Plugin.php:227
 msgid "Vul een positief EUR-bedrag met maximaal twee decimalen in."
 msgstr "Enter a positive EUR amount with at most two decimals."
-
-#: src/Admin.php:720
-msgid "Vul eerst uw live-API-key in (Mollie Dashboard → Developers → API keys) en sla op."
-msgstr "First enter your live API key (Mollie Dashboard → Developers → API keys) and save."
 
 #: src/Plugin.php:227
 msgid "Vul naam, een geldig e-mailadres en expliciete toestemming in."
@@ -1866,11 +1870,11 @@ msgstr "Enter the organization and contact details."
 msgid "WISSEN"
 msgstr "DELETE"
 
-#: src/Admin.php:447
+#: src/Admin.php:457
 msgid "Waar vind ik mijn key? En wat is de extra beveiligingsoptie?"
 msgstr "Where do I find my key? And what is the extra security option?"
 
-#: src/Admin.php:531
+#: src/Admin.php:541
 msgid "Waarvoor betaalt de klant?"
 msgstr "What is the customer paying for?"
 
@@ -1886,11 +1890,11 @@ msgstr "Waiting for confirmation"
 msgid "Wacht op een geldige machtiging"
 msgstr "Waiting for a valid mandate"
 
-#: src/Admin.php:848 src/Admin.php:856
+#: src/Admin.php:857 src/Admin.php:865
 msgid "Webhook-probleem"
 msgstr "Webhook problem"
 
-#: src/Admin.php:857
+#: src/Admin.php:866
 msgid "Webhooks zijn statusmeldingen van Mollie. De URL moet extern via HTTPS bereikbaar zijn zonder login, caching of firewallblokkade."
 msgstr "Webhooks are status notifications from Mollie. The URL must be reachable externally via HTTPS without login, caching, or firewall blocking."
 
@@ -1898,7 +1902,7 @@ msgstr "Webhooks are status notifications from Mollie. The URL must be reachable
 msgid "Webshopbestelling bijwerken"
 msgstr "Update webshop order"
 
-#: src/Admin.php:483
+#: src/Admin.php:493
 msgid "Wie incasseert?"
 msgstr "Who is collecting?"
 
@@ -1914,11 +1918,11 @@ msgstr "On %1$s we submit a direct debit of %2$s for: %3$s. The actual bank proc
 msgid "Wij controleren uw verificatie bij Mollie. Deze pagina ververst automatisch."
 msgstr "We are verifying your verification payment at Mollie. This page refreshes automatically."
 
-#: src/Admin.php:766
+#: src/Admin.php:775
 msgid "Wisselen stopt geen bestaande Mollie-abonnementen. Naar live gaat via ‘Live activeren’."
 msgstr "Switching does not stop existing Mollie subscriptions. Going live is done via ‘Activate live’."
 
-#: src/Admin.php:466
+#: src/Admin.php:476
 msgid "WooCommerce is hier niet actief. De website-aanmelding hierboven werkt zonder webshop."
 msgstr "WooCommerce is not active here. The website sign-up above works without a webshop."
 
@@ -1930,19 +1934,19 @@ msgstr "WooCommerce is not active. Use the website sign-up or activate WooCommer
 msgid "Wordt verwerkt"
 msgstr "Being processed"
 
-#: src/Admin.php:417
+#: src/Admin.php:427
 msgid "Zo werkt automatische incasso"
 msgstr "How automatic direct debit works"
 
-#: src/Admin.php:776
+#: src/Admin.php:785
 msgid "aan"
 msgstr "on"
 
-#: src/Admin.php:806
+#: src/Admin.php:815
 msgid "archief"
 msgstr "archive"
 
-#: src/Admin.php:618
+#: src/Admin.php:628
 msgid "eenmalig"
 msgstr "one-time"
 
@@ -1954,7 +1958,7 @@ msgstr "iDEAL for the first payment and SEPA Direct Debit must be available in t
 msgid "iDEAL — abonnement afsluiten"
 msgstr "iDEAL — start subscription"
 
-#: src/Admin.php:771
+#: src/Admin.php:780
 msgid "ingesteld"
 msgstr "set"
 
@@ -1974,14 +1978,14 @@ msgstr "month"
 msgid "maximaal %s per incasso"
 msgstr "maximum %s per direct debit"
 
-#: src/Admin.php:771
+#: src/Admin.php:780
 msgid "niet ingesteld"
 msgstr "not set"
 
-#: src/Admin.php:897
+#: src/Admin.php:906
 msgid "of"
 msgstr "or"
 
-#: src/Admin.php:776
+#: src/Admin.php:785
 msgid "uit"
 msgstr "off"

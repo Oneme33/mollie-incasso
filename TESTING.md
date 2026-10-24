@@ -1,4 +1,4 @@
-# Testrapport — Mollie Incasso 1.0.0
+# Testrapport — Mollie Incasso 1.0.1
 
 Lokaal uitgevoerd op 13 en 14 oktober 2026: PHP 8.2.29, WordPress 6.8.1, bestaande Docker MySQL/InnoDB. Geen live geld, echte incasso of echte klantmail gebruikt. Dit rapport is geen productiecertificering.
 
@@ -118,3 +118,7 @@ Geen live geld gebruiken voor deze acceptatie. Schakel live pas afzonderlijk in 
 Online op geertruida.net (testkey, 15 tot 17 oktober 2026): aanmelding met verificatiebetaling van € 0,01 via iDEAL en echte webhook, mandaat, mails, automatisch Mollie-abonnement en intrekken via de statuslink zijn bewezen. De losse incasso van € 1 is op de geplande dag automatisch naar Mollie gestuurd en geaccepteerd; het abonnement staat actief bij Mollie. Mollie rondt een test-incasso nooit vanzelf af (status blijft in behandeling). Daarom biedt de testfase nu **Testuitkomst kiezen** bij een incasso in behandeling: dat opent de testpagina van Mollie (`changePaymentState`), waarna Mollie de webhook stuurt zoals bij een echte incasso. Getest: alleen in testmodus, alleen voor incasso's in behandeling of betaald (zodat ook een stornering te simuleren is), nooit voor de verificatiebetaling, alleen naar een mollie.com-adres. De echte afronding (betaald, mislukt, stornering) wordt bevestigd in de live pilot met een klein bedrag.
 
 Engelse vertaling (`en_US` en `en_GB`) toegevoegd, met een taalkeuze onder Instellingen → Geavanceerd (automatisch, Nederlands of English); automatisch gebruikt Engels voor elke Engelse WordPress-taal, ook een kale `en`. Lokaal: `integration.php` **171**, `sdk.php` **26**, `secrets.php` **23**, `woocommerce.php` **73 klassiek en 73 HPOS**.
+
+## 1.0.1: live-key en Live activeren
+
+Gevonden op geertruida.net: wie in de testfase de live-key invulde en tegelijk live koos, kreeg een weigering waarbij de key niet werd bewaard; Live activeren vroeg daarna om een key die er niet was. Opgelost: Opslaan bewaart de key altijd en houdt de huidige modus tot live is geactiveerd (met een duidelijke melding en het live-blok open), en Live activeren vraagt zelf om de live-key als die nog ontbreekt, zodat invullen, bevestigen en activeren één stap is. Lokaal: `integration.php` **174**, `sdk.php` **26**, `secrets.php` **23**, `woocommerce.php` **73 klassiek en 73 HPOS**.
