@@ -422,6 +422,7 @@ final class Service
                 throw $e;
             }
         }
+        try {
         $this->store->transaction(function () use ($kind, $remote, $command, $customer, $mode, $id) {
             if ($kind === 'customer') {
                 $this->store->update('customers', ['remote_id' => $remote['id'], 'updated_at' => Store::now()], (int) $customer['id'], $mode);
@@ -432,6 +433,11 @@ final class Service
             }
             $this->store->update('commands', ['state' => 'completed', 'remote_id' => $remote['id'], 'error' => '', 'error_detail' => '', 'updated_at' => Store::now()], $id, $mode);
         });
+        } catch (Failure $e) {
+            // The resource exists at Mollie but was not accepted here: block it visibly instead of leaving it processing.
+            $this->store->update('commands', ['state' => 'blocked', 'remote_id' => $remote['id'] ?? null, 'error' => $e->reason, 'error_detail' => mb_substr($e->detail, 0, 250), 'updated_at' => Store::now()], $id, $mode);
+            throw $e;
+        }
         if ($kind === 'first') {
             $this->queue->put($mode, 'payment', 'payment:' . $remote['id'], ['id' => $remote['id']]);
         }
@@ -485,19 +491,21 @@ final class Service
     private function validatePayment(array $customer, ?array $command, array $p, ?array $subscription): void
     {
         $mode = $customer['mode'];
+        // What Mollie returned, without personal data, so a rejected payment is explainable in the admin.
+        $seen = sprintf('mode=%s, sequenceType=%s, method=%s, currency=%s, status=%s', $p['mode'] ?? '-', $p['sequenceType'] ?? '-', $p['method'] ?? '-', $p['amount']['currency'] ?? '-', $p['status'] ?? '-');
         if (($p['mode'] ?? '') !== $mode || ($p['customerId'] ?? '') !== $customer['remote_id'] || ($p['amount']['currency'] ?? '') !== 'EUR') {
-            throw new Failure('payment_mismatch');
+            throw new Failure('payment_mismatch', false, false, $seen . (($p['customerId'] ?? '') !== $customer['remote_id'] ? ', customer differs' : ''));
         }
         $expected = $command ? (int) $command['amount'] : (int) $subscription['amount'];
         if (Money::cents((string) $p['amount']['value']) !== $expected) {
-            throw new Failure('payment_amount_mismatch');
+            throw new Failure('payment_amount_mismatch', false, false, $seen . ', amount=' . ($p['amount']['value'] ?? '-'));
         }
         $first = $command && $command['kind'] === 'first';
         if (($p['sequenceType'] ?? '') !== ($first ? 'first' : 'recurring') || ($p['method'] ?? '') !== ($first ? 'ideal' : 'directdebit')) {
-            throw new Failure('payment_method_mismatch');
+            throw new Failure('payment_method_mismatch', false, false, $seen);
         }
         if ($command && (($p['metadata']['mi_command'] ?? '') !== $command['reference'] || ($p['metadata']['mi_instance'] ?? '') !== (string) get_option('mi_instance'))) {
-            throw new Failure('payment_reference_mismatch');
+            throw new Failure('payment_reference_mismatch', false, false, $seen . ', metadata does not match this website');
         }
         if ($subscription && ($p['subscriptionId'] ?? '') !== $subscription['remote_id']) {
             throw new Failure('subscription_mismatch');

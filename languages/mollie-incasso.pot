@@ -399,6 +399,10 @@ msgid "De bestelling is gewijzigd na de incassoaanmelding. Neem contact op; er w
 msgstr ""
 
 #: src/Plugin.php:233
+msgid "De betaling bij Mollie hoort niet bij deze website. Zie de foutregel bij Incasso’s."
+msgstr ""
+
+#: src/Plugin.php:233
 msgid "De bevestiging is ongeldig of verlopen. Herlaad de pagina."
 msgstr ""
 
@@ -1334,6 +1338,10 @@ msgstr ""
 msgid "Mollie Incasso — onvoltooide webshopaanmeldingen"
 msgstr ""
 
+#: src/WooCommerceGateway.php:40
+msgid "Mollie Incasso: aanmelding gestopt (%1$s). %2$s"
+msgstr ""
+
 #: src/Notifications.php:112
 msgid "Mollie Incasso: incasso mislukt of gestorneerd"
 msgstr ""
@@ -1352,6 +1360,18 @@ msgstr ""
 
 #: src/Admin.php:1129
 msgid "Mollie en webhook"
+msgstr ""
+
+#: src/Plugin.php:233
+msgid "Mollie gaf een ander bedrag terug dan gevraagd. Zie de foutregel bij Incasso’s."
+msgstr ""
+
+#: src/Plugin.php:233
+msgid "Mollie gaf een andere betaalmethode of soort betaling terug dan gevraagd. Zie de foutregel bij Incasso’s."
+msgstr ""
+
+#: src/Plugin.php:233
+msgid "Mollie gaf een betaling terug die niet bij deze klant of modus past. Zie de foutregel bij Incasso’s."
 msgstr ""
 
 #: src/Plugin.php:233
@@ -2200,6 +2220,10 @@ msgstr ""
 
 #: src/Admin.php:1047
 msgid "archief"
+msgstr ""
+
+#: src/Plugin.php:234
+msgid "code: %s"
 msgstr ""
 
 #: src/Admin.php:857

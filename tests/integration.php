@@ -762,6 +762,12 @@ try {
     check($piet['status'] !== 'active', 'a mandate Mollie rejects never makes the customer collectable');
     $fake->mandateRejected = false;
     check($service->importMandate('test', $club, 'Piet', 'piet@example.invalid', 'NL91ABNA0417164300', '2024-02-01', '', 1) === 'imported' && $service->customer((int) $piet['id'], 'test')['status'] === 'active', 'a rejected import can be retried for the same customer');
+    // A payment Mollie returns differently than requested is blocked visibly, with what Mollie returned.
+    $fake->alterCreated = ['method' => 'wero'];
+    rejects(fn() => signup($club, 'afwijkend@example.invalid'), 'payment_method_mismatch');
+    $odd = $store->select('SELECT * FROM ' . $store->table('commands') . " WHERE mode='test' AND kind='first' ORDER BY id DESC LIMIT 1")[0];
+    check($odd['state'] === 'blocked' && $odd['error'] === 'payment_method_mismatch' && str_contains($odd['error_detail'], 'method=wero') && str_contains($odd['error_detail'], 'sequenceType=first') && !str_contains($odd['error_detail'], 'afwijkend'), 'a payment Mollie returns differently is blocked with what Mollie returned, without personal data');
+    check(str_contains(Plugin::message('some_new_reason'), 'some_new_reason'), 'an unknown failure shows its code instead of only a generic text');
     // Editing and removing plans: a new version for new sign-ups, accepted versions keep working.
     $planV1 = $schemes->save(array_replace($base, ['slug' => 'club-edit', 'name' => 'Club']), 'test');
     $planV2 = $schemes->save(array_replace($base, ['slug' => 'club-edit', 'name' => 'Club', 'amount' => '100.00']), 'test');

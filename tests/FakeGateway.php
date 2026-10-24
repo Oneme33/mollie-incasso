@@ -9,6 +9,7 @@ final class FakeGateway implements Gateway
     public bool $timeout = false, $cancelFails = false, $revokeFails = false, $hideFind = false, $readFails = false, $rejectSubscription = false, $methodsMissing = false;
     public ?\Closure $duringPreflight = null;
     public ?\Closure $duringCreate = null;
+    public array $alterCreated = [];
     public function methods(string $sequence, int $cents = 1): array
     {
         if ($this->methodsMissing) {
@@ -54,6 +55,10 @@ final class FakeGateway implements Gateway
         }
         if ($kind === 'payment' && $body['sequenceType'] === 'first') {
             $row['checkout'] = 'https://www.mollie.com/checkout/' . $id;
+        }
+        if ($kind === 'payment' && $this->alterCreated) {
+            $row = array_replace($row, $this->alterCreated);
+            $this->alterCreated = [];
         }
         if ($kind === 'subscription') {
             $row['nextPaymentDate'] = $body['startDate'];

@@ -405,6 +405,10 @@ msgid "De bestelling is gewijzigd na de incassoaanmelding. Neem contact op; er w
 msgstr "The order was changed after the direct debit sign-up. Please get in touch; no second payment will be created."
 
 #: src/Plugin.php:233
+msgid "De betaling bij Mollie hoort niet bij deze website. Zie de foutregel bij Incasso’s."
+msgstr "The payment at Mollie does not belong to this website. See the error line under Direct debits."
+
+#: src/Plugin.php:233
 msgid "De bevestiging is ongeldig of verlopen. Herlaad de pagina."
 msgstr "The confirmation is invalid or has expired. Reload the page."
 
@@ -1345,6 +1349,10 @@ msgstr "Mollie Incasso — sign-up"
 msgid "Mollie Incasso — onvoltooide webshopaanmeldingen"
 msgstr "Mollie Incasso — incomplete webshop sign-ups"
 
+#: src/WooCommerceGateway.php:40
+msgid "Mollie Incasso: aanmelding gestopt (%1$s). %2$s"
+msgstr "Mollie Incasso: sign-up stopped (%1$s). %2$s"
+
 #: src/Notifications.php:112
 msgid "Mollie Incasso: incasso mislukt of gestorneerd"
 msgstr "Mollie Incasso: direct debit failed or charged back"
@@ -1364,6 +1372,18 @@ msgstr "Mollie offers no test outcome for this payment. This is only possible in
 #: src/Admin.php:1129
 msgid "Mollie en webhook"
 msgstr "Mollie and webhook"
+
+#: src/Plugin.php:233
+msgid "Mollie gaf een ander bedrag terug dan gevraagd. Zie de foutregel bij Incasso’s."
+msgstr "Mollie returned a different amount than requested. See the error line under Direct debits."
+
+#: src/Plugin.php:233
+msgid "Mollie gaf een andere betaalmethode of soort betaling terug dan gevraagd. Zie de foutregel bij Incasso’s."
+msgstr "Mollie returned a different payment method or payment type than requested. See the error line under Direct debits."
+
+#: src/Plugin.php:233
+msgid "Mollie gaf een betaling terug die niet bij deze klant of modus past. Zie de foutregel bij Incasso’s."
+msgstr "Mollie returned a payment that does not match this customer or mode. See the error line under Direct debits."
 
 #: src/Plugin.php:233
 msgid "Mollie heeft de beëindiging nog niet bevestigd."
@@ -2214,6 +2234,10 @@ msgstr "on"
 #: src/Admin.php:1047
 msgid "archief"
 msgstr "archive"
+
+#: src/Plugin.php:234
+msgid "code: %s"
+msgstr "code: %s"
 
 #: src/Admin.php:857
 msgid "eenmalig"
