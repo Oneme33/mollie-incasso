@@ -462,7 +462,7 @@ final class Admin
         $reference=$this->field('plan_reference',36);
         if(!preg_match('/^[a-f0-9-]{36}$/D',$reference))throw new Failure('invalid_scheme');
         if($this->field('plan_type',8)==='manual'){
-            $data=['slug'=>'wizard-'.$reference,'type'=>'manual','name'=>$this->field('name',190),'amount'=>$this->field('amount',24),'purpose'=>$this->field('purpose'),'calculation'=>__('Het bedrag van elke incasso staat in de vooraankondiging en is nooit hoger dan het maximum per incasso. De verificatiebetaling van € 0,01 staat hier los van.','mollie-incasso'),'frequency'=>$this->field('frequency'),'withdrawal'=>$this->field('withdrawal'),'consent'=>$this->field('consent'),'notice_days'=>14,'times'=>''];
+            $data=['slug'=>'wizard-'.$reference,'type'=>'manual','name'=>$this->field('name',190),'amount'=>$this->field('amount',24),'purpose'=>$this->field('purpose'),'calculation'=>__('Het bedrag van elke incasso staat in de vooraankondiging en is nooit hoger dan het maximum per incasso. De verificatiebetaling van € 0,01 staat hier los van.','mollie-incasso'),'withdrawal'=>$this->field('withdrawal'),'consent'=>$this->field('consent'),'notice_days'=>14,'times'=>''];
             return $this->savePlan($data,$mode,$reference);
         }
         $interval=$this->field('interval',12);
@@ -549,7 +549,6 @@ final class Admin
             echo '<input type="hidden" name="plan_reference" value="'.esc_attr(wp_generate_uuid4()).'"><label>'.esc_html__('Naam van de regeling','mollie-incasso').'<input name="name" maxlength="190" placeholder="'.esc_attr__('Bijvoorbeeld GCC doorlopend abonnement','mollie-incasso').'" required></label>';
             echo '<label><span data-plan="fixed">'.esc_html__('Vast bedrag per periode (€)','mollie-incasso').'</span><span data-plan="manual" hidden>'.esc_html__('Maximumbedrag per incasso (€)','mollie-incasso').'</span><input name="amount" inputmode="decimal" placeholder="20.00" required></label>';
             echo '<label data-plan="fixed">'.esc_html__('Hoe vaak incasseren?','mollie-incasso').'<select name="interval"><option value="1 month">'.esc_html__('Elke maand','mollie-incasso').'</option><option value="3 months">'.esc_html__('Elk kwartaal','mollie-incasso').'</option><option value="12 months">'.esc_html__('Elk jaar','mollie-incasso').'</option></select></label>';
-            echo '<label data-plan="manual" hidden>'.esc_html__('Wanneer incasseert u?','mollie-incasso').'<textarea name="frequency">'.esc_textarea(__('Per keer, na een afgesproken levering of dienst. Elke incasso wordt vooraf aangekondigd.','mollie-incasso')).'</textarea></label>';
             echo '<details open><summary>'.esc_html__('Controleer de afspraak die uw klant accepteert','mollie-incasso').'</summary>';
             foreach(['purpose'=>__('Waarvoor betaalt de klant?','mollie-incasso'),'withdrawal'=>__('Hoe kan de klant stoppen?','mollie-incasso'),'consent'=>__('Toestemmingstekst','mollie-incasso')] as $key=>$label){
                 $fixed=$defaults['fixed'][$key]??__('Via de persoonlijke statuslink of door contact op te nemen met de organisatie.','mollie-incasso');
@@ -782,8 +781,8 @@ final class Admin
         $orgReady = $s['organization'] !== '' && $s['contact'] !== '';
         $this->section(__('Organisatie', 'mollie-incasso'), $orgReady ? $s['organization'] : __('Nog invullen', 'mollie-incasso'), !$orgReady, $orgReady ? '' : 'attention');
         $this->help(__('Deze gegevens staan in de incassoafspraak die klanten accepteren en in de mails.', 'mollie-incasso'));
-        foreach (['organization' => 'Organisatienaam', 'address' => 'Adres en organisatiegegevens', 'contact' => 'Contact en intrekken', 'privacy_url' => 'URL privacyverklaring'] as $key => $label) {
-            echo '<label>' . esc_html__($label, 'mollie-incasso') . '<input name="' . esc_attr($key) . '" value="' . esc_attr((string) $s[$key]) . '"></label>';
+        foreach (['organization' => __('Organisatienaam', 'mollie-incasso'), 'address' => __('Adres en organisatiegegevens', 'mollie-incasso'), 'contact' => __('Contact en intrekken', 'mollie-incasso'), 'privacy_url' => __('URL privacyverklaring', 'mollie-incasso')] as $key => $label) {
+            echo '<label>' . esc_html($label) . '<input name="' . esc_attr($key) . '" value="' . esc_attr((string) $s[$key]) . '"></label>';
         }
         $this->sectionEnd();
         // Mollie-koppeling
@@ -826,7 +825,7 @@ final class Admin
         // Regelingen
         $schemes = $this->p->store->rows('schemes', $config->mode());
         $active = count(array_filter($schemes, fn($row) => (int) $row['active'] === 1));
-        $this->section(__('Regelingen', 'mollie-incasso'), sprintf(_n('%d actieve regeling', '%d actieve regelingen', $active, 'mollie-incasso'), $active), $active === 0, $active === 0 ? 'attention' : '');
+        $this->section(__('Regelingen', 'mollie-incasso'), sprintf(__('Actief: %d', 'mollie-incasso'), $active), $active === 0, $active === 0 ? 'attention' : '');
         $this->help(__('Een regeling beschrijft waarvoor, hoeveel en wanneer een klant toestemming geeft. De naam is zichtbaar in het aanmeldformulier. Gebruik een nieuwe versie als de afspraken veranderen.', 'mollie-incasso'));
         echo '<div class="mi-scroll" id="mi-regelingen"><table class="widefat striped"><thead><tr><th>' . esc_html__('Naam / versie', 'mollie-incasso') . '</th><th>' . esc_html__('Bedrag / type', 'mollie-incasso') . '</th><th>Shortcode</th></tr></thead><tbody>';
         foreach ($schemes as $row) {
@@ -836,18 +835,22 @@ final class Admin
         echo '</tbody></table></div>';
         echo '<details class="mi-subsection"' . ($active === 0 ? ' open' : '') . '><summary>' . esc_html__('Nieuwe regeling of nieuwe versie toevoegen', 'mollie-incasso') . '</summary><p>' . esc_html__('Bestaande toestemming blijft aan de geaccepteerde versie gekoppeld. De voorbeeldteksten zijn een startpunt en moeten voor uw organisatie worden beoordeeld.', 'mollie-incasso') . '</p>';
         $this->start('scheme');
+        echo '<label>' . esc_html__('Type', 'mollie-incasso') . '<select name="type"><option value="manual">' . esc_html__('Losse incasso’s', 'mollie-incasso') . '</option><option value="fixed">' . esc_html__('Vast abonnement', 'mollie-incasso') . '</option></select></label>';
         foreach (['slug' => ['Vaste regelingscode (dezelfde code maakt een nieuwe versie)', ''], 'name' => ['Naam', 'Lidmaatschap'], 'purpose' => ['Doel', 'Betaling voor het afgesproken lidmaatschap.'], 'amount' => ['Vast bedrag of maximaal bedrag bij losse incasso', '10.00'], 'calculation' => ['Bedrag / berekeningswijze', 'Het vooraf aangekondigde bedrag volgens onze overeenkomst.'], 'frequency' => ['Frequentie of aanleiding', 'Maandelijks, of uitsluitend na een afzonderlijke aankondiging conform de gekozen regeling.'], 'withdrawal' => ['Hoe toestemming kan worden ingetrokken', 'Via uw persoonlijke statuslink of door contact met ons op te nemen.'], 'consent' => ['Expliciete toestemmingstekst', 'Ik geef deze organisatie toestemming om de hiervoor beschreven bedragen via SEPA Direct Debit van mijn rekening te incasseren.'], 'notice_days' => ['Vooraankondiging in kalenderdagen', '14'], 'times' => ['Maximum aantal betalingen (optioneel, maximaal 10000)', '']] as $key => [$label, $default]) {
-            echo '<label>' . esc_html__($label, 'mollie-incasso');
+            $fixedOnly = in_array($key, ['frequency', 'times'], true);
+            echo '<label' . ($fixedOnly ? ' data-plan="fixed" hidden' : '') . '>' . esc_html__($label, 'mollie-incasso');
             if (in_array($key, ['purpose', 'calculation', 'frequency', 'withdrawal', 'consent'], true)) {
-                echo '<textarea name="' . $key . '" rows="3" required>' . esc_textarea(__($default,'mollie-incasso')) . '</textarea>';
+                echo '<textarea name="' . $key . '" rows="3"' . ($fixedOnly ? '' : ' required') . '>' . esc_textarea(__($default,'mollie-incasso')) . '</textarea>';
             } else {
                 echo '<input name="' . $key . '" value="' . esc_attr($default) . '" ' . (!in_array($key, ['slug', 'times'], true) ? 'required' : '') . '>';
             }
             echo '</label>';
         }
-        echo '<label><input type="checkbox" name="auto_start" value="1" checked> ' . esc_html__('Vast abonnement automatisch starten na verificatie en geldige machtiging (alleen bij vast bedrag).', 'mollie-incasso') . '</label>';
-        echo '<label>' . esc_html__('Type', 'mollie-incasso') . '<select name="type"><option value="manual">' . esc_html__('Losse incasso’s', 'mollie-incasso') . '</option><option value="fixed">' . esc_html__('Vast abonnement', 'mollie-incasso') . '</option></select></label><label>' . esc_html__('Vaste frequentie', 'mollie-incasso') . '<select name="interval"><option value="1 month">' . esc_html__('Maand', 'mollie-incasso') . '</option><option value="3 months">' . esc_html__('Kwartaal', 'mollie-incasso') . '</option><option value="12 months">' . esc_html__('Jaar', 'mollie-incasso') . '</option></select></label><label><input type="checkbox" name="notice_agreed" value="1">' . esc_html__('Een afwijkende vooraankondigingstermijn is expliciet met de klant afgesproken en opgenomen in deze regeling.', 'mollie-incasso') . '</label>';
+        echo '<label data-plan="fixed" hidden><input type="checkbox" name="auto_start" value="1" checked> ' . esc_html__('Vast abonnement automatisch starten na verificatie en geldige machtiging (alleen bij vast bedrag).', 'mollie-incasso') . '</label>';
+        echo '<label data-plan="fixed" hidden>' . esc_html__('Vaste frequentie', 'mollie-incasso') . '<select name="interval"><option value="1 month">' . esc_html__('Maand', 'mollie-incasso') . '</option><option value="3 months">' . esc_html__('Kwartaal', 'mollie-incasso') . '</option><option value="12 months">' . esc_html__('Jaar', 'mollie-incasso') . '</option></select></label><label><input type="checkbox" name="notice_agreed" value="1">' . esc_html__('Een afwijkende vooraankondigingstermijn is expliciet met de klant afgesproken en opgenomen in deze regeling.', 'mollie-incasso') . '</label>';
         $this->end('Regeling opslaan', true);
+        // Frequency, number of terms and automatic start only apply to a fixed subscription.
+        echo "<script>(function(){var t=document.querySelector('select[name=type]');if(!t)return;function sync(){t.form.querySelectorAll('[data-plan]').forEach(function(el){el.hidden=el.getAttribute('data-plan')!==t.value;});}t.addEventListener('change',sync);sync();})();</script>";
         echo '</details>';
         $this->sectionEnd();
     }

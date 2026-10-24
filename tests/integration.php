@@ -99,6 +99,7 @@ function sendPre(int $command): void
 try {
     $manual = scheme('manual');
     $fixed = scheme('fixed');
+    check($schemes->get($manual, 'test')['frequency'] === '' && !str_contains($schemes->disclosure($schemes->get($manual, 'test')), 'Frequentie') && str_contains($schemes->disclosure($schemes->get($fixed, 'test')), 'Frequentie'), 'one-off direct debits have no frequency; a fixed subscription keeps it');
     $a = signup($manual);
     $cid = (int) $a['customer']['id'];
     $first = $fake->payments[$a['payment']['remote_id']];
