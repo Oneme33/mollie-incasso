@@ -693,6 +693,7 @@ try {
     $adminScreen->render();
     $liveSettingsHtml = ob_get_clean();
     check(str_contains($liveSettingsHtml, 'mi-section') && str_contains($liveSettingsHtml, 'Geavanceerd') && !str_contains($liveSettingsHtml, 'name="key_test"') && !str_contains($liveSettingsHtml, '<select name="target_mode"'), 'live default hides test key and environment switch behind Geavanceerd');
+    check(str_contains($liveSettingsHtml, 'name="default_amount"') && !preg_match('/name="default_amount"[^>]*required/', $liveSettingsHtml), 'the optional default amount never blocks saving a fixed subscription');
     check(str_contains($liveSettingsHtml, 'placeholder="live_…" required') && str_contains($liveSettingsHtml, 'name="confirm_live"'), 'Live activeren asks for the live key in the same step when none is stored');
     $_GET = ['page' => 'mollie-incasso-setup', 'step' => 2];
     ob_start();

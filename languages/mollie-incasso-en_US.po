@@ -256,15 +256,15 @@ msgstr "Payment for the selected membership."
 msgid "Betalingen"
 msgstr "Payments"
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Bevestig dat deze klanten een geldige machtiging hebben gegeven en dat u die via Mollie mag gebruiken."
 msgstr "Confirm that these customers have given a valid mandate and that you may use it through Mollie."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Bevestig dat er vanaf nu echt geld wordt geïncasseerd."
 msgstr "Confirm that real money will be collected from now on."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Bevestig een expliciet afgesproken afwijkende vooraankondigingstermijn."
 msgstr "Confirm a deviating pre-notification period that has been explicitly agreed."
 
@@ -348,7 +348,7 @@ msgstr "Check webhooks, background tasks, and the sending of notifications."
 msgid "Controleren"
 msgstr "Check"
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Cookies kunnen niet veilig worden gezet. Sluit de aanmeldpagina uit van caching."
 msgstr "Cookies cannot be set securely. Exclude the sign-up page from caching."
 
@@ -364,15 +364,15 @@ msgstr "Date / error"
 msgid "Datum:"
 msgstr "Date:"
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "De CSV mist een kopregel met de kolommen naam, e-mail, IBAN en datum."
 msgstr "The CSV is missing a header row with the columns name, email, IBAN and date."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "De aanmelding moet een afzonderlijke bestelling van € 0,01 zijn, zonder btw, verzending, kortingen of toeslagen."
 msgstr "The sign-up must be a separate €0.01 order, without VAT, shipping, discounts, or surcharges."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "De abonnementsstartdatum is verstreken. Er is geen nieuw abonnement aangemaakt."
 msgstr "The subscription start date has passed. No new subscription was created."
 
@@ -380,35 +380,35 @@ msgstr "The subscription start date has passed. No new subscription was created.
 msgid "De achtergrondtaken hebben langer dan drie uur niet gedraaid. WordPress start ze alleen bij websitebezoek; op een rustige site kan dat uitlopen. Tip: laat uw hostingpartij elke 5 minuten wp-cron.php aanroepen (een ‘server-cron’). Dit is niet verplicht."
 msgstr "Background tasks have not run for more than three hours. WordPress only starts them on website visits; on a quiet site this can take longer. Tip: ask your hosting provider to call wp-cron.php every 5 minutes (a \"server cron\"). This is not required."
 
-#: src/Plugin.php:228
+#: src/Plugin.php:234
 msgid "De actie kon niet worden voltooid. Controleer de diagnose; er wordt niet blind opnieuw geïncasseerd."
 msgstr "The action could not be completed. Check the diagnostics; collection will not be retried blindly."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "De automatische sleutelopslag is niet beschikbaar. Laat uw beheerder de schrijfrechten op wp-content controleren of de API-key rechtstreeks op de server instellen. Bestaande sleutelbestanden niet verwijderen."
 msgstr "Automatic key storage is not available. Ask your administrator to check the write permissions on wp-content or to set the API key directly on the server. Do not delete existing key files."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "De automatisering is uitgeschakeld in de serverconfiguratie."
 msgstr "Automation has been disabled in the server configuration."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "De bestelling is gewijzigd na de incassoaanmelding. Neem contact op; er wordt geen tweede betaling gemaakt."
 msgstr "The order was changed after the direct debit sign-up. Please get in touch; no second payment will be created."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "De bevestiging is ongeldig of verlopen. Herlaad de pagina."
 msgstr "The confirmation is invalid or has expired. Reload the page."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "De conceptpagina kon niet worden aangemaakt. Er is niets gepubliceerd."
 msgstr "The draft page could not be created. Nothing has been published."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "De directdebit-machtiging is nog niet geldig. Er wordt niet geïncasseerd."
 msgstr "The direct debit mandate is not valid yet. Nothing will be collected."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "De eerder gebruikte WordPress-sleutels zijn gewijzigd of niet beschikbaar. Voer de API-key opnieuw in of herstel de oorspronkelijke configuratie."
 msgstr "The WordPress keys used previously have changed or are unavailable. Re-enter the API key or restore the original configuration."
 
@@ -416,15 +416,15 @@ msgstr "The WordPress keys used previously have changed or are unavailable. Re-e
 msgid "De eerste iDEAL-betaling van € 0,01 is uitsluitend een verificatiebetaling. Dit bedrag blijft bij de organisatie, telt niet als abonnementsperiode en wordt niet automatisch verrekend of terugbetaald."
 msgstr "The first iDEAL payment of €0.01 is solely a verification payment. This amount stays with the organization, does not count as a subscription period, and is not automatically credited or refunded."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "De gebundelde SDK ontbreekt. Installeer de gebouwde ZIP."
 msgstr "The bundled SDK is missing. Install the built ZIP."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "De gekoppelde WooCommerce-bestelling ontbreekt. Controleer de aanmelding."
 msgstr "The linked WooCommerce order is missing. Check the sign-up."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "De instellingen en een eventuele live-key zijn opgeslagen. Live staat nog niet aan: rond dat af bij Live activeren hieronder."
 msgstr "The settings and any live key have been saved. Live is not on yet: complete this under Activate live below."
 
@@ -440,31 +440,31 @@ msgstr "The customer pays €0.01 once via iDEAL. A verified payment and a valid
 msgid "De klant geeft toestemming"
 msgstr "The customer gives consent"
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "De klant kon nog niet bij Mollie worden aangemaakt. Probeer het later opnieuw."
 msgstr "The customer could not be created at Mollie yet. Please try again later."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "De mailserver heeft de mail niet geaccepteerd. Controleer uw mailconfiguratie."
 msgstr "The mail server did not accept the email. Check your mail configuration."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "De omgeving klopt niet. Test- en livegegevens blijven strikt gescheiden."
 msgstr "The environment does not match. Test and live data are kept strictly separate."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "De ondertekeningsdatum is ongeldig of ligt in de toekomst."
 msgstr "The signature date is invalid or in the future."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "De opgeslagen API-key kan niet worden gelezen. Voer de key opnieuw in of herstel met uw beheerder de oorspronkelijke beveiligingssleutels."
 msgstr "The stored API key cannot be read. Re-enter the key or work with your administrator to restore the original security keys."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "De optionele encryptiesleutel op de server is ongeldig. Laat uw beheerder deze controleren."
 msgstr "The optional encryption key on the server is invalid. Ask your administrator to check it."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "De regeling of toestemmingsinformatie is veranderd. Herlaad het formulier."
 msgstr "The plan or consent information has changed. Reload the form."
 
@@ -472,7 +472,7 @@ msgstr "The plan or consent information has changed. Reload the form."
 msgid "De testmail is door de mailserver geaccepteerd. Controleer of hij in uw inbox staat en niet in spam."
 msgstr "The test email was accepted by the mail server. Check that it is in your inbox and not in spam."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "De toestemming is ingetrokken of de beëindiging is nog in behandeling."
 msgstr "Consent has been withdrawn or the termination is still pending."
 
@@ -484,7 +484,7 @@ msgstr "The verification payment was paid at Mollie. Consent remains active; can
 msgid "De verificatiebetaling is niet geslaagd. Er is geen abonnement gestart."
 msgstr "The verification payment was not successful. No subscription has been started."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "De verificatiebetaling is niet geslaagd. Er is geen nieuw betaalverzoek gemaakt. Neem contact op voor een nieuwe aanmelding."
 msgstr "The verification payment was not successful. No new payment request has been created. Please get in touch for a new sign-up."
 
@@ -492,11 +492,11 @@ msgstr "The verification payment was not successful. No new payment request has 
 msgid "De verificatiebetaling is terugbetaald of gestorneerd. Controleer de incassotoestemming."
 msgstr "The verification payment was refunded or charged back. Check the direct debit consent."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "De verzenduitkomst is onbekend. Automatisch opnieuw versturen is geblokkeerd om dubbele bevestigingen te vermijden."
 msgstr "The outcome of sending is unknown. Automatic resending is blocked to avoid duplicate confirmations."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "De vooraankondiging is nog niet door de mailserver geaccepteerd. De opdracht wacht."
 msgstr "The pre-notification has not yet been accepted by the mail server. The instruction is waiting."
 
@@ -504,7 +504,7 @@ msgstr "The pre-notification has not yet been accepted by the mail server. The i
 msgid "De vooraankondiging wordt eerst verzonden. Zonder geaccepteerde mailverzending start de opdracht niet."
 msgstr "The pre-notification is sent first. Without an accepted email delivery, the instruction does not start."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "De vooraankondigingstermijn is te lang voor dit interval: maximaal 21 dagen bij maandelijks en 60 dagen bij kwartaal of jaar."
 msgstr "The pre-notification period is too long for this interval: a maximum of 21 days for monthly and 60 days for quarterly or yearly."
 
@@ -512,7 +512,7 @@ msgstr "The pre-notification period is too long for this interval: a maximum of 
 msgid "De vroegste datum is %s: dat volgt uit de langste vooraankondigingstermijn van deze regelingen."
 msgstr "The earliest date is %s: this follows from the longest pre-notification period of these plans."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "De webshopaanmelding kon niet worden gevonden. Neem contact op met de organisatie."
 msgstr "The webshop sign-up could not be found. Please contact the organization."
 
@@ -524,11 +524,11 @@ msgstr "Deactivating does not stop Mollie subscriptions. End agreements in the p
 msgid "Deactiveren stopt geen externe abonnementen. Een aangemaakte incasso is nog niet betaald. Statussen en vooraankondigingen vereisen een werkende cron."
 msgstr "Deactivating does not stop external subscriptions. A created direct debit has not been paid yet. Statuses and pre-notifications require a working cron."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Deze API-key heeft geen toegang tot de gevraagde resource."
 msgstr "This API key does not have access to the requested resource."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Deze actie past niet bij de geaccepteerde regeling."
 msgstr "This action does not match the accepted plan."
 
@@ -548,7 +548,7 @@ msgstr "These details appear in the direct debit agreement that customers accept
 msgid "Deze installatie binden en naar testmodus zetten"
 msgstr "Bind this installation and switch to test mode"
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Deze installatie lijkt gekopieerd. Bind haar opnieuw in testmodus voordat u taken uitvoert."
 msgstr "This installation appears to have been copied. Bind it again in test mode before you run tasks."
 
@@ -556,7 +556,7 @@ msgstr "This installation appears to have been copied. Bind it again in test mod
 msgid "Deze klanten hebben een geldige SEPA-machtiging aan onze organisatie gegeven, en wij mogen deze machtigingen via Mollie gebruiken."
 msgstr "These customers have given our organization a valid SEPA mandate, and we may use these mandates through Mollie."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Deze melding kan niet (meer) handmatig worden afgehandeld."
 msgstr "This notification can no longer be resolved manually."
 
@@ -564,11 +564,11 @@ msgstr "This notification can no longer be resolved manually."
 msgid "Deze persoonlijke link is ongeldig, verlopen of hoort niet bij uw account. Vraag de organisatie om een nieuwe link."
 msgstr "This personal link is invalid, has expired, or does not belong to your account. Ask the organization for a new link."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Deze regeling is niet beschikbaar. Herlaad het formulier."
 msgstr "This plan is not available. Reload the form."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Deze website staat ingesteld als test- of stagingomgeving (WP_ENVIRONMENT_TYPE). Live is daar nooit mogelijk."
 msgstr "This website is configured as a test or staging environment (WP_ENVIRONMENT_TYPE). Live is never possible there."
 
@@ -580,7 +580,7 @@ msgstr "Diagnostics and messages"
 msgid "Dit is een testmail van Mollie Incasso. Komt deze mail in uw inbox (en niet in spam), dan worden vooraankondigingen en bevestigingen waarschijnlijk ook goed afgeleverd."
 msgstr "This is a test email from Mollie Incasso. If this email arrives in your inbox (and not in spam), pre-notifications and confirmations are probably delivered correctly as well."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Dit product is niet gekoppeld aan een regeling voor de huidige test- of livemodus."
 msgstr "This product is not linked to a plan for the current test or live mode."
 
@@ -588,7 +588,7 @@ msgstr "This product is not linked to a plan for the current test or live mode."
 msgid "Doel"
 msgstr "Purpose"
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Door een beheerder als verzonden gemarkeerd na controle."
 msgstr "Marked as sent by an administrator after review."
 
@@ -616,15 +616,15 @@ msgstr "Email address"
 msgid "Een afwijkende vooraankondigingstermijn is expliciet met de klant afgesproken en opgenomen in deze regeling."
 msgstr "A deviating pre-notification period was explicitly agreed with the customer and included in this plan."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Een ander extern abonnement gebruikt dit mandaat nog. Nieuwe lokale incasso’s zijn geblokkeerd; controleer en beëindig die afspraak bij Mollie."
 msgstr "Another external subscription still uses this mandate. New local direct debits are blocked; check and end that agreement at Mollie."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Een andere verwerking is bezig. Probeer later opnieuw."
 msgstr "Another process is in progress. Please try again later."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Een betaalde verificatiebetaling is nog niet aangetoond."
 msgstr "A paid verification payment has not yet been demonstrated."
 
@@ -632,7 +632,7 @@ msgstr "A paid verification payment has not yet been demonstrated."
 msgid "Een conceptpagina wordt niet gepubliceerd. Controleer het formulier en doorloop daarna een echte Mollie-testbetaling, webhook en mail. Pas na die controles beoordeelt u livegang."
 msgstr "A draft page is not published. Check the form, then go through a real Mollie test payment, webhook, and email. Only after those checks should you consider going live."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Een eerdere opdracht is nog onzeker. Reconcileer die eerst."
 msgstr "A previous instruction is still uncertain. Reconcile it first."
 
@@ -704,7 +704,7 @@ msgstr "Every minute (Mollie Incasso)"
 msgid "English"
 msgstr "English"
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Er is al een lopend of voorbereid abonnement voor deze klant. Rond dat eerst af."
 msgstr "There is already an ongoing or prepared subscription for this customer. Finish that first."
 
@@ -786,19 +786,19 @@ msgstr "Event"
 msgid "Geblokkeerd; controle vereist"
 msgstr "Blocked; check required"
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Gebruik HTTPS."
 msgstr "Use HTTPS."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Gebruik een eenvoudig virtueel product voor de incassoaanmelding."
 msgstr "Use a simple virtual product for the direct debit sign-up."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Gebruik een geldige API-key voor de gekozen test- of livemodus."
 msgstr "Use a valid API key for the selected test or live mode."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Geef toestemming voor de beschreven incassoafspraak voordat u betaalt."
 msgstr "Give consent to the described direct debit agreement before you pay."
 
@@ -818,7 +818,7 @@ msgstr "No mandate"
 msgid "Geen toegang"
 msgstr "No access"
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Geen toegang tot deze gegevens."
 msgstr "No access to this data."
 
@@ -862,11 +862,11 @@ msgstr "Have your customers already signed a SEPA mandate with your bank? Transf
 msgid "Herstart het verwijderverzoek."
 msgstr "Restart the deletion request."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Het IBAN is ongeldig."
 msgstr "The IBAN is invalid."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Het bedrag valt buiten de geaccepteerde regeling."
 msgstr "The amount falls outside the accepted plan."
 
@@ -874,7 +874,7 @@ msgstr "The amount falls outside the accepted plan."
 msgid "Het bedrag van elke incasso staat in de vooraankondiging en is nooit hoger dan het maximum per incasso. De verificatiebetaling van € 0,01 staat hier los van."
 msgstr "The amount of each direct debit is stated in the pre-notification and is never higher than the maximum per direct debit. The €0.01 verification payment is separate from this."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Het machtigingskenmerk is te lang (maximaal 35 tekens) of bevat ongeldige tekens."
 msgstr "The mandate reference is too long (maximum 35 characters) or contains invalid characters."
 
@@ -882,7 +882,7 @@ msgstr "The mandate reference is too long (maximum 35 characters) or contains in
 msgid "Het product wordt als concept klaargezet: controleer het en publiceer het daarna. De gekoppelde betaalmethode verschijnt alleen voor dit product. Reken abonnementaanmeldingen apart af, zonder andere producten, kortingscodes of toeslagen."
 msgstr "The product is set up as a draft: review it and then publish it. The linked payment method appears only for this product. Pay for subscription sign-ups separately, without other products, discount codes, or surcharges."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Het standaardbedrag mag niet hoger zijn dan het maximum per incasso."
 msgstr "The default amount may not be higher than the maximum per direct debit."
 
@@ -890,7 +890,7 @@ msgstr "The default amount may not be higher than the maximum per direct debit."
 msgid "Het vaste bedrag voor dit abonnement. De verificatiebetaling van € 0,01 staat hier los van."
 msgstr "The fixed amount for this subscription. The €0.01 verification payment is separate from this."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Het virtuele product kon niet worden opgeslagen."
 msgstr "The virtual product could not be saved."
 
@@ -966,7 +966,7 @@ msgstr "Collect from several customers at once: choose customers, check the amou
 msgid "Incasseren"
 msgstr "Collect"
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Incasseren is nog niet toegestaan voor deze klant."
 msgstr "Collecting is not yet permitted for this customer."
 
@@ -1074,11 +1074,11 @@ msgstr "Yearly"
 msgid "Kies bij Klanten een losse opdracht of vast abonnement. De klant krijgt eerst een vooraankondiging; een verzonden incasso is nog niet betaald."
 msgstr "Under Customers, choose a one-off instruction or a fixed subscription. The customer first receives a pre-notification; a submitted direct debit is not yet paid."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Kies een CSV-bestand van maximaal 500 kB."
 msgstr "Choose a CSV file of up to 500 kB."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Kies een geldige toekomstige datum met voldoende tijd voor de afgesproken vooraankondiging."
 msgstr "Choose a valid future date with enough time for the agreed pre-notification."
 
@@ -1090,7 +1090,7 @@ msgstr "Choose a future date that fits the agreed pre-notification period, 14 da
 msgid "Kies een vast abonnement (Mollie incasseert elke periode automatisch hetzelfde bedrag) of losse incasso’s (u start zelf elke incasso, tot een afgesproken maximum per keer). U kunt meerdere regelingen aanbieden; bestaande afspraken blijven bewaard."
 msgstr "Choose a fixed subscription (Mollie automatically collects the same amount every period) or one-off direct debits (you start each direct debit yourself, up to an agreed maximum per collection). You can offer several plans; existing agreements are kept."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Kies een vast abonnement met automatisch starten, of een regeling voor losse incasso’s."
 msgstr "Choose a fixed subscription that starts automatically, or a plan for one-off direct debits."
 
@@ -1179,7 +1179,7 @@ msgstr "Activate live"
 msgid "Live is actief: er wordt echt geld geïncasseerd."
 msgstr "Live is active: real money is being collected."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Live is nog niet geactiveerd voor deze website. Gebruik Instellingen → Live activeren."
 msgstr "Live has not been activated for this website yet. Use Settings → Activate live."
 
@@ -1333,11 +1333,11 @@ msgstr "Mollie Incasso: direct debit failed or charged back"
 msgid "Mollie Incasso: testmail"
 msgstr "Mollie Incasso: test email"
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Mollie begrenst de verzoeken tijdelijk. De taak wordt later opnieuw gecontroleerd."
 msgstr "Mollie is temporarily rate-limiting requests. The task will be checked again later."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Mollie biedt voor deze betaling geen testuitkomst aan. Dat kan alleen in de testfase bij een incasso die in behandeling of betaald is."
 msgstr "Mollie offers no test outcome for this payment. This is only possible in the test phase for a direct debit that is pending or paid."
 
@@ -1345,19 +1345,19 @@ msgstr "Mollie offers no test outcome for this payment. This is only possible in
 msgid "Mollie en webhook"
 msgstr "Mollie and webhook"
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Mollie heeft de beëindiging nog niet bevestigd."
 msgstr "Mollie has not yet confirmed the termination."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Mollie heeft het verzoek afgewezen. Controleer regeling, profiel en bedrag."
 msgstr "Mollie rejected the request. Check the plan, profile, and amount."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Mollie kon niet betrouwbaar worden bereikt. De actie is nog niet voltooid."
 msgstr "Mollie could not be reached reliably. The action has not been completed yet."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Mollie kon niet worden bereikt om de verificatiebetaling te controleren. De toestemming blijft voorlopig staan; de annulering wordt opnieuw gecontroleerd."
 msgstr "Mollie could not be reached to check the verification payment. Consent remains in place for now; the cancellation will be checked again."
 
@@ -1409,7 +1409,7 @@ msgstr "Name"
 msgid "Naam / versie"
 msgstr "Name / version"
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Naam of e-mailadres ontbreekt of is ongeldig."
 msgstr "Name or email address is missing or invalid."
 
@@ -1633,7 +1633,7 @@ msgstr "Plan for the product"
 msgid "Regelingen"
 msgstr "Plans"
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Reken één abonnementaanmelding apart af, zonder andere producten of extra aantallen."
 msgstr "Pay for one subscription sign-up separately, without other products or extra quantities."
 
@@ -1698,11 +1698,11 @@ msgstr "Status emails %1$s · retention period %2$d days"
 msgid "Statusmails voor betalingen"
 msgstr "Status emails for payments"
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Stel een publiek bereikbaar HTTPS-webhookadres in."
 msgstr "Set a publicly accessible HTTPS webhook address."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Stel eerst de juiste Mollie API-key in."
 msgstr "First set the correct Mollie API key."
 
@@ -1722,7 +1722,7 @@ msgstr "Plugin language"
 msgid "Te controleren"
 msgstr "To be checked"
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Te veel verzoeken. Probeer later opnieuw."
 msgstr "Too many requests. Please try again later."
 
@@ -1819,7 +1819,7 @@ msgstr "Consent for automatic direct debit confirmed"
 msgid "Toestemmingstekst"
 msgstr "Consent text"
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Typ %s om het wissen van de testgegevens te bevestigen."
 msgstr "Type %s to confirm that the test data will be deleted."
 
@@ -1855,7 +1855,7 @@ msgstr "Privacy statement URL"
 msgid "URL privacyverklaring (optioneel)"
 msgstr "Privacy statement URL (optional)"
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Uitkomst onbekend buiten de veilige retryperiode of na key-wijziging. Controleer Mollie; de plugin maakt geen tweede opdracht."
 msgstr "Outcome unknown outside the safe retry period or after a key change. Check Mollie; the plugin does not create a second instruction."
 
@@ -2019,7 +2019,7 @@ msgstr "Via your personal status link or by contacting us."
 msgid "Vink de klanten aan die u wilt incasseren en controleer per klant het bedrag. Elke klant krijgt eerst een vooraankondiging per e-mail; op de gekozen datum gaat de incasso naar Mollie. Een bedrag kan nooit hoger zijn dan het maximum van de regeling."
 msgstr "Tick the customers you want to collect from and check the amount per customer. Each customer first receives a pre-notification by email; on the chosen date the direct debit goes to Mollie. An amount can never be higher than the maximum of the plan."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Vink minstens één klant aan."
 msgstr "Tick at least one customer."
 
@@ -2035,7 +2035,7 @@ msgstr "Next step"
 msgid "Voltooid"
 msgstr "Completed"
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Voor dit e-mailadres loopt al een gewone aanmelding op deze regeling; niet overgezet."
 msgstr "A regular sign-up for this plan is already in progress for this email address; not transferred."
 
@@ -2075,7 +2075,7 @@ msgstr "Ask Mollie in advance whether you may transfer existing mandates and whe
 msgid "Vrijgegeven via de serverconfiguratie."
 msgstr "Released via the server configuration."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Vul alle verplichte regelingsgegevens en een geldig bedrag in."
 msgstr "Fill in all required plan details and a valid amount."
 
@@ -2083,19 +2083,19 @@ msgstr "Fill in all required plan details and a valid amount."
 msgid "Vul de organisatie, bedragen en afspraken in bij Instellingen. Plaats daarna het aanmeldformulier op uw website."
 msgstr "Enter the organization, amounts, and agreements under Settings. Then place the sign-up form on your website."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Vul een omschrijving in (maximaal 255 tekens)."
 msgstr "Enter a description (maximum 255 characters)."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Vul een positief EUR-bedrag met maximaal twee decimalen in."
 msgstr "Enter a positive EUR amount with at most two decimals."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Vul naam, een geldig e-mailadres en expliciete toestemming in."
 msgstr "Enter your name, a valid email address, and explicit consent."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "Vul organisatie en contactgegevens in."
 msgstr "Enter the organization and contact details."
 
@@ -2159,7 +2159,7 @@ msgstr "Switching does not stop existing Mollie subscriptions. Going live is don
 msgid "WooCommerce is hier niet actief. De website-aanmelding hierboven werkt zonder webshop."
 msgstr "WooCommerce is not active here. The website sign-up above works without a webshop."
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "WooCommerce is niet actief. Gebruik de website-aanmelding of activeer WooCommerce voor een webshopproduct."
 msgstr "WooCommerce is not active. Use the website sign-up or activate WooCommerce for a webshop product."
 
@@ -2187,7 +2187,7 @@ msgstr "archive"
 msgid "eenmalig"
 msgstr "one-time"
 
-#: src/Plugin.php:227
+#: src/Plugin.php:233
 msgid "iDEAL voor de eerste betaling en SEPA Direct Debit moeten beschikbaar zijn in dit Mollie-profiel."
 msgstr "iDEAL for the first payment and SEPA Direct Debit must be available in this Mollie profile."
 
@@ -2211,6 +2211,10 @@ msgstr "reference %s"
 msgid "kwartaal"
 msgstr "quarter"
 
+#: src/Plugin.php:229
+msgid "losse incasso, max %s"
+msgstr "one-off direct debit, max %s"
+
 #: src/Plugin.php:205
 msgid "maand"
 msgstr "month"
@@ -2230,3 +2234,7 @@ msgstr "or"
 #: src/Admin.php:999
 msgid "uit"
 msgstr "off"
+
+#: src/Plugin.php:229
+msgid "vast abonnement, %1$s per %2$s"
+msgstr "fixed subscription, %1$s per %2$s"

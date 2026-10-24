@@ -495,7 +495,7 @@ final class Admin
     {
         echo '<h3>'.esc_html__('Of aanmelden via uw webshop','mollie-incasso').'</h3><p>'.esc_html__('Een gewoon virtueel product kan de aanmelding starten. De klant rekent eenmalig € 0,01 af en accepteert de incassoafspraak in dezelfde checkout. Vervolgbetalingen lopen via Mollie Incasso; WooCommerce Subscriptions is niet nodig.','mollie-incasso').'</p>';
         if(!class_exists('WC_Product_Simple')){echo '<p class="mi-help">'.esc_html__('WooCommerce is hier niet actief. De website-aanmelding hierboven werkt zonder webshop.','mollie-incasso').'</p>';return;}
-        $schemes=[];foreach($this->p->store->rows('schemes',$this->p->config->mode(),500)as$row){$data=json_decode($row['data'],true);if($row['active']&&WooCommerceBridge::linkable($data))$schemes[]=$row+['name'=>$data['name'].' — '.Plugin::kind($data['type'])];}
+        $schemes=[];foreach($this->p->store->rows('schemes',$this->p->config->mode(),500)as$row){$data=json_decode($row['data'],true);if($row['active']&&WooCommerceBridge::linkable($data))$schemes[]=$row+['name'=>Plugin::planLabel($data)];}
         if(!$schemes){echo '<p class="mi-help">'.esc_html__('Maak eerst een regeling: een vast abonnement met automatisch starten, of een regeling voor losse incasso’s. Daarna kunt u hier het product klaarzetten.','mollie-incasso').'</p>';return;}
         $this->start('setup_product');echo '<label>'.esc_html__('Regeling voor het product','mollie-incasso').'<select name="scheme">';foreach($schemes as$scheme)echo '<option value="'.esc_attr((string)$scheme['id']).'">'.esc_html($scheme['name']).'</option>';echo '</select></label>';$this->end('Virtueel product klaarzetten',true);
         echo '<p class="mi-help">'.esc_html__('Het product wordt als concept klaargezet: controleer het en publiceer het daarna. De gekoppelde betaalmethode verschijnt alleen voor dit product. Reken abonnementaanmeldingen apart af, zonder andere producten, kortingscodes of toeslagen.','mollie-incasso').'</p>';
@@ -574,7 +574,7 @@ final class Admin
             echo '</details><p class="mi-help">'.esc_html__('De klant betaalt eerst € 0,01 ter verificatie. Na een geldige machtiging plant u de incasso’s, altijd met minimaal 14 dagen vooraankondiging. Pas de voorbeeldteksten aan uw eigen afspraken aan.','mollie-incasso').'</p>';
             $this->end('Regeling opslaan en verder',true);
             // Show the fields of the chosen kind; replace example texts only while they are unchanged.
-            echo "<script>(function(){var f=document.querySelector('input[name=plan_type]');if(!f)return;var form=f.form;form.addEventListener('change',function(e){if(e.target.name!=='plan_type')return;var t=e.target.value,o=t==='fixed'?'manual':'fixed';form.querySelectorAll('[data-plan]').forEach(function(el){el.hidden=el.getAttribute('data-plan')!==t;});form.querySelectorAll('textarea[data-fixed]').forEach(function(el){if(el.value===el.getAttribute('data-'+o))el.value=el.getAttribute('data-'+t);});});})();</script>";
+            echo "<script>(function(){var f=document.querySelector('input[name=plan_type]');if(!f)return;var form=f.form;form.addEventListener('change',function(e){if(e.target.name!=='plan_type')return;var t=e.target.value,o=t==='fixed'?'manual':'fixed';form.querySelectorAll('[data-plan]').forEach(function(el){var off=el.getAttribute('data-plan')!==t;el.hidden=off;el.querySelectorAll('input,select,textarea').forEach(function(i){i.disabled=off;});});form.querySelectorAll('textarea[data-fixed]').forEach(function(el){if(el.value===el.getAttribute('data-'+o))el.value=el.getAttribute('data-'+t);});});form.querySelectorAll('[data-plan=manual] input,[data-plan=manual] select,[data-plan=manual] textarea').forEach(function(i){i.disabled=true;});})();</script>";
             echo '<p><a href="'.esc_url($this->url('settings')).'#mi-regelingen">'.esc_html__('Geavanceerde regelingen en losse incasso’s','mollie-incasso').'</a></p>';
         } else {
             echo '<h2>' . esc_html__('Kies hoe klanten zich aanmelden', 'mollie-incasso') . '</h2>';
@@ -643,7 +643,7 @@ final class Admin
             foreach ($this->p->store->rows('schemes', $mode, 500) as $row) {
                 if ($row['active']) {
                     $data = json_decode($row['data'], true);
-                    $options .= '<option value="' . (int) $row['id'] . '">' . esc_html($data['name'] . ' v' . $row['version'] . ' — ' . Plugin::kind($data['type'])) . '</option>';
+                    $options .= '<option value="' . (int) $row['id'] . '">' . esc_html(Plugin::planLabel($data) . ' (v' . $row['version'] . ')') . '</option>';
                 }
             }
             if ($options === '') {
@@ -1039,7 +1039,7 @@ final class Admin
             if (in_array($key, ['purpose', 'calculation', 'frequency', 'withdrawal', 'consent'], true)) {
                 echo '<textarea name="' . $key . '" rows="3"' . ($fixedOnly ? '' : ' required') . '>' . esc_textarea(__($default,'mollie-incasso')) . '</textarea>';
             } else {
-                echo '<input name="' . $key . '" value="' . esc_attr($default) . '" ' . (!in_array($key, ['slug', 'times'], true) ? 'required' : '') . '>';
+                echo '<input name="' . $key . '" value="' . esc_attr($default) . '" ' . (!in_array($key, ['slug', 'times', 'default_amount'], true) ? 'required' : '') . '>';
             }
             echo '</label>';
         }
@@ -1047,7 +1047,7 @@ final class Admin
         echo '<label data-plan="fixed" hidden>' . esc_html__('Vaste frequentie', 'mollie-incasso') . '<select name="interval"><option value="1 month">' . esc_html__('Maand', 'mollie-incasso') . '</option><option value="3 months">' . esc_html__('Kwartaal', 'mollie-incasso') . '</option><option value="12 months">' . esc_html__('Jaar', 'mollie-incasso') . '</option></select></label><label><input type="checkbox" name="notice_agreed" value="1">' . esc_html__('Een afwijkende vooraankondigingstermijn is expliciet met de klant afgesproken en opgenomen in deze regeling.', 'mollie-incasso') . '</label>';
         $this->end('Regeling opslaan', true);
         // Frequency, number of terms and automatic start only apply to a fixed subscription.
-        echo "<script>(function(){var t=document.querySelector('select[name=type]');if(!t)return;function sync(){t.form.querySelectorAll('[data-plan]').forEach(function(el){el.hidden=el.getAttribute('data-plan')!==t.value;});}t.addEventListener('change',sync);sync();})();</script>";
+        echo "<script>(function(){var t=document.querySelector('select[name=type]');if(!t)return;function sync(){t.form.querySelectorAll('[data-plan]').forEach(function(el){var off=el.getAttribute('data-plan')!==t.value;el.hidden=off;el.querySelectorAll('input,select,textarea').forEach(function(i){i.disabled=off;});});}t.addEventListener('change',sync);sync();})();</script>";
         echo '</details>';
         $this->sectionEnd();
     }

@@ -134,5 +134,6 @@ Aanleiding: een vereniging die nu via de ING 10 à 15 leden incasseert (zonder v
 - **Incasso-run**: per klant een opdracht met vooraankondiging; een bedrag boven het maximum wordt per klant geweigerd en gemeld; hetzelfde formulier twee keer versturen plant niets dubbel; zonder aangevinkte klant geweigerd.
 - Pagina Abonnementen legt uit dat losse incasso's daar niet staan en nooit vanzelf lopen.
 - **Webshop-aanmelding voor losse incasso's**: een product kan nu ook aan een regeling voor losse incasso's hangen (prijsweergave: machtiging tot het maximum per incasso). De klant betaalt € 0,01 en heeft dan een geldige machtiging; er start nooit een abonnement. Een vast abonnement zonder automatisch starten blijft geweigerd.
+- **Gevonden door de klant**: een vast abonnement aanmaken bij Instellingen deed niets. Oorzaak: het verborgen veld Standaardbedrag was verplicht, waardoor de browser het formulier stil tegenhield. Opgelost: het veld is optioneel en verborgen velden worden uitgeschakeld (ook in de installatiehulp); in Chrome op localhost een vast abonnement en een losse regeling aangemaakt en beide verschijnen bij het WooCommerce-product. Keuzelijsten tonen nu naam, soort en bedrag, zodat regelingen met dezelfde naam te onderscheiden zijn.
 
-Lokaal: `integration.php` **195**, `sdk.php` **27**, `secrets.php` **23**, `woocommerce.php` **79 klassiek en 79 HPOS**.
+Lokaal: `integration.php` **196**, `sdk.php` **27**, `secrets.php` **23**, `woocommerce.php` **79 klassiek en 79 HPOS**.

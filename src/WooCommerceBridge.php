@@ -277,7 +277,7 @@ final class WooCommerceBridge
     {
         if(!current_user_can('manage_options'))return;
         echo '<div class="options_group"><p class="form-field">'.esc_html__('Optionele incassoaanmelding: gebruik een eenvoudig virtueel product. Het afrekenbedrag is € 0,01; vervolgbetalingen lopen via Mollie Incasso.','mollie-incasso').'</p>';
-        foreach(['test','live']as$mode){$options=[''=>__('Niet gekoppeld','mollie-incasso')];foreach($this->plugin->store->rows('schemes',$mode,500)as$row){$data=json_decode($row['data'],true);if($row['active']&&self::linkable($data))$options[$row['id']]=$data['name'].' — '.Plugin::kind($data['type']);}woocommerce_wp_select(['id'=>'_mi_scheme_'.$mode,'label'=>sprintf(__('Incassoregeling (%s)','mollie-incasso'),$mode),'options'=>$options]);}echo '</div>';
+        foreach(['test','live']as$mode){$options=[''=>__('Niet gekoppeld','mollie-incasso')];foreach($this->plugin->store->rows('schemes',$mode,500)as$row){$data=json_decode($row['data'],true);if($row['active']&&self::linkable($data))$options[$row['id']]=Plugin::planLabel($data);}woocommerce_wp_select(['id'=>'_mi_scheme_'.$mode,'label'=>sprintf(__('Incassoregeling (%s)','mollie-incasso'),$mode),'options'=>$options]);}echo '</div>';
     }
     public function saveProduct(object $product): void
     {
