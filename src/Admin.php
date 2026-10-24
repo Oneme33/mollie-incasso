@@ -461,9 +461,17 @@ final class Admin
         if(!current_user_can('manage_options'))throw new Failure('access_denied');
         $reference=$this->field('plan_reference',36);
         if(!preg_match('/^[a-f0-9-]{36}$/D',$reference))throw new Failure('invalid_scheme');
+        if($this->field('plan_type',8)==='manual'){
+            $data=['slug'=>'wizard-'.$reference,'type'=>'manual','name'=>$this->field('name',190),'amount'=>$this->field('amount',24),'purpose'=>$this->field('purpose'),'calculation'=>__('Het bedrag van elke incasso staat in de vooraankondiging en is nooit hoger dan het maximum per incasso. De verificatiebetaling van € 0,01 staat hier los van.','mollie-incasso'),'frequency'=>$this->field('frequency'),'withdrawal'=>$this->field('withdrawal'),'consent'=>$this->field('consent'),'notice_days'=>14,'times'=>''];
+            return $this->savePlan($data,$mode,$reference);
+        }
         $interval=$this->field('interval',12);
         if(!in_array($interval,['1 month','3 months','12 months'],true))throw new Failure('invalid_scheme');
         $data=['slug'=>'wizard-'.$reference,'type'=>'fixed','auto_start'=>'1','name'=>$this->field('name',190),'amount'=>$this->field('amount',24),'interval'=>$interval,'purpose'=>$this->field('purpose'),'calculation'=>__('Het vaste bedrag voor dit abonnement. De verificatiebetaling van € 0,01 staat hier los van.','mollie-incasso'),'frequency'=>Plugin::frequency($interval),'withdrawal'=>$this->field('withdrawal'),'consent'=>$this->field('consent'),'notice_days'=>14,'times'=>''];
+        return $this->savePlan($data,$mode,$reference);
+    }
+    private function savePlan(array $data, string $mode, string $reference): int
+    {
         return $this->p->store->lock('wizard-plan:'.$mode.':'.$reference,function()use($data,$mode,$reference){
             $option='mi_wizard_plan_'.$mode.'_'.$reference;$hash=hash('sha256',wp_json_encode($data));$previous=get_option($option,[]);
             if(is_array($previous)&&($previous['hash']??'')===$hash&&$this->p->store->one('schemes',(int)$previous['id'],$mode))return (int)$previous['id'];
@@ -485,7 +493,7 @@ final class Admin
         $settings = $this->p->config->settings();
         $mode = $this->p->config->mode();
         echo '<nav class="mi-wizard-steps" aria-label="' . esc_attr__('Installatiestappen', 'mollie-incasso') . '">';
-        foreach ([1 => __('Organisatie', 'mollie-incasso'), 2 => __('Mollie koppelen', 'mollie-incasso'), 3 => __('Abonnement instellen', 'mollie-incasso'), 4 => __('Aanmelding plaatsen', 'mollie-incasso')] as $number => $title) {
+        foreach ([1 => __('Organisatie', 'mollie-incasso'), 2 => __('Mollie koppelen', 'mollie-incasso'), 3 => __('Regeling instellen', 'mollie-incasso'), 4 => __('Aanmelding plaatsen', 'mollie-incasso')] as $number => $title) {
             echo '<a ' . ($number === $step ? 'aria-current="step" ' : '') . 'href="' . esc_url($this->url('setup', ['step' => $number])) . '"><span>' . $number . '</span>' . esc_html($title) . '</a>';
         }
         echo '</nav><section class="mi-wizard-card">';
@@ -532,15 +540,26 @@ final class Admin
             }
             echo '<p><a href="https://my.mollie.com/dashboard" target="_blank" rel="noopener noreferrer">' . esc_html__('Mollie Dashboard openen', 'mollie-incasso') . '</a></p>';
         } elseif ($step === 3) {
-            $hasPlans=false;foreach($this->p->store->rows('schemes',$mode,500) as $plan){$planData=json_decode($plan['data'],true);if($plan['active']&&$planData['type']==='fixed')$hasPlans=true;}
-            echo '<h2>'.esc_html($hasPlans?__('Nog een abonnement toevoegen','mollie-incasso'):__('Stel uw eerste abonnement in','mollie-incasso')).'</h2>';
-            $this->help(__('U kunt meerdere abonnementen aanbieden. Deze stap voegt een nieuw abonnement toe; bestaande afspraken blijven bewaard. Klanten kunnen na hun verificatie automatisch starten.','mollie-incasso'));
+            $hasPlans=false;foreach($this->p->store->rows('schemes',$mode,500) as $plan){if($plan['active'])$hasPlans=true;}
+            echo '<h2>'.esc_html($hasPlans?__('Nog een regeling toevoegen','mollie-incasso'):__('Stel uw eerste regeling in','mollie-incasso')).'</h2>';
+            $this->help(__('Kies een vast abonnement (Mollie incasseert elke periode automatisch hetzelfde bedrag) of losse incasso’s (u start zelf elke incasso, tot een afgesproken maximum per keer). U kunt meerdere regelingen aanbieden; bestaande afspraken blijven bewaard.','mollie-incasso'));
             $this->start('setup_plan');
-            echo '<input type="hidden" name="plan_reference" value="'.esc_attr(wp_generate_uuid4()).'"><label>'.esc_html__('Naam van het abonnement','mollie-incasso').'<input name="name" maxlength="190" placeholder="'.esc_attr__('Bijvoorbeeld GCC doorlopend abonnement','mollie-incasso').'" required></label><label>'.esc_html__('Vast bedrag per periode (€)','mollie-incasso').'<input name="amount" inputmode="decimal" placeholder="20.00" required></label><label>'.esc_html__('Hoe vaak incasseren?','mollie-incasso').'<select name="interval"><option value="1 month">'.esc_html__('Elke maand','mollie-incasso').'</option><option value="3 months">'.esc_html__('Elk kwartaal','mollie-incasso').'</option><option value="12 months">'.esc_html__('Elk jaar','mollie-incasso').'</option></select></label>';
+            $defaults=['fixed'=>['purpose'=>__('Betaling voor het gekozen lidmaatschap.','mollie-incasso'),'consent'=>__('Ik geef deze organisatie toestemming om het hierboven genoemde bedrag met de gekozen frequentie via SEPA Direct Debit van mijn rekening te incasseren.','mollie-incasso')],'manual'=>['purpose'=>__('Betaling voor geleverde producten of diensten.','mollie-incasso'),'consent'=>__('Ik geef deze organisatie toestemming om losse bedragen tot het hierboven genoemde maximum via SEPA Direct Debit van mijn rekening te incasseren, telkens na een vooraankondiging.','mollie-incasso')]];
+            echo '<fieldset class="mi-plan-type"><legend>'.esc_html__('Soort regeling','mollie-incasso').'</legend><label><input type="radio" name="plan_type" value="fixed" checked> '.esc_html__('Vast abonnement: vast bedrag, automatisch elke periode','mollie-incasso').'</label><label><input type="radio" name="plan_type" value="manual"> '.esc_html__('Losse incasso’s: u start zelf elke incasso, tot een maximum per keer','mollie-incasso').'</label></fieldset>';
+            echo '<input type="hidden" name="plan_reference" value="'.esc_attr(wp_generate_uuid4()).'"><label>'.esc_html__('Naam van de regeling','mollie-incasso').'<input name="name" maxlength="190" placeholder="'.esc_attr__('Bijvoorbeeld GCC doorlopend abonnement','mollie-incasso').'" required></label>';
+            echo '<label><span data-plan="fixed">'.esc_html__('Vast bedrag per periode (€)','mollie-incasso').'</span><span data-plan="manual" hidden>'.esc_html__('Maximumbedrag per incasso (€)','mollie-incasso').'</span><input name="amount" inputmode="decimal" placeholder="20.00" required></label>';
+            echo '<label data-plan="fixed">'.esc_html__('Hoe vaak incasseren?','mollie-incasso').'<select name="interval"><option value="1 month">'.esc_html__('Elke maand','mollie-incasso').'</option><option value="3 months">'.esc_html__('Elk kwartaal','mollie-incasso').'</option><option value="12 months">'.esc_html__('Elk jaar','mollie-incasso').'</option></select></label>';
+            echo '<label data-plan="manual" hidden>'.esc_html__('Wanneer incasseert u?','mollie-incasso').'<textarea name="frequency">'.esc_textarea(__('Per keer, na een afgesproken levering of dienst. Elke incasso wordt vooraf aangekondigd.','mollie-incasso')).'</textarea></label>';
             echo '<details open><summary>'.esc_html__('Controleer de afspraak die uw klant accepteert','mollie-incasso').'</summary>';
-            foreach(['purpose'=>['Waarvoor betaalt de klant?','Betaling voor het gekozen lidmaatschap.'],'withdrawal'=>['Hoe kan de klant stoppen?','Via de persoonlijke statuslink of door contact op te nemen met de organisatie.'],'consent'=>['Toestemmingstekst','Ik geef deze organisatie toestemming om het hierboven genoemde bedrag met de gekozen frequentie via SEPA Direct Debit van mijn rekening te incasseren.']]as$key=>[$label,$default])echo '<label>'.esc_html__($label,'mollie-incasso').'<textarea name="'.$key.'" rows="2" required>'.esc_textarea(__($default,'mollie-incasso')).'</textarea></label>';
-            echo '</details><p class="mi-help">'.esc_html__('De klant betaalt eerst € 0,01 ter verificatie. Na een geldige machtiging plannen we de eerste incasso met minimaal 14 dagen vooraankondiging. Pas de voorbeeldteksten aan uw eigen afspraken aan.','mollie-incasso').'</p>';
-            $this->end('Abonnement opslaan en verder',true);
+            foreach(['purpose'=>__('Waarvoor betaalt de klant?','mollie-incasso'),'withdrawal'=>__('Hoe kan de klant stoppen?','mollie-incasso'),'consent'=>__('Toestemmingstekst','mollie-incasso')] as $key=>$label){
+                $fixed=$defaults['fixed'][$key]??__('Via de persoonlijke statuslink of door contact op te nemen met de organisatie.','mollie-incasso');
+                $manual=$defaults['manual'][$key]??$fixed;
+                echo '<label>'.esc_html($label).'<textarea name="'.esc_attr($key).'" required data-fixed="'.esc_attr($fixed).'" data-manual="'.esc_attr($manual).'">'.esc_textarea($fixed).'</textarea></label>';
+            }
+            echo '</details><p class="mi-help">'.esc_html__('De klant betaalt eerst € 0,01 ter verificatie. Na een geldige machtiging plant u de incasso’s, altijd met minimaal 14 dagen vooraankondiging. Pas de voorbeeldteksten aan uw eigen afspraken aan.','mollie-incasso').'</p>';
+            $this->end('Regeling opslaan en verder',true);
+            // Show the fields of the chosen kind; replace example texts only while they are unchanged.
+            echo "<script>(function(){var f=document.querySelector('input[name=plan_type]');if(!f)return;var form=f.form;form.addEventListener('change',function(e){if(e.target.name!=='plan_type')return;var t=e.target.value,o=t==='fixed'?'manual':'fixed';form.querySelectorAll('[data-plan]').forEach(function(el){el.hidden=el.getAttribute('data-plan')!==t;});form.querySelectorAll('textarea[data-fixed]').forEach(function(el){if(el.value===el.getAttribute('data-'+o))el.value=el.getAttribute('data-'+t);});});})();</script>";
             echo '<p><a href="'.esc_url($this->url('settings')).'#mi-regelingen">'.esc_html__('Geavanceerde regelingen en losse incasso’s','mollie-incasso').'</a></p>';
         } else {
             echo '<h2>' . esc_html__('Kies hoe klanten zich aanmelden', 'mollie-incasso') . '</h2>';
