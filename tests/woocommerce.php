@@ -45,7 +45,9 @@ try{
  ok((int)$product->get_meta('_mi_scheme_test')===$schemeId,'product linked to exact scheme and mode');
  $second=$input;$second['name']='GCC jaarabonnement';$second['interval']='12 months';$second['amount']='200.00';$secondId=$schemes->save($second,'test');FixtureOptions::scope('mi_woo_product_test_'.$secondId,0);$pid2=$bridge->createProduct($secondId);$products[]=$pid2;
  ok($pid2!==$pid && $schemes->get($schemeId,'test')['amount']===2000,'multiple plans have independent products and preserve existing plan');
- $manual=$input;$manual['type']='manual';$manualId=$schemes->save($manual,'test');deny(fn()=>$bridge->createProduct($manualId),'woo_scheme_automatic');
+ $manual=$input;$manual['type']='manual';$manual['name']='Losse incasso via webshop';$manualId=$schemes->save($manual,'test');FixtureOptions::scope('mi_woo_product_test_'.$manualId,0);$manualPid=$bridge->createProduct($manualId);$products[]=$manualPid;$manualProduct=wc_get_product($manualPid);
+ ok($bridge->productScheme($manualProduct)['type']==='manual'&&str_contains($bridge->priceHtml('',$manualProduct),'Machtiging'),'a plan for one-off direct debits can be a sign-up product, shown as a mandate without a period');
+ $noAuto=$input;$noAuto['auto_start']='';$noAuto['name']='Vast zonder automatisch';$noAutoId=$schemes->save($noAuto,'test');deny(fn()=>$bridge->createProduct($noAutoId),'woo_scheme_automatic');
  $product->set_status('publish');$product->save();
  WC()->cart->empty_cart();$cartKey=WC()->cart->add_to_cart($pid);ok((bool)$cartKey,'virtual subscription added to real WooCommerce cart');WC()->cart->calculate_totals();
  ok($bridge->cartScheme()['id']===$schemeId && abs((float)WC()->cart->get_total('edit')-.01)<.00001,'cart uses verification cent and server-side plan');
@@ -154,6 +156,11 @@ try{
  ok($schemes->get($schemeId,'test')['amount']===2000&&$schemes->get($secondId,'test')['amount']===20000,'adding plan leaves existing monthly and yearly plans intact');
  WC()->cart->empty_cart();ok(!isset($bridge->availableGateways(['mollie_incasso'=>$gateway,'other'=>(object)[]])['mollie_incasso']),'gateway hidden on ordinary carts');
  $hpos=Automattic\WooCommerce\Utilities\OrderUtil::custom_orders_table_usage_is_enabled();ok($hpos===(getenv('MI_WOO_HPOS')==='1'),'requested WooCommerce storage mode actually used');
+ // One-off plan via the webshop: verification and mandate only, never an automatic subscription.
+ $subsBefore=count($api->subs);$manualOrder=orderFor($manualProduct);$manualHash=hash('sha256',$schemes->disclosure($schemes->get($manualId,'test')));$bridge->checkout($manualOrder->get_id(),true,$manualHash);
+ $manualReceipt=$store->select('SELECT * FROM '.$store->table('checkouts').' WHERE order_id=%d',[$manualOrder->get_id()])[0];$manualCustomer=$service->customer((int)$manualReceipt['customer_id'],'test');$manualPayment=$store->select('SELECT * FROM '.$store->table('payments').' WHERE customer_id=%d',[(int)$manualCustomer['id']])[0];
+ $api->payments[$manualPayment['remote_id']]['status']='paid';$service->syncPayment($manualPayment['remote_id'],'test');$api->mandateRows['mdt_manual_shop']=['id'=>'mdt_manual_shop','customerId'=>$manualCustomer['remote_id'],'status'=>'valid','method'=>'directdebit','masked'=>'•••• 9999'];$service->refreshMandate((int)$manualCustomer['id'],'test');
+ ok($service->customer((int)$manualCustomer['id'],'test')['status']==='active'&&count($api->subs)===$subsBefore&&!$store->select('SELECT id FROM '.$store->table('jobs').' WHERE dedup=%s',['auto-subscription:'.$manualCustomer['id']]),'a webshop sign-up for one-off debits gives an active mandate and never starts a subscription');
  echo 'RESULT '.$checks.' WooCommerce checks passed; storage='.($hpos?'HPOS':'posts').'; no Mollie network requests or delivered mail.'."\n";
 }finally{
  WC()->cart->empty_cart();foreach($orders as$id){$order=wc_get_order($id);if($order)$order->delete(true);}foreach($products as$id){$product=wc_get_product($id);if($product)$product->delete(true);else wp_delete_post($id,true);}

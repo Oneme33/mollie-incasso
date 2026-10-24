@@ -36,7 +36,7 @@ msgstr "Allow sign-up via WooCommerce"
 msgid "Aanmeldformulier openen"
 msgstr "Open sign-up form"
 
-#: src/WooCommerceBridge.php:113
+#: src/WooCommerceBridge.php:118
 msgid "Aanmelding niet beschikbaar in deze betaalmodus."
 msgstr "Sign-up is not available in this payment mode."
 
@@ -63,10 +63,6 @@ msgstr "Start subscription automatically"
 #: src/Admin.php:906 src/Frontend.php:320 src/Plugin.php:194
 msgid "Abonnement beëindigen"
 msgstr "End subscription"
-
-#: src/Admin.php:500
-msgid "Abonnement voor het product"
-msgstr "Subscription for the product"
 
 #: src/Notifications.php:175
 msgid "Abonnement: %1$s per %2$s, startdatum %3$s. De verificatiebetaling van € 0,01 is geen abonnementsperiode."
@@ -480,11 +476,11 @@ msgstr "The test email was accepted by the mail server. Check that it is in your
 msgid "De toestemming is ingetrokken of de beëindiging is nog in behandeling."
 msgstr "Consent has been withdrawn or the termination is still pending."
 
-#: src/WooCommerceBridge.php:169
+#: src/WooCommerceBridge.php:175
 msgid "De verificatiebetaling is bij Mollie betaald. De toestemming blijft actief; annuleren van deze bestelling beëindigt geen abonnement. Gebruik daarvoor Mollie Incasso."
 msgstr "The verification payment was paid at Mollie. Consent remains active; canceling this order does not end a subscription. Use Mollie Incasso for that."
 
-#: src/WooCommerceBridge.php:207
+#: src/WooCommerceBridge.php:213
 msgid "De verificatiebetaling is niet geslaagd. Er is geen abonnement gestart."
 msgstr "The verification payment was not successful. No subscription has been started."
 
@@ -492,7 +488,7 @@ msgstr "The verification payment was not successful. No subscription has been st
 msgid "De verificatiebetaling is niet geslaagd. Er is geen nieuw betaalverzoek gemaakt. Neem contact op voor een nieuwe aanmelding."
 msgstr "The verification payment was not successful. No new payment request has been created. Please get in touch for a new sign-up."
 
-#: src/WooCommerceBridge.php:210
+#: src/WooCommerceBridge.php:216
 msgid "De verificatiebetaling is terugbetaald of gestorneerd. Controleer de incassotoestemming."
 msgstr "The verification payment was refunded or charged back. Check the direct debit consent."
 
@@ -536,7 +532,7 @@ msgstr "This API key does not have access to the requested resource."
 msgid "Deze actie past niet bij de geaccepteerde regeling."
 msgstr "This action does not match the accepted plan."
 
-#: src/WooCommerceBridge.php:247
+#: src/WooCommerceBridge.php:253
 msgid "Deze bestelling betreft alleen de verificatiebetaling van € 0,01. Uw vaste abonnement en volgende incasso’s worden beheerd via Mollie Incasso."
 msgstr "This order concerns only the €0.01 verification payment. Your fixed subscription and subsequent direct debits are managed via Mollie Incasso."
 
@@ -672,11 +668,15 @@ msgstr "A plan describes what, how much, and when a customer gives consent. The 
 msgid "Eenmalig toestemming geven. Daarna alles op één plek beheren."
 msgstr "Give consent once. Then manage everything in one place."
 
-#: src/WooCommerceBridge.php:114
+#: src/WooCommerceBridge.php:119
+msgid "Eenmalig € 0,01 ter verificatie. Daarna betaalt u alleen na een vooraankondiging."
+msgstr "One-time €0.01 for verification. After that you only pay after a pre-notification."
+
+#: src/WooCommerceBridge.php:120
 msgid "Eenmalig € 0,01 ter verificatie; dit is geen abonnementsperiode."
 msgstr "One-time €0.01 for verification; this is not a subscription period."
 
-#: src/WooCommerceBridge.php:266
+#: src/WooCommerceBridge.php:272
 msgid "Eenmalig € 0,01 verificatie via iDEAL. Daarna het vaste bedrag volgens de incassoafspraak."
 msgstr "One-time €0.01 verification via iDEAL. Then the fixed amount according to the direct debit agreement."
 
@@ -712,7 +712,7 @@ msgstr "There is already an ongoing or prepared subscription for this customer. 
 msgid "Er is een API-key ingesteld voor de huidige betaalmodus."
 msgstr "An API key has been set for the current payment mode."
 
-#: src/WooCommerceBridge.php:251
+#: src/WooCommerceBridge.php:257
 msgid "Er is geen abonnement gestart en er wordt niets geïncasseerd. Wilt u het opnieuw proberen? Plaats dan een nieuwe bestelling van dit abonnement."
 msgstr "No subscription has been started and nothing will be collected. Want to try again? Then place a new order for this subscription."
 
@@ -990,7 +990,7 @@ msgstr "Direct debit management"
 msgid "Incassodatum"
 msgstr "Collection date"
 
-#: src/WooCommerceBridge.php:274
+#: src/WooCommerceBridge.php:280
 msgid "Incassoregeling (%s)"
 msgstr "Direct debit plan (%s)"
 
@@ -1091,8 +1091,8 @@ msgid "Kies een vast abonnement (Mollie incasseert elke periode automatisch hetz
 msgstr "Choose a fixed subscription (Mollie automatically collects the same amount every period) or one-off direct debits (you start each direct debit yourself, up to an agreed maximum per collection). You can offer several plans; existing agreements are kept."
 
 #: src/Plugin.php:227
-msgid "Kies een vaste regeling met automatisch starten ingeschakeld."
-msgstr "Choose a fixed plan with automatic start enabled."
+msgid "Kies een vast abonnement met automatisch starten, of een regeling voor losse incasso’s."
+msgstr "Choose a fixed subscription that starts automatically, or a plan for one-off direct debits."
 
 #: src/Admin.php:580
 msgid "Kies hoe klanten zich aanmelden"
@@ -1228,8 +1228,8 @@ msgid "Maak eerst een regeling bij stap 3."
 msgstr "First create a plan in step 3."
 
 #: src/Admin.php:499
-msgid "Maak eerst een vaste regeling met automatisch starten ingeschakeld. Daarna kunt u hier het product klaarzetten."
-msgstr "First create a fixed plan with automatic start enabled. After that you can set up the product here."
+msgid "Maak eerst een regeling: een vast abonnement met automatisch starten, of een regeling voor losse incasso’s. Daarna kunt u hier het product klaarzetten."
+msgstr "First create a plan: a fixed subscription that starts automatically, or a plan for one-off direct debits. Then you can prepare the product here."
 
 #: src/Admin.php:1047
 msgid "Maand"
@@ -1242,6 +1242,10 @@ msgstr "Monthly"
 #: src/Admin.php:1035
 msgid "Maandelijks, of uitsluitend na een afzonderlijke aankondiging conform de gekozen regeling."
 msgstr "Monthly, or only after a separate notice in accordance with the selected plan."
+
+#: src/WooCommerceBridge.php:119
+msgid "Machtiging voor losse incasso’s, maximaal %s per incasso"
+msgstr "Mandate for one-off direct debits, up to %s per direct debit"
 
 #: src/Admin.php:657
 msgid "Machtigingen importeren"
@@ -1429,7 +1433,7 @@ msgstr "Net excl. fees"
 msgid "Niet geactiveerd"
 msgstr "Not activated"
 
-#: src/WooCommerceBridge.php:274
+#: src/WooCommerceBridge.php:280
 msgid "Niet gekoppeld"
 msgstr "Not linked"
 
@@ -1541,7 +1545,7 @@ msgstr "Save and continue"
 msgid "Optioneel voor uw beheerder: de API-key rechtstreeks op de server instellen of een aparte encryptiesleutel gebruiken via wp-config.php, het bestaande configuratiebestand van WordPress. Dit is niet nodig voor normaal opslaan via WordPress. Een op de server ingestelde API-key heeft voorrang op dit formulier."
 msgstr "Optional for your administrator: set the API key directly on the server or use a separate encryption key via wp-config.php, the existing WordPress configuration file. This is not needed for normal saving via WordPress. An API key set on the server takes precedence over this form."
 
-#: src/WooCommerceBridge.php:273
+#: src/WooCommerceBridge.php:279
 msgid "Optionele incassoaanmelding: gebruik een eenvoudig virtueel product. Het afrekenbedrag is € 0,01; vervolgbetalingen lopen via Mollie Incasso."
 msgstr "Optional direct debit sign-up: use a simple virtual product. The checkout amount is €0.01; subsequent payments run via Mollie Incasso."
 
@@ -1620,6 +1624,10 @@ msgstr "Save plan and continue"
 #: src/Admin.php:654
 msgid "Regeling voor deze klanten"
 msgstr "Plan for these customers"
+
+#: src/Admin.php:500
+msgid "Regeling voor het product"
+msgstr "Plan for the product"
 
 #: src/Admin.php:1024
 msgid "Regelingen"
@@ -1867,7 +1875,7 @@ msgstr "Your Mollie API key is needed to connect your account. Paste the key int
 msgid "Uw bestaande SEPA-machtiging van %s loopt voortaan via onze betaaldienst Mollie. U hoeft niets te doen: elke incasso kondigen wij vooraf aan, en via de link hieronder kunt u uw status bekijken of uw toestemming intrekken."
 msgstr "Your existing SEPA mandate of %s will from now on run through our payment provider Mollie. You do not need to do anything: we announce every direct debit in advance, and with the link below you can view your status or withdraw your consent."
 
-#: src/WooCommerceBridge.php:254
+#: src/WooCommerceBridge.php:260
 msgid "Uw betaling wordt voorbereid. Vernieuw deze pagina later; maak geen tweede bestelling aan."
 msgstr "Your payment is being prepared. Refresh this page later; do not place a second order."
 
@@ -1883,7 +1891,7 @@ msgstr "Your first payment has been verified and your direct debit mandate is va
 msgid "Uw gegevens"
 msgstr "Your details"
 
-#: src/WooCommerceBridge.php:247
+#: src/WooCommerceBridge.php:253
 msgid "Uw incassoaanmelding"
 msgstr "Your direct debit sign-up"
 
@@ -1967,7 +1975,7 @@ msgstr "Automatic direct debit verification — "
 msgid "Verificatie mislukt of teruggedraaid"
 msgstr "Verification failed or reversed"
 
-#: src/WooCommerceBridge.php:253
+#: src/WooCommerceBridge.php:259
 msgid "Verificatie via iDEAL afronden"
 msgstr "Complete verification via iDEAL"
 

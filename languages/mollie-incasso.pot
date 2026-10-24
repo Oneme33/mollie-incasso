@@ -30,7 +30,7 @@ msgstr ""
 msgid "Aanmeldformulier openen"
 msgstr ""
 
-#: src/WooCommerceBridge.php:113
+#: src/WooCommerceBridge.php:118
 msgid "Aanmelding niet beschikbaar in deze betaalmodus."
 msgstr ""
 
@@ -56,10 +56,6 @@ msgstr ""
 
 #: src/Admin.php:906 src/Frontend.php:320 src/Plugin.php:194
 msgid "Abonnement beëindigen"
-msgstr ""
-
-#: src/Admin.php:500
-msgid "Abonnement voor het product"
 msgstr ""
 
 #: src/Notifications.php:175
@@ -474,11 +470,11 @@ msgstr ""
 msgid "De toestemming is ingetrokken of de beëindiging is nog in behandeling."
 msgstr ""
 
-#: src/WooCommerceBridge.php:169
+#: src/WooCommerceBridge.php:175
 msgid "De verificatiebetaling is bij Mollie betaald. De toestemming blijft actief; annuleren van deze bestelling beëindigt geen abonnement. Gebruik daarvoor Mollie Incasso."
 msgstr ""
 
-#: src/WooCommerceBridge.php:207
+#: src/WooCommerceBridge.php:213
 msgid "De verificatiebetaling is niet geslaagd. Er is geen abonnement gestart."
 msgstr ""
 
@@ -486,7 +482,7 @@ msgstr ""
 msgid "De verificatiebetaling is niet geslaagd. Er is geen nieuw betaalverzoek gemaakt. Neem contact op voor een nieuwe aanmelding."
 msgstr ""
 
-#: src/WooCommerceBridge.php:210
+#: src/WooCommerceBridge.php:216
 msgid "De verificatiebetaling is terugbetaald of gestorneerd. Controleer de incassotoestemming."
 msgstr ""
 
@@ -530,7 +526,7 @@ msgstr ""
 msgid "Deze actie past niet bij de geaccepteerde regeling."
 msgstr ""
 
-#: src/WooCommerceBridge.php:247
+#: src/WooCommerceBridge.php:253
 msgid "Deze bestelling betreft alleen de verificatiebetaling van € 0,01. Uw vaste abonnement en volgende incasso’s worden beheerd via Mollie Incasso."
 msgstr ""
 
@@ -666,11 +662,15 @@ msgstr ""
 msgid "Eenmalig toestemming geven. Daarna alles op één plek beheren."
 msgstr ""
 
-#: src/WooCommerceBridge.php:114
+#: src/WooCommerceBridge.php:119
+msgid "Eenmalig € 0,01 ter verificatie. Daarna betaalt u alleen na een vooraankondiging."
+msgstr ""
+
+#: src/WooCommerceBridge.php:120
 msgid "Eenmalig € 0,01 ter verificatie; dit is geen abonnementsperiode."
 msgstr ""
 
-#: src/WooCommerceBridge.php:266
+#: src/WooCommerceBridge.php:272
 msgid "Eenmalig € 0,01 verificatie via iDEAL. Daarna het vaste bedrag volgens de incassoafspraak."
 msgstr ""
 
@@ -706,7 +706,7 @@ msgstr ""
 msgid "Er is een API-key ingesteld voor de huidige betaalmodus."
 msgstr ""
 
-#: src/WooCommerceBridge.php:251
+#: src/WooCommerceBridge.php:257
 msgid "Er is geen abonnement gestart en er wordt niets geïncasseerd. Wilt u het opnieuw proberen? Plaats dan een nieuwe bestelling van dit abonnement."
 msgstr ""
 
@@ -982,7 +982,7 @@ msgstr ""
 msgid "Incassodatum"
 msgstr ""
 
-#: src/WooCommerceBridge.php:274
+#: src/WooCommerceBridge.php:280
 msgid "Incassoregeling (%s)"
 msgstr ""
 
@@ -1083,7 +1083,7 @@ msgid "Kies een vast abonnement (Mollie incasseert elke periode automatisch hetz
 msgstr ""
 
 #: src/Plugin.php:227
-msgid "Kies een vaste regeling met automatisch starten ingeschakeld."
+msgid "Kies een vast abonnement met automatisch starten, of een regeling voor losse incasso’s."
 msgstr ""
 
 #: src/Admin.php:580
@@ -1219,7 +1219,7 @@ msgid "Maak eerst een regeling bij stap 3."
 msgstr ""
 
 #: src/Admin.php:499
-msgid "Maak eerst een vaste regeling met automatisch starten ingeschakeld. Daarna kunt u hier het product klaarzetten."
+msgid "Maak eerst een regeling: een vast abonnement met automatisch starten, of een regeling voor losse incasso’s. Daarna kunt u hier het product klaarzetten."
 msgstr ""
 
 #: src/Admin.php:1047
@@ -1232,6 +1232,10 @@ msgstr ""
 
 #: src/Admin.php:1035
 msgid "Maandelijks, of uitsluitend na een afzonderlijke aankondiging conform de gekozen regeling."
+msgstr ""
+
+#: src/WooCommerceBridge.php:119
+msgid "Machtiging voor losse incasso’s, maximaal %s per incasso"
 msgstr ""
 
 #: src/Admin.php:657
@@ -1418,7 +1422,7 @@ msgstr ""
 msgid "Niet geactiveerd"
 msgstr ""
 
-#: src/WooCommerceBridge.php:274
+#: src/WooCommerceBridge.php:280
 msgid "Niet gekoppeld"
 msgstr ""
 
@@ -1530,7 +1534,7 @@ msgstr ""
 msgid "Optioneel voor uw beheerder: de API-key rechtstreeks op de server instellen of een aparte encryptiesleutel gebruiken via wp-config.php, het bestaande configuratiebestand van WordPress. Dit is niet nodig voor normaal opslaan via WordPress. Een op de server ingestelde API-key heeft voorrang op dit formulier."
 msgstr ""
 
-#: src/WooCommerceBridge.php:273
+#: src/WooCommerceBridge.php:279
 msgid "Optionele incassoaanmelding: gebruik een eenvoudig virtueel product. Het afrekenbedrag is € 0,01; vervolgbetalingen lopen via Mollie Incasso."
 msgstr ""
 
@@ -1608,6 +1612,10 @@ msgstr ""
 
 #: src/Admin.php:654
 msgid "Regeling voor deze klanten"
+msgstr ""
+
+#: src/Admin.php:500
+msgid "Regeling voor het product"
 msgstr ""
 
 #: src/Admin.php:1024
@@ -1854,7 +1862,7 @@ msgstr ""
 msgid "Uw bestaande SEPA-machtiging van %s loopt voortaan via onze betaaldienst Mollie. U hoeft niets te doen: elke incasso kondigen wij vooraf aan, en via de link hieronder kunt u uw status bekijken of uw toestemming intrekken."
 msgstr ""
 
-#: src/WooCommerceBridge.php:254
+#: src/WooCommerceBridge.php:260
 msgid "Uw betaling wordt voorbereid. Vernieuw deze pagina later; maak geen tweede bestelling aan."
 msgstr ""
 
@@ -1870,7 +1878,7 @@ msgstr ""
 msgid "Uw gegevens"
 msgstr ""
 
-#: src/WooCommerceBridge.php:247
+#: src/WooCommerceBridge.php:253
 msgid "Uw incassoaanmelding"
 msgstr ""
 
@@ -1954,7 +1962,7 @@ msgstr ""
 msgid "Verificatie mislukt of teruggedraaid"
 msgstr ""
 
-#: src/WooCommerceBridge.php:253
+#: src/WooCommerceBridge.php:259
 msgid "Verificatie via iDEAL afronden"
 msgstr ""
 
