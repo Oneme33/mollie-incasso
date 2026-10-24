@@ -255,6 +255,7 @@ final class Admin
                     if ($this->field('confirm_live') !== '1') {
                         throw new Failure('live_confirmation_required');
                     }
+                    $this->storeKey('live', $this->field('key_live', 120));
                     $this->p->service->activateLive(get_current_user_id());
                     $view = $this->field('return_view', 20) === 'setup' ? 'setup' : 'settings';
                     $args = ['mi_saved' => 1, 'mi_live' => 1] + ($view === 'setup' ? ['step' => 2] : []);
@@ -300,13 +301,24 @@ final class Admin
                     throw new Failure('invalid_command');
             }
         } catch (Failure $e) {
-            $args = ['mi_error' => $e->reason];
+            $args = ['mi_error' => $e->reason] + (in_array($e->reason, ['live_needs_activation', 'methods_not_enabled', 'invalid_api_key'], true) && in_array($operation, ['settings', 'activate_live'], true) ? ['mi_live' => 1] : []);
             if ($view === 'setup') {
                 $args['step'] = $operation === 'setup_profile' ? 1 : ($operation === 'setup_plan' ? 3 : (in_array($operation,['setup_page','setup_product'],true) ? 4 : 2));
             }
         }
         wp_safe_redirect($this->url($view, $args), 303);
         exit;
+    }
+    private function storeKey(string $mode, string $key): void
+    {
+        $key = trim($key);
+        if ($key === '') {
+            return;
+        }
+        if (!preg_match('/^' . $mode . '_[A-Za-z0-9]{30,100}$/D', $key)) {
+            throw new Failure('invalid_api_key');
+        }
+        update_option('mi_secret_' . $mode, $this->p->config->encrypt($key), false);
     }
     private function saveSettings(): void
     {
@@ -317,22 +329,20 @@ final class Admin
         $testTools = $this->field('test_tools') === '1';
         // Switching the test phase on means testing: the environment select only appears afterwards.
         $mode = $testTools && (empty($old['test_tools']) || $this->field('target_mode') === 'test') ? 'test' : 'live';
-        if ($mode === 'live' && $old['mode'] !== 'live' && !$this->p->config->liveReleased()) {
-            throw new Failure('live_disabled');
-        }
         $language = $this->field('language', 8);
         $new = ['mode' => $mode, 'test_tools' => $testTools ? 1 : 0, 'language' => in_array($language, ['nl_NL', 'en_US'], true) ? $language : 'auto', 'organization' => sanitize_text_field($this->field('organization', 190)), 'address' => sanitize_textarea_field($this->field('address')), 'contact' => sanitize_textarea_field($this->field('contact')), 'privacy_url' => esc_url_raw($this->field('privacy_url')), 'notifications' => $this->field('notifications') === '1' ? 1 : 0, 'cleanup' => $this->field('cleanup') === '1' ? 1 : 0, 'retention_days' => max(1, min(10950, (int) $this->field('retention_days', 8))), 'webhook_url' => esc_url_raw($this->field('webhook_url'))];
-        foreach (['test', 'live'] as $mode) {
-            $key = trim($this->field('key_' . $mode, 120));
-            if ($key && !preg_match('/^' . $mode . '_[A-Za-z0-9]{30,100}$/D', $key)) {
-                throw new Failure('invalid_api_key');
+        foreach (['test', 'live'] as $keyMode) {
+            $this->storeKey($keyMode, $this->field('key_' . $keyMode, 120));
+            if ($this->field('delete_' . $keyMode) === '1') {
+                delete_option('mi_secret_' . $keyMode);
             }
-            if ($key) {
-                update_option('mi_secret_' . $mode, $this->p->config->encrypt($key), false);
-            }
-            if ($this->field('delete_' . $mode) === '1') {
-                delete_option('mi_secret_' . $mode);
-            }
+        }
+        // Live needs the activation step: everything else is saved, the mode stays as it was.
+        if ($mode === 'live' && $old['mode'] !== 'live' && !$this->p->config->liveReleased()) {
+            $new['mode'] = $old['mode'];
+            $new['test_tools'] = $old['test_tools'];
+            update_option('mi_settings', $new, false);
+            throw new Failure('live_needs_activation');
         }
         update_option('mi_settings', $new, false);
         if ($new['mode'] === 'live' && !$this->p->config->liveReleased()) {
@@ -451,9 +461,17 @@ final class Admin
         if(!current_user_can('manage_options'))throw new Failure('access_denied');
         $reference=$this->field('plan_reference',36);
         if(!preg_match('/^[a-f0-9-]{36}$/D',$reference))throw new Failure('invalid_scheme');
+        if($this->field('plan_type',8)==='manual'){
+            $data=['slug'=>'wizard-'.$reference,'type'=>'manual','name'=>$this->field('name',190),'amount'=>$this->field('amount',24),'purpose'=>$this->field('purpose'),'calculation'=>__('Het bedrag van elke incasso staat in de vooraankondiging en is nooit hoger dan het maximum per incasso. De verificatiebetaling van € 0,01 staat hier los van.','mollie-incasso'),'withdrawal'=>$this->field('withdrawal'),'consent'=>$this->field('consent'),'notice_days'=>14,'times'=>''];
+            return $this->savePlan($data,$mode,$reference);
+        }
         $interval=$this->field('interval',12);
         if(!in_array($interval,['1 month','3 months','12 months'],true))throw new Failure('invalid_scheme');
         $data=['slug'=>'wizard-'.$reference,'type'=>'fixed','auto_start'=>'1','name'=>$this->field('name',190),'amount'=>$this->field('amount',24),'interval'=>$interval,'purpose'=>$this->field('purpose'),'calculation'=>__('Het vaste bedrag voor dit abonnement. De verificatiebetaling van € 0,01 staat hier los van.','mollie-incasso'),'frequency'=>Plugin::frequency($interval),'withdrawal'=>$this->field('withdrawal'),'consent'=>$this->field('consent'),'notice_days'=>14,'times'=>''];
+        return $this->savePlan($data,$mode,$reference);
+    }
+    private function savePlan(array $data, string $mode, string $reference): int
+    {
         return $this->p->store->lock('wizard-plan:'.$mode.':'.$reference,function()use($data,$mode,$reference){
             $option='mi_wizard_plan_'.$mode.'_'.$reference;$hash=hash('sha256',wp_json_encode($data));$previous=get_option($option,[]);
             if(is_array($previous)&&($previous['hash']??'')===$hash&&$this->p->store->one('schemes',(int)$previous['id'],$mode))return (int)$previous['id'];
@@ -475,7 +493,7 @@ final class Admin
         $settings = $this->p->config->settings();
         $mode = $this->p->config->mode();
         echo '<nav class="mi-wizard-steps" aria-label="' . esc_attr__('Installatiestappen', 'mollie-incasso') . '">';
-        foreach ([1 => __('Organisatie', 'mollie-incasso'), 2 => __('Mollie koppelen', 'mollie-incasso'), 3 => __('Abonnement instellen', 'mollie-incasso'), 4 => __('Aanmelding plaatsen', 'mollie-incasso')] as $number => $title) {
+        foreach ([1 => __('Organisatie', 'mollie-incasso'), 2 => __('Mollie koppelen', 'mollie-incasso'), 3 => __('Regeling instellen', 'mollie-incasso'), 4 => __('Aanmelding plaatsen', 'mollie-incasso')] as $number => $title) {
             echo '<a ' . ($number === $step ? 'aria-current="step" ' : '') . 'href="' . esc_url($this->url('setup', ['step' => $number])) . '"><span>' . $number . '</span>' . esc_html($title) . '</a>';
         }
         echo '</nav><section class="mi-wizard-card">';
@@ -522,15 +540,25 @@ final class Admin
             }
             echo '<p><a href="https://my.mollie.com/dashboard" target="_blank" rel="noopener noreferrer">' . esc_html__('Mollie Dashboard openen', 'mollie-incasso') . '</a></p>';
         } elseif ($step === 3) {
-            $hasPlans=false;foreach($this->p->store->rows('schemes',$mode,500) as $plan){$planData=json_decode($plan['data'],true);if($plan['active']&&$planData['type']==='fixed')$hasPlans=true;}
-            echo '<h2>'.esc_html($hasPlans?__('Nog een abonnement toevoegen','mollie-incasso'):__('Stel uw eerste abonnement in','mollie-incasso')).'</h2>';
-            $this->help(__('U kunt meerdere abonnementen aanbieden. Deze stap voegt een nieuw abonnement toe; bestaande afspraken blijven bewaard. Klanten kunnen na hun verificatie automatisch starten.','mollie-incasso'));
+            $hasPlans=false;foreach($this->p->store->rows('schemes',$mode,500) as $plan){if($plan['active'])$hasPlans=true;}
+            echo '<h2>'.esc_html($hasPlans?__('Nog een regeling toevoegen','mollie-incasso'):__('Stel uw eerste regeling in','mollie-incasso')).'</h2>';
+            $this->help(__('Kies een vast abonnement (Mollie incasseert elke periode automatisch hetzelfde bedrag) of losse incasso’s (u start zelf elke incasso, tot een afgesproken maximum per keer). U kunt meerdere regelingen aanbieden; bestaande afspraken blijven bewaard.','mollie-incasso'));
             $this->start('setup_plan');
-            echo '<input type="hidden" name="plan_reference" value="'.esc_attr(wp_generate_uuid4()).'"><label>'.esc_html__('Naam van het abonnement','mollie-incasso').'<input name="name" maxlength="190" placeholder="'.esc_attr__('Bijvoorbeeld GCC doorlopend abonnement','mollie-incasso').'" required></label><label>'.esc_html__('Vast bedrag per periode (€)','mollie-incasso').'<input name="amount" inputmode="decimal" placeholder="20.00" required></label><label>'.esc_html__('Hoe vaak incasseren?','mollie-incasso').'<select name="interval"><option value="1 month">'.esc_html__('Elke maand','mollie-incasso').'</option><option value="3 months">'.esc_html__('Elk kwartaal','mollie-incasso').'</option><option value="12 months">'.esc_html__('Elk jaar','mollie-incasso').'</option></select></label>';
+            $defaults=['fixed'=>['purpose'=>__('Betaling voor het gekozen lidmaatschap.','mollie-incasso'),'consent'=>__('Ik geef deze organisatie toestemming om het hierboven genoemde bedrag met de gekozen frequentie via SEPA Direct Debit van mijn rekening te incasseren.','mollie-incasso')],'manual'=>['purpose'=>__('Betaling voor geleverde producten of diensten.','mollie-incasso'),'consent'=>__('Ik geef deze organisatie toestemming om losse bedragen tot het hierboven genoemde maximum via SEPA Direct Debit van mijn rekening te incasseren, telkens na een vooraankondiging.','mollie-incasso')]];
+            echo '<fieldset class="mi-plan-type"><legend>'.esc_html__('Soort regeling','mollie-incasso').'</legend><label><input type="radio" name="plan_type" value="fixed" checked> '.esc_html__('Vast abonnement: vast bedrag, automatisch elke periode','mollie-incasso').'</label><label><input type="radio" name="plan_type" value="manual"> '.esc_html__('Losse incasso’s: u start zelf elke incasso, tot een maximum per keer','mollie-incasso').'</label></fieldset>';
+            echo '<input type="hidden" name="plan_reference" value="'.esc_attr(wp_generate_uuid4()).'"><label>'.esc_html__('Naam van de regeling','mollie-incasso').'<input name="name" maxlength="190" placeholder="'.esc_attr__('Bijvoorbeeld GCC doorlopend abonnement','mollie-incasso').'" required></label>';
+            echo '<label><span data-plan="fixed">'.esc_html__('Vast bedrag per periode (€)','mollie-incasso').'</span><span data-plan="manual" hidden>'.esc_html__('Maximumbedrag per incasso (€)','mollie-incasso').'</span><input name="amount" inputmode="decimal" placeholder="20.00" required></label>';
+            echo '<label data-plan="fixed">'.esc_html__('Hoe vaak incasseren?','mollie-incasso').'<select name="interval"><option value="1 month">'.esc_html__('Elke maand','mollie-incasso').'</option><option value="3 months">'.esc_html__('Elk kwartaal','mollie-incasso').'</option><option value="12 months">'.esc_html__('Elk jaar','mollie-incasso').'</option></select></label>';
             echo '<details open><summary>'.esc_html__('Controleer de afspraak die uw klant accepteert','mollie-incasso').'</summary>';
-            foreach(['purpose'=>['Waarvoor betaalt de klant?','Betaling voor het gekozen lidmaatschap.'],'withdrawal'=>['Hoe kan de klant stoppen?','Via de persoonlijke statuslink of door contact op te nemen met de organisatie.'],'consent'=>['Toestemmingstekst','Ik geef deze organisatie toestemming om het hierboven genoemde bedrag met de gekozen frequentie via SEPA Direct Debit van mijn rekening te incasseren.']]as$key=>[$label,$default])echo '<label>'.esc_html__($label,'mollie-incasso').'<textarea name="'.$key.'" rows="2" required>'.esc_textarea(__($default,'mollie-incasso')).'</textarea></label>';
-            echo '</details><p class="mi-help">'.esc_html__('De klant betaalt eerst € 0,01 ter verificatie. Na een geldige machtiging plannen we de eerste incasso met minimaal 14 dagen vooraankondiging. Pas de voorbeeldteksten aan uw eigen afspraken aan.','mollie-incasso').'</p>';
-            $this->end('Abonnement opslaan en verder',true);
+            foreach(['purpose'=>__('Waarvoor betaalt de klant?','mollie-incasso'),'withdrawal'=>__('Hoe kan de klant stoppen?','mollie-incasso'),'consent'=>__('Toestemmingstekst','mollie-incasso')] as $key=>$label){
+                $fixed=$defaults['fixed'][$key]??__('Via de persoonlijke statuslink of door contact op te nemen met de organisatie.','mollie-incasso');
+                $manual=$defaults['manual'][$key]??$fixed;
+                echo '<label>'.esc_html($label).'<textarea name="'.esc_attr($key).'" required data-fixed="'.esc_attr($fixed).'" data-manual="'.esc_attr($manual).'">'.esc_textarea($fixed).'</textarea></label>';
+            }
+            echo '</details><p class="mi-help">'.esc_html__('De klant betaalt eerst € 0,01 ter verificatie. Na een geldige machtiging plant u de incasso’s, altijd met minimaal 14 dagen vooraankondiging. Pas de voorbeeldteksten aan uw eigen afspraken aan.','mollie-incasso').'</p>';
+            $this->end('Regeling opslaan en verder',true);
+            // Show the fields of the chosen kind; replace example texts only while they are unchanged.
+            echo "<script>(function(){var f=document.querySelector('input[name=plan_type]');if(!f)return;var form=f.form;form.addEventListener('change',function(e){if(e.target.name!=='plan_type')return;var t=e.target.value,o=t==='fixed'?'manual':'fixed';form.querySelectorAll('[data-plan]').forEach(function(el){el.hidden=el.getAttribute('data-plan')!==t;});form.querySelectorAll('textarea[data-fixed]').forEach(function(el){if(el.value===el.getAttribute('data-'+o))el.value=el.getAttribute('data-'+t);});});})();</script>";
             echo '<p><a href="'.esc_url($this->url('settings')).'#mi-regelingen">'.esc_html__('Geavanceerde regelingen en losse incasso’s','mollie-incasso').'</a></p>';
         } else {
             echo '<h2>' . esc_html__('Kies hoe klanten zich aanmelden', 'mollie-incasso') . '</h2>';
@@ -716,11 +744,10 @@ final class Admin
             $hasKey = false;
         }
         $this->help(__('Bij activeren controleert de plugin met uw livekey of Mollie iDEAL en SEPA-incasso live aanbiedt. Lukt dat niet, dan verandert er niets. De activering geldt alleen voor deze website op dit adres; een kopie van de site kan nooit incasseren.', 'mollie-incasso'));
-        if (!$hasKey) {
-            echo '<p>' . esc_html__('Vul eerst uw live-API-key in (Mollie Dashboard → Developers → API keys) en sla op.', 'mollie-incasso') . '</p></div>';
-            return;
-        }
         $this->start('activate_live');
+        if (!$hasKey) {
+            echo '<label>' . esc_html__('Live-API-key (Mollie Dashboard → Developers → API keys)', 'mollie-incasso') . '<input type="password" name="key_live" value="" autocomplete="new-password" placeholder="live_…" required></label>';
+        }
         echo '<input type="hidden" name="return_view" value="' . esc_attr($returnView) . '"><label class="mi-confirm"><input type="checkbox" name="confirm_live" value="1" required> ' . esc_html__('Ik begrijp dat vanaf nu echt geld wordt geïncasseerd van klanten die toestemming geven.', 'mollie-incasso') . '</label>';
         $this->end('Live activeren', true);
         echo '</div>';
@@ -754,8 +781,8 @@ final class Admin
         $orgReady = $s['organization'] !== '' && $s['contact'] !== '';
         $this->section(__('Organisatie', 'mollie-incasso'), $orgReady ? $s['organization'] : __('Nog invullen', 'mollie-incasso'), !$orgReady, $orgReady ? '' : 'attention');
         $this->help(__('Deze gegevens staan in de incassoafspraak die klanten accepteren en in de mails.', 'mollie-incasso'));
-        foreach (['organization' => 'Organisatienaam', 'address' => 'Adres en organisatiegegevens', 'contact' => 'Contact en intrekken', 'privacy_url' => 'URL privacyverklaring'] as $key => $label) {
-            echo '<label>' . esc_html__($label, 'mollie-incasso') . '<input name="' . esc_attr($key) . '" value="' . esc_attr((string) $s[$key]) . '"></label>';
+        foreach (['organization' => __('Organisatienaam', 'mollie-incasso'), 'address' => __('Adres en organisatiegegevens', 'mollie-incasso'), 'contact' => __('Contact en intrekken', 'mollie-incasso'), 'privacy_url' => __('URL privacyverklaring', 'mollie-incasso')] as $key => $label) {
+            echo '<label>' . esc_html($label) . '<input name="' . esc_attr($key) . '" value="' . esc_attr((string) $s[$key]) . '"></label>';
         }
         $this->sectionEnd();
         // Mollie-koppeling
@@ -798,7 +825,7 @@ final class Admin
         // Regelingen
         $schemes = $this->p->store->rows('schemes', $config->mode());
         $active = count(array_filter($schemes, fn($row) => (int) $row['active'] === 1));
-        $this->section(__('Regelingen', 'mollie-incasso'), sprintf(_n('%d actieve regeling', '%d actieve regelingen', $active, 'mollie-incasso'), $active), $active === 0, $active === 0 ? 'attention' : '');
+        $this->section(__('Regelingen', 'mollie-incasso'), sprintf(__('Actief: %d', 'mollie-incasso'), $active), $active === 0, $active === 0 ? 'attention' : '');
         $this->help(__('Een regeling beschrijft waarvoor, hoeveel en wanneer een klant toestemming geeft. De naam is zichtbaar in het aanmeldformulier. Gebruik een nieuwe versie als de afspraken veranderen.', 'mollie-incasso'));
         echo '<div class="mi-scroll" id="mi-regelingen"><table class="widefat striped"><thead><tr><th>' . esc_html__('Naam / versie', 'mollie-incasso') . '</th><th>' . esc_html__('Bedrag / type', 'mollie-incasso') . '</th><th>Shortcode</th></tr></thead><tbody>';
         foreach ($schemes as $row) {
@@ -808,18 +835,22 @@ final class Admin
         echo '</tbody></table></div>';
         echo '<details class="mi-subsection"' . ($active === 0 ? ' open' : '') . '><summary>' . esc_html__('Nieuwe regeling of nieuwe versie toevoegen', 'mollie-incasso') . '</summary><p>' . esc_html__('Bestaande toestemming blijft aan de geaccepteerde versie gekoppeld. De voorbeeldteksten zijn een startpunt en moeten voor uw organisatie worden beoordeeld.', 'mollie-incasso') . '</p>';
         $this->start('scheme');
+        echo '<label>' . esc_html__('Type', 'mollie-incasso') . '<select name="type"><option value="manual">' . esc_html__('Losse incasso’s', 'mollie-incasso') . '</option><option value="fixed">' . esc_html__('Vast abonnement', 'mollie-incasso') . '</option></select></label>';
         foreach (['slug' => ['Vaste regelingscode (dezelfde code maakt een nieuwe versie)', ''], 'name' => ['Naam', 'Lidmaatschap'], 'purpose' => ['Doel', 'Betaling voor het afgesproken lidmaatschap.'], 'amount' => ['Vast bedrag of maximaal bedrag bij losse incasso', '10.00'], 'calculation' => ['Bedrag / berekeningswijze', 'Het vooraf aangekondigde bedrag volgens onze overeenkomst.'], 'frequency' => ['Frequentie of aanleiding', 'Maandelijks, of uitsluitend na een afzonderlijke aankondiging conform de gekozen regeling.'], 'withdrawal' => ['Hoe toestemming kan worden ingetrokken', 'Via uw persoonlijke statuslink of door contact met ons op te nemen.'], 'consent' => ['Expliciete toestemmingstekst', 'Ik geef deze organisatie toestemming om de hiervoor beschreven bedragen via SEPA Direct Debit van mijn rekening te incasseren.'], 'notice_days' => ['Vooraankondiging in kalenderdagen', '14'], 'times' => ['Maximum aantal betalingen (optioneel, maximaal 10000)', '']] as $key => [$label, $default]) {
-            echo '<label>' . esc_html__($label, 'mollie-incasso');
+            $fixedOnly = in_array($key, ['frequency', 'times'], true);
+            echo '<label' . ($fixedOnly ? ' data-plan="fixed" hidden' : '') . '>' . esc_html__($label, 'mollie-incasso');
             if (in_array($key, ['purpose', 'calculation', 'frequency', 'withdrawal', 'consent'], true)) {
-                echo '<textarea name="' . $key . '" rows="3" required>' . esc_textarea(__($default,'mollie-incasso')) . '</textarea>';
+                echo '<textarea name="' . $key . '" rows="3"' . ($fixedOnly ? '' : ' required') . '>' . esc_textarea(__($default,'mollie-incasso')) . '</textarea>';
             } else {
                 echo '<input name="' . $key . '" value="' . esc_attr($default) . '" ' . (!in_array($key, ['slug', 'times'], true) ? 'required' : '') . '>';
             }
             echo '</label>';
         }
-        echo '<label><input type="checkbox" name="auto_start" value="1" checked> ' . esc_html__('Vast abonnement automatisch starten na verificatie en geldige machtiging (alleen bij vast bedrag).', 'mollie-incasso') . '</label>';
-        echo '<label>' . esc_html__('Type', 'mollie-incasso') . '<select name="type"><option value="manual">' . esc_html__('Losse incasso’s', 'mollie-incasso') . '</option><option value="fixed">' . esc_html__('Vast abonnement', 'mollie-incasso') . '</option></select></label><label>' . esc_html__('Vaste frequentie', 'mollie-incasso') . '<select name="interval"><option value="1 month">' . esc_html__('Maand', 'mollie-incasso') . '</option><option value="3 months">' . esc_html__('Kwartaal', 'mollie-incasso') . '</option><option value="12 months">' . esc_html__('Jaar', 'mollie-incasso') . '</option></select></label><label><input type="checkbox" name="notice_agreed" value="1">' . esc_html__('Een afwijkende vooraankondigingstermijn is expliciet met de klant afgesproken en opgenomen in deze regeling.', 'mollie-incasso') . '</label>';
+        echo '<label data-plan="fixed" hidden><input type="checkbox" name="auto_start" value="1" checked> ' . esc_html__('Vast abonnement automatisch starten na verificatie en geldige machtiging (alleen bij vast bedrag).', 'mollie-incasso') . '</label>';
+        echo '<label data-plan="fixed" hidden>' . esc_html__('Vaste frequentie', 'mollie-incasso') . '<select name="interval"><option value="1 month">' . esc_html__('Maand', 'mollie-incasso') . '</option><option value="3 months">' . esc_html__('Kwartaal', 'mollie-incasso') . '</option><option value="12 months">' . esc_html__('Jaar', 'mollie-incasso') . '</option></select></label><label><input type="checkbox" name="notice_agreed" value="1">' . esc_html__('Een afwijkende vooraankondigingstermijn is expliciet met de klant afgesproken en opgenomen in deze regeling.', 'mollie-incasso') . '</label>';
         $this->end('Regeling opslaan', true);
+        // Frequency, number of terms and automatic start only apply to a fixed subscription.
+        echo "<script>(function(){var t=document.querySelector('select[name=type]');if(!t)return;function sync(){t.form.querySelectorAll('[data-plan]').forEach(function(el){el.hidden=el.getAttribute('data-plan')!==t.value;});}t.addEventListener('change',sync);sync();})();</script>";
         echo '</details>';
         $this->sectionEnd();
     }

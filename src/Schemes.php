@@ -24,7 +24,12 @@ final class Schemes
         $data = ['name' => sanitize_text_field($input['name'] ?? ''), 'type' => $type, 'purpose' => sanitize_textarea_field($input['purpose'] ?? ''), 'calculation' => sanitize_textarea_field($input['calculation'] ?? ''), 'frequency' => sanitize_textarea_field($input['frequency'] ?? ''), 'withdrawal' => sanitize_textarea_field($input['withdrawal'] ?? ''), 'consent' => sanitize_textarea_field($input['consent'] ?? ''), 'notice_days' => max(0, min(60, (int) ($input['notice_days'] ?? 14))), 'amount' => Money::cents((string) ($input['amount'] ?? '0')), 'interval' => in_array($input['interval'] ?? '', ['1 month', '3 months', '12 months'], true) ? $input['interval'] : '1 month', 'times' => trim((string)($input['times']??''))===''?null:(int)$input['times']];
         $data['auto_start'] = $type === 'fixed' && in_array($input['auto_start'] ?? null, ['1', 1, true], true);
         if($data['times']!==null&&!preg_match('/^[1-9][0-9]{0,4}$/D',trim((string)$input['times']))){throw new Failure('invalid_scheme');}
-        if (in_array('', array_intersect_key($data, array_flip(['name', 'purpose', 'calculation', 'frequency', 'withdrawal', 'consent'])), true) || $data['times'] !== null && ($data['times'] < 1 || $data['times'] > 10000)) {
+        // One-off direct debits have no frequency: each collection is announced separately.
+        if ($type === 'manual') {
+            $data['frequency'] = '';
+            $data['times'] = null;
+        }
+        if (in_array('', array_intersect_key($data, array_flip(array_merge(['name', 'purpose', 'calculation', 'withdrawal', 'consent'], $type === 'fixed' ? ['frequency'] : []))), true) || $data['times'] !== null && ($data['times'] < 1 || $data['times'] > 10000)) {
             throw new Failure('invalid_scheme');
         }
         // The next pre-notification is planned once Mollie moves nextPaymentDate, so it must fit inside one term.
@@ -54,6 +59,6 @@ final class Schemes
         $settings = $this->config->settings();
         $amount = $scheme['type'] === 'fixed' ? Money::eur($scheme['amount']) : sprintf(__('maximaal %s per incasso', 'mollie-incasso'), Money::eur($scheme['amount']));
         $automatic = !empty($scheme['auto_start']) ? sprintf(__('Na de verificatie en een geldige machtiging start uw vaste abonnement automatisch. De eerste incasso vindt ten minste %d kalenderdagen na bevestiging plaats; u ontvangt het bedrag en de exacte datum vooraf per e-mail.', 'mollie-incasso'), max(1, (int) $scheme['notice_days'])) : '';
-        return implode("\n\n", array_filter([sprintf(__('Organisatie: %s — %s', 'mollie-incasso'), $settings['organization'], $settings['address']), $scheme['purpose'], sprintf(__('Bedrag: %s. %s', 'mollie-incasso'), $amount, $scheme['calculation']), sprintf(__('Frequentie / aanleiding: %s', 'mollie-incasso'), $scheme['frequency']), sprintf(__('Vooraankondiging: %d kalenderdagen vóór het aanbieden van de incasso.', 'mollie-incasso'), $scheme['notice_days']), $scheme['withdrawal'], $automatic, sprintf(__('Contact: %s', 'mollie-incasso'), $settings['contact']), __('De eerste iDEAL-betaling van € 0,01 is uitsluitend een verificatiebetaling. Dit bedrag blijft bij de organisatie, telt niet als abonnementsperiode en wordt niet automatisch verrekend of terugbetaald.', 'mollie-incasso'), $withConsent ? $scheme['consent'] : ''], fn($part) => trim((string) $part) !== ''));
+        return implode("\n\n", array_filter([sprintf(__('Organisatie: %s — %s', 'mollie-incasso'), $settings['organization'], $settings['address']), $scheme['purpose'], sprintf(__('Bedrag: %s. %s', 'mollie-incasso'), $amount, $scheme['calculation']), $scheme['type'] === 'fixed' ? sprintf(__('Frequentie / aanleiding: %s', 'mollie-incasso'), $scheme['frequency']) : '', sprintf(__('Vooraankondiging: %d kalenderdagen vóór het aanbieden van de incasso.', 'mollie-incasso'), $scheme['notice_days']), $scheme['withdrawal'], $automatic, sprintf(__('Contact: %s', 'mollie-incasso'), $settings['contact']), __('De eerste iDEAL-betaling van € 0,01 is uitsluitend een verificatiebetaling. Dit bedrag blijft bij de organisatie, telt niet als abonnementsperiode en wordt niet automatisch verrekend of terugbetaald.', 'mollie-incasso'), $withConsent ? $scheme['consent'] : ''], fn($part) => trim((string) $part) !== ''));
     }
 }
