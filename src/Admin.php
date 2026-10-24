@@ -16,7 +16,7 @@ final class Admin
         });
         add_action('admin_menu', function () {
             add_menu_page(__('Mollie Incasso', 'mollie-incasso'), __('Mollie Incasso', 'mollie-incasso'), 'manage_mollie_incasso', 'mollie-incasso', [$this, 'render'], 'none', 57);
-            foreach (['overview' => 'Overzicht', 'customers' => 'Klanten', 'commands' => 'Incasso’s / opdrachten', 'subscriptions' => 'Abonnementen', 'settings' => 'Instellingen en regelingen', 'setup' => 'Installatiehulp', 'diagnostics' => 'Diagnose en berichten'] as $view => $label) {
+            foreach (['overview' => 'Overzicht', 'customers' => 'Klanten', 'run' => 'Incasso-run', 'commands' => 'Incasso’s / opdrachten', 'subscriptions' => 'Abonnementen', 'settings' => 'Instellingen en regelingen', 'setup' => 'Installatiehulp', 'diagnostics' => 'Diagnose en berichten'] as $view => $label) {
                 add_submenu_page('mollie-incasso', __($label, 'mollie-incasso'), __($label, 'mollie-incasso'), 'manage_mollie_incasso', $view === 'overview' ? 'mollie-incasso' : 'mollie-incasso-' . $view, [$this, 'render']);
             }
         });
@@ -89,7 +89,10 @@ final class Admin
         echo esc_url(admin_url('admin-post.php'));
         ?>" class="mi-admin-form<?php
         echo $operation === 'prepare' ? ' mi-command-form' : '';
-        ?>"><input type="hidden" name="action" value="mi_admin"><input type="hidden" name="operation" value="<?php
+        ?>"<?php
+        echo $operation === 'import_mandates' ? ' enctype="multipart/form-data"' : '';
+        echo $operation === 'remove_plan' ? ' onsubmit="return confirm(\'' . esc_js(__('Deze regeling verwijderen? Is hij al in gebruik, dan wordt hij gearchiveerd en blijven bestaande afspraken werken.', 'mollie-incasso')) . '\')"' : '';
+        ?>><input type="hidden" name="action" value="mi_admin"><input type="hidden" name="operation" value="<?php
         echo esc_attr($operation);
         ?>"><input type="hidden" name="id" value="<?php
         echo $id;
@@ -119,7 +122,10 @@ final class Admin
         if ($mode !== $this->p->config->mode() || !wp_verify_nonce($this->field('mi_nonce', 128), 'mi_admin_' . $operation . '_' . $id . '_' . $mode)) {
             wp_die(esc_html(Plugin::message('csrf_failed')), '', 403);
         }
-        $view = str_starts_with($operation, 'setup_') ? 'setup' : (in_array($operation, ['settings', 'scheme', 'bind', 'activate_live', 'deactivate_live'], true) ? 'settings' : (in_array($operation, ['test_mail', 'wipe_test', 'diagnose', 'queue', 'recover', 'mail_retry', 'mail_sent'], true) ? 'diagnostics' : 'customers'));
+        $view = str_starts_with($operation, 'setup_') ? 'setup' : (in_array($operation, ['settings', 'scheme', 'remove_plan', 'restore_plan', 'bind', 'activate_live', 'deactivate_live'], true) ? 'settings' : (in_array($operation, ['test_mail', 'wipe_test', 'diagnose', 'queue', 'recover', 'mail_retry', 'mail_sent'], true) ? 'diagnostics' : 'customers'));
+        if ($operation === 'run') {
+            $view = 'run';
+        }
         if ($operation === 'activate_live' && $this->field('return_view', 20) === 'setup') {
             $view = 'setup';
         }
@@ -133,7 +139,21 @@ final class Admin
                     if (!current_user_can('manage_options')) {
                         throw new Failure('access_denied');
                     }
-                    $this->p->schemes->save($_POST, $mode);
+                    $previous = (int) $this->field('edit_of', 12);
+                    $oldIds = $previous ? $this->p->schemes->versions($previous, $mode) : [];
+                    $newId = $this->p->schemes->save($_POST, $mode);
+                    WooCommerceBridge::relinkProducts(array_diff($oldIds, [$newId]), $newId, $mode);
+                    break;
+                case 'remove_plan':
+                case 'restore_plan':
+                    if (!current_user_can('manage_options')) {
+                        throw new Failure('access_denied');
+                    }
+                    if ($operation === 'restore_plan') {
+                        $this->p->schemes->restore($id, $mode);
+                    } else {
+                        $args = ['mi_saved' => 1, 'mi_plan' => $this->p->schemes->remove($id, $mode)];
+                    }
                     break;
                 case 'bind':
                     if (!current_user_can('manage_options')) {
@@ -205,6 +225,12 @@ final class Admin
                     $command = $this->p->service->prepare((int) $this->field('customer'), $mode, $this->field('kind', 24), Money::cents($this->field('amount', 24)), $this->field('description', 255), $this->field('date', 10), $this->field('reference', 36));
                     $view = 'commands';
                     $args = ['preview' => $command['id']];
+                    break;
+                case 'run':
+                    $this->runCollections($mode);
+                    break;
+                case 'import_mandates':
+                    $this->importMandates($mode);
                     break;
                 case 'confirm':
                     $this->p->service->confirm($id, $mode);
@@ -369,7 +395,7 @@ final class Admin
             $view = 'overview';
         }
         $mode = $this->p->config->mode();
-        $views = ['overview' => ['label' => __('Overzicht', 'mollie-incasso'), 'description' => __('Uw incassoafspraken in één oogopslag.', 'mollie-incasso')], 'customers' => ['label' => __('Klanten', 'mollie-incasso'), 'description' => __('Bekijk toestemmingen en machtigingen, of bereid een nieuwe incasso voor.', 'mollie-incasso')], 'commands' => ['label' => __('Incasso’s', 'mollie-incasso'), 'description' => __('Controleer opdrachten, betaalstatussen en de actuele financiële situatie.', 'mollie-incasso')], 'subscriptions' => ['label' => __('Abonnementen', 'mollie-incasso'), 'description' => __('Beheer vaste bedragen en de periodieke afspraken die Mollie uitvoert.', 'mollie-incasso')], 'settings' => ['label' => __('Instellingen', 'mollie-incasso'), 'description' => __('Verbind uw account en leg vast waarmee uw klanten akkoord gaan.', 'mollie-incasso')], 'setup' => ['label' => __('Installatiehulp', 'mollie-incasso'), 'description' => __('Een korte rondleiding om uw koppeling in te stellen. U kunt deze altijd overslaan.', 'mollie-incasso')], 'diagnostics' => ['label' => __('Diagnose en berichten', 'mollie-incasso'), 'description' => __('Controleer webhooks, achtergrondtaken en de verzending van meldingen.', 'mollie-incasso')]];
+        $views = ['overview' => ['label' => __('Overzicht', 'mollie-incasso'), 'description' => __('Uw incassoafspraken in één oogopslag.', 'mollie-incasso')], 'customers' => ['label' => __('Klanten', 'mollie-incasso'), 'description' => __('Bekijk toestemmingen en machtigingen, of bereid een nieuwe incasso voor.', 'mollie-incasso')], 'run' => ['label' => __('Incasso-run', 'mollie-incasso'), 'description' => __('Incasseer meerdere klanten tegelijk: kies klanten, controleer de bedragen en bevestig in één keer.', 'mollie-incasso')], 'commands' => ['label' => __('Incasso’s', 'mollie-incasso'), 'description' => __('Controleer opdrachten, betaalstatussen en de actuele financiële situatie.', 'mollie-incasso')], 'subscriptions' => ['label' => __('Abonnementen', 'mollie-incasso'), 'description' => __('Vaste abonnementen die Mollie elke periode automatisch incasseert. Losse incasso’s staan hier niet: die start u altijd zelf.', 'mollie-incasso')], 'settings' => ['label' => __('Instellingen', 'mollie-incasso'), 'description' => __('Verbind uw account en leg vast waarmee uw klanten akkoord gaan.', 'mollie-incasso')], 'setup' => ['label' => __('Installatiehulp', 'mollie-incasso'), 'description' => __('Een korte rondleiding om uw koppeling in te stellen. U kunt deze altijd overslaan.', 'mollie-incasso')], 'diagnostics' => ['label' => __('Diagnose en berichten', 'mollie-incasso'), 'description' => __('Controleer webhooks, achtergrondtaken en de verzending van meldingen.', 'mollie-incasso')]];
         if (!isset($views[$view])) {
             $view = 'customers';
         }
@@ -389,6 +415,7 @@ final class Admin
             'settings' => $this->settings(),
             'setup' => $this->setup(),
             'commands' => $this->commands(),
+            'run' => $this->run(),
             'subscriptions' => $this->subscriptions(),
             'diagnostics' => $this->diagnostics(),
             default => $this->customers(),
@@ -401,6 +428,7 @@ final class Admin
             'overview' => '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
             'customers' => '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m20 0v-2a4 4 0 0 0-3-3.9"/><circle cx="9" cy="7" r="4"/><path d="M16 3.1a4 4 0 0 1 0 7.8"/>',
             'commands' => '<path d="M4 7h15m-4-4 4 4-4 4M20 17H5m4 4-4-4 4-4"/>',
+            'run' => '<path d="M9 6h12M9 12h12M9 18h12"/><path d="m3 6 1.5 1.5L7 5M3 12l1.5 1.5L7 11M3 18l1.5 1.5L7 17"/>',
             'subscriptions' => '<path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 6.1A8 8 0 0 1 20 12M4 12a8 8 0 0 0 13.9 5.9"/>',
             'setup' => '<path d="m4 20 12-12m-4-1 5 5M5 3v4M3 5h4M19 15v6m-3-3h6M17 2v4m-2-2h4"/>',
             'settings' => '<path d="M12 3v3m0 12v3M3 12h3m12 0h3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1M5.6 18.4l2.1-2.1m8.6-8.6 2.1-2.1"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/>',
@@ -462,7 +490,7 @@ final class Admin
         $reference=$this->field('plan_reference',36);
         if(!preg_match('/^[a-f0-9-]{36}$/D',$reference))throw new Failure('invalid_scheme');
         if($this->field('plan_type',8)==='manual'){
-            $data=['slug'=>'wizard-'.$reference,'type'=>'manual','name'=>$this->field('name',190),'amount'=>$this->field('amount',24),'purpose'=>$this->field('purpose'),'calculation'=>__('Het bedrag van elke incasso staat in de vooraankondiging en is nooit hoger dan het maximum per incasso. De verificatiebetaling van € 0,01 staat hier los van.','mollie-incasso'),'withdrawal'=>$this->field('withdrawal'),'consent'=>$this->field('consent'),'notice_days'=>14,'times'=>''];
+            $data=['slug'=>'wizard-'.$reference,'type'=>'manual','name'=>$this->field('name',190),'amount'=>$this->field('amount',24),'default_amount'=>$this->field('default_amount',24),'notice_agreed'=>$this->field('notice_agreed')==='1','purpose'=>$this->field('purpose'),'calculation'=>__('Het bedrag van elke incasso staat in de vooraankondiging en is nooit hoger dan het maximum per incasso. De verificatiebetaling van € 0,01 staat hier los van.','mollie-incasso'),'withdrawal'=>$this->field('withdrawal'),'consent'=>$this->field('consent'),'notice_days'=>$this->field('notice_days',3)===''?14:max(1,min(60,(int)$this->field('notice_days',3))),'times'=>''];
             return $this->savePlan($data,$mode,$reference);
         }
         $interval=$this->field('interval',12);
@@ -482,9 +510,9 @@ final class Admin
     {
         echo '<h3>'.esc_html__('Of aanmelden via uw webshop','mollie-incasso').'</h3><p>'.esc_html__('Een gewoon virtueel product kan de aanmelding starten. De klant rekent eenmalig € 0,01 af en accepteert de incassoafspraak in dezelfde checkout. Vervolgbetalingen lopen via Mollie Incasso; WooCommerce Subscriptions is niet nodig.','mollie-incasso').'</p>';
         if(!class_exists('WC_Product_Simple')){echo '<p class="mi-help">'.esc_html__('WooCommerce is hier niet actief. De website-aanmelding hierboven werkt zonder webshop.','mollie-incasso').'</p>';return;}
-        $schemes=[];foreach($this->p->store->rows('schemes',$this->p->config->mode(),500)as$row){$data=json_decode($row['data'],true);if($row['active']&&$data['type']==='fixed'&&!empty($data['auto_start']))$schemes[]=$row+['name'=>$data['name']];}
-        if(!$schemes){echo '<p class="mi-help">'.esc_html__('Maak eerst een vaste regeling met automatisch starten ingeschakeld. Daarna kunt u hier het product klaarzetten.','mollie-incasso').'</p>';return;}
-        $this->start('setup_product');echo '<label>'.esc_html__('Abonnement voor het product','mollie-incasso').'<select name="scheme">';foreach($schemes as$scheme)echo '<option value="'.esc_attr((string)$scheme['id']).'">'.esc_html($scheme['name']).'</option>';echo '</select></label>';$this->end('Virtueel product klaarzetten',true);
+        $schemes=[];foreach($this->p->store->rows('schemes',$this->p->config->mode(),500)as$row){$data=json_decode($row['data'],true);if($row['active']&&WooCommerceBridge::linkable($data))$schemes[]=$row+['name'=>Plugin::planLabel($data)];}
+        if(!$schemes){echo '<p class="mi-help">'.esc_html__('Maak eerst een regeling: een vast abonnement met automatisch starten, of een regeling voor losse incasso’s. Daarna kunt u hier het product klaarzetten.','mollie-incasso').'</p>';return;}
+        $this->start('setup_product');echo '<label>'.esc_html__('Regeling voor het product','mollie-incasso').'<select name="scheme">';foreach($schemes as$scheme)echo '<option value="'.esc_attr((string)$scheme['id']).'">'.esc_html($scheme['name']).'</option>';echo '</select></label>';$this->end('Virtueel product klaarzetten',true);
         echo '<p class="mi-help">'.esc_html__('Het product wordt als concept klaargezet: controleer het en publiceer het daarna. De gekoppelde betaalmethode verschijnt alleen voor dit product. Reken abonnementaanmeldingen apart af, zonder andere producten, kortingscodes of toeslagen.','mollie-incasso').'</p>';
     }
     private function setup(): void
@@ -548,6 +576,9 @@ final class Admin
             echo '<fieldset class="mi-plan-type"><legend>'.esc_html__('Soort regeling','mollie-incasso').'</legend><label><input type="radio" name="plan_type" value="fixed" checked> '.esc_html__('Vast abonnement: vast bedrag, automatisch elke periode','mollie-incasso').'</label><label><input type="radio" name="plan_type" value="manual"> '.esc_html__('Losse incasso’s: u start zelf elke incasso, tot een maximum per keer','mollie-incasso').'</label></fieldset>';
             echo '<input type="hidden" name="plan_reference" value="'.esc_attr(wp_generate_uuid4()).'"><label>'.esc_html__('Naam van de regeling','mollie-incasso').'<input name="name" maxlength="190" placeholder="'.esc_attr__('Bijvoorbeeld GCC doorlopend abonnement','mollie-incasso').'" required></label>';
             echo '<label><span data-plan="fixed">'.esc_html__('Vast bedrag per periode (€)','mollie-incasso').'</span><span data-plan="manual" hidden>'.esc_html__('Maximumbedrag per incasso (€)','mollie-incasso').'</span><input name="amount" inputmode="decimal" placeholder="20.00" required></label>';
+            echo '<label data-plan="manual" hidden>'.esc_html__('Standaardbedrag per incasso (€, optioneel)','mollie-incasso').'<input name="default_amount" inputmode="decimal" placeholder="'.esc_attr__('Wordt vooraf ingevuld bij een incasso-run','mollie-incasso').'"></label>';
+            echo '<label data-plan="manual" hidden>'.esc_html__('Vooraankondiging in dagen','mollie-incasso').'<input name="notice_days" type="number" min="1" max="60" value="14"></label>';
+            echo '<label data-plan="manual" hidden class="mi-confirm"><input type="checkbox" name="notice_agreed" value="1"> '.esc_html__('Een kortere of langere termijn dan 14 dagen staat in de afspraak met de klant (bijvoorbeeld in de toestemmingstekst hieronder).','mollie-incasso').'</label>';
             echo '<label data-plan="fixed">'.esc_html__('Hoe vaak incasseren?','mollie-incasso').'<select name="interval"><option value="1 month">'.esc_html__('Elke maand','mollie-incasso').'</option><option value="3 months">'.esc_html__('Elk kwartaal','mollie-incasso').'</option><option value="12 months">'.esc_html__('Elk jaar','mollie-incasso').'</option></select></label>';
             echo '<details open><summary>'.esc_html__('Controleer de afspraak die uw klant accepteert','mollie-incasso').'</summary>';
             foreach(['purpose'=>__('Waarvoor betaalt de klant?','mollie-incasso'),'withdrawal'=>__('Hoe kan de klant stoppen?','mollie-incasso'),'consent'=>__('Toestemmingstekst','mollie-incasso')] as $key=>$label){
@@ -558,7 +589,7 @@ final class Admin
             echo '</details><p class="mi-help">'.esc_html__('De klant betaalt eerst € 0,01 ter verificatie. Na een geldige machtiging plant u de incasso’s, altijd met minimaal 14 dagen vooraankondiging. Pas de voorbeeldteksten aan uw eigen afspraken aan.','mollie-incasso').'</p>';
             $this->end('Regeling opslaan en verder',true);
             // Show the fields of the chosen kind; replace example texts only while they are unchanged.
-            echo "<script>(function(){var f=document.querySelector('input[name=plan_type]');if(!f)return;var form=f.form;form.addEventListener('change',function(e){if(e.target.name!=='plan_type')return;var t=e.target.value,o=t==='fixed'?'manual':'fixed';form.querySelectorAll('[data-plan]').forEach(function(el){el.hidden=el.getAttribute('data-plan')!==t;});form.querySelectorAll('textarea[data-fixed]').forEach(function(el){if(el.value===el.getAttribute('data-'+o))el.value=el.getAttribute('data-'+t);});});})();</script>";
+            echo "<script>(function(){var f=document.querySelector('input[name=plan_type]');if(!f)return;var form=f.form;form.addEventListener('change',function(e){if(e.target.name!=='plan_type')return;var t=e.target.value,o=t==='fixed'?'manual':'fixed';form.querySelectorAll('[data-plan]').forEach(function(el){var off=el.getAttribute('data-plan')!==t;el.hidden=off;el.querySelectorAll('input,select,textarea').forEach(function(i){i.disabled=off;});});form.querySelectorAll('textarea[data-fixed]').forEach(function(el){if(el.value===el.getAttribute('data-'+o))el.value=el.getAttribute('data-'+t);});});form.querySelectorAll('[data-plan=manual] input,[data-plan=manual] select,[data-plan=manual] textarea').forEach(function(i){i.disabled=true;});})();</script>";
             echo '<p><a href="'.esc_url($this->url('settings')).'#mi-regelingen">'.esc_html__('Geavanceerde regelingen en losse incasso’s','mollie-incasso').'</a></p>';
         } else {
             echo '<h2>' . esc_html__('Kies hoe klanten zich aanmelden', 'mollie-incasso') . '</h2>';
@@ -593,6 +624,7 @@ final class Admin
     private function customers(): void
     {
         $mode = $this->p->config->mode();
+        $this->showResult();
         $this->help(__('Een machtiging is de toestemming bij Mollie om van de rekening te incasseren. Pas bij een geldige machtiging en bevestigde eerste betaling wordt een klant actief.', 'mollie-incasso'));
         $this->quick('export', 0, 'Beperkte CSV-export (maximaal 500 klanten)');
         echo '<div class="mi-scroll"><table class="widefat striped"><thead><tr>';
@@ -617,8 +649,32 @@ final class Admin
             echo '</td></tr>';
         }
         echo '</tbody></table></div>';
+        if (current_user_can('manage_options')) {
+            $this->section(__('Bestaande machtigingen importeren', 'mollie-incasso'), __('CSV, maximaal 200 per keer', 'mollie-incasso'), false);
+            $this->help(__('Hebben uw klanten al een SEPA-machtiging bij uw bank getekend? Zet die over naar Mollie, zodat zij zich niet opnieuw hoeven aan te melden. Elke klant krijgt daarna een mail met zijn persoonlijke statuslink.', 'mollie-incasso'));
+            $this->help(__('CSV-kolommen met een kopregel: naam, e-mail, IBAN, datum (ondertekeningsdatum van de machtiging) en optioneel kenmerk. Scheidingsteken ; of , en datums als 2024-01-31 of 31-01-2024 worden herkend.', 'mollie-incasso'));
+            $this->help(__('Vraag Mollie vooraf of u bestaande machtigingen mag overzetten en of uw klanten bericht moeten krijgen over de nieuwe incassant. Het IBAN gaat alleen naar Mollie; de plugin bewaart alleen de laatste vier cijfers.', 'mollie-incasso'));
+            $options = '';
+            foreach ($this->p->store->rows('schemes', $mode, 500) as $row) {
+                if ($row['active']) {
+                    $data = json_decode($row['data'], true);
+                    $options .= '<option value="' . (int) $row['id'] . '">' . esc_html(Plugin::planLabel($data) . ' (v' . $row['version'] . ')') . '</option>';
+                }
+            }
+            if ($options === '') {
+                $this->help(__('Maak eerst een regeling aan (Installatiehulp of Instellingen). Geïmporteerde klanten worden aan een regeling gekoppeld.', 'mollie-incasso'));
+                $this->sectionEnd();
+            } else {
+            $this->start('import_mandates');
+            echo '<label>' . esc_html__('Regeling voor deze klanten', 'mollie-incasso') . '<select name="scheme" required>' . $options;
+            echo '</select></label><label>' . esc_html__('CSV-bestand', 'mollie-incasso') . '<input type="file" name="csv" accept=".csv,text/csv,text/plain" required></label>';
+            echo '<label class="mi-confirm"><input type="checkbox" name="confirm_import" value="1" required> ' . esc_html__('Deze klanten hebben een geldige SEPA-machtiging aan onze organisatie gegeven, en wij mogen deze machtigingen via Mollie gebruiken.', 'mollie-incasso') . '</label>';
+            $this->end('Machtigingen importeren', true);
+            $this->sectionEnd();
+            }
+        }
         $activeCustomers = (int) ($this->p->store->select('SELECT COUNT(*) AS n FROM ' . $this->p->store->table('customers') . ' WHERE mode=%s AND status="active"', [$mode])[0]['n'] ?? 0);
-        $this->section(__('Nieuwe incasso of vast abonnement', 'mollie-incasso'), sprintf(_n('%d klant kan worden geïncasseerd', '%d klanten kunnen worden geïncasseerd', $activeCustomers, 'mollie-incasso'), $activeCustomers), isset($_GET['mi_error']));
+        $this->section(__('Nieuwe incasso of vast abonnement', 'mollie-incasso'), sprintf(__('Klaar voor incasso: %d', 'mollie-incasso'), $activeCustomers), isset($_GET['mi_error']));
         $this->help(__('U bereidt hier alleen een opdracht voor. Op het volgende scherm controleert u klant, bedrag en doel; pas na bevestiging wordt de vooraankondiging verzonden.', 'mollie-incasso'));
         $this->start('prepare');
         echo '<label>' . esc_html__('Klant en geaccepteerde regeling', 'mollie-incasso') . '<select name="customer" required>';
@@ -633,6 +689,161 @@ final class Admin
         $this->help(__('Kies een toekomstige datum die past bij de afgesproken vooraankondigingstermijn, standaard 14 dagen. Een abonnement begint niet op de verificatiedag.', 'mollie-incasso'));
         $this->end('Opdracht controleren', true);
         $this->sectionEnd();
+    }
+    /** One-time result of a bulk action, shown once on the next page view. */
+    private function showResult(): void
+    {
+        $key = 'mi_result_' . get_current_user_id();
+        $result = get_transient($key);
+        if (!is_array($result)) {
+            return;
+        }
+        delete_transient($key);
+        echo '<section class="mi-card"><h2>' . esc_html($result['title']) . '</h2><ul>';
+        foreach ($result['rows'] as [$who, $outcome]) {
+            echo '<li><strong>' . esc_html($who) . '</strong> — ' . esc_html($outcome) . '</li>';
+        }
+        echo '</ul></section>';
+    }
+    private static function runReference(string $runId, int $customerId): string
+    {
+        $h = hash('sha256', $runId . ':' . $customerId);
+        return substr($h, 0, 8) . '-' . substr($h, 8, 4) . '-' . substr($h, 12, 4) . '-' . substr($h, 16, 4) . '-' . substr($h, 20, 12);
+    }
+    private function run(): void
+    {
+        $mode = $this->p->config->mode();
+        $this->showResult();
+        $rows = [];
+        $notice = 1;
+        foreach ($this->p->store->rows('customers', $mode, 500) as $c) {
+            if ($c['status'] !== 'active') {
+                continue;
+            }
+            try {
+                $scheme = $this->p->service->consent($c);
+            } catch (Failure $e) {
+                continue;
+            }
+            if ($scheme['type'] !== 'manual') {
+                continue;
+            }
+            $notice = max($notice, (int) $scheme['notice_days']);
+            $rows[] = [$c, $scheme];
+        }
+        if (!$rows) {
+            $this->help(__('Er zijn nog geen klanten met een geldige machtiging voor losse incasso’s. Laat klanten zich aanmelden via een regeling voor losse incasso’s, of importeer bestaande machtigingen bij Klanten.', 'mollie-incasso'));
+            return;
+        }
+        $this->help(__('Vink de klanten aan die u wilt incasseren en controleer per klant het bedrag. Elke klant krijgt eerst een vooraankondiging per e-mail; op de gekozen datum gaat de incasso naar Mollie. Een bedrag kan nooit hoger zijn dan het maximum van de regeling.', 'mollie-incasso'));
+        $this->start('run');
+        echo '<input type="hidden" name="run_id" value="' . esc_attr(wp_generate_uuid4()) . '"><div class="mi-scroll"><table class="widefat striped"><thead><tr><th>' . esc_html__('Incasseren', 'mollie-incasso') . '</th><th>' . esc_html__('Klant', 'mollie-incasso') . '</th><th>' . esc_html__('Regeling', 'mollie-incasso') . '</th><th>' . esc_html__('Bedrag (€)', 'mollie-incasso') . '</th><th>' . esc_html__('Maximum', 'mollie-incasso') . '</th></tr></thead><tbody>';
+        foreach ($rows as [$c, $scheme]) {
+            $id = (int) $c['id'];
+            $default = !empty($scheme['default_amount']) ? number_format((int) $scheme['default_amount'] / 100, 2, '.', '') : '';
+            echo '<tr><td><input type="checkbox" name="select[]" value="' . $id . '" aria-label="' . esc_attr($c['name']) . '"' . ($default !== '' ? ' checked' : '') . '></td><td>' . esc_html($c['name']) . '<br><small>' . esc_html($c['email']) . '</small></td><td>' . esc_html($scheme['name']) . '</td><td><input class="mi-run-amount" name="amount[' . $id . ']" value="' . esc_attr($default) . '" inputmode="decimal" aria-label="' . esc_attr(sprintf(__('Bedrag voor %s', 'mollie-incasso'), $c['name'])) . '"></td><td>' . esc_html(Money::eur((int) $scheme['amount'])) . '</td></tr>';
+        }
+        $min = wp_date('Y-m-d', time() + $notice * DAY_IN_SECONDS, new \DateTimeZone('Europe/Amsterdam'));
+        echo '</tbody></table></div>';
+        echo '<label>' . esc_html__('Omschrijving op het afschrift', 'mollie-incasso') . '<input name="description" maxlength="255" required placeholder="' . esc_attr__('Bijvoorbeeld Contributie november', 'mollie-incasso') . '"></label>';
+        echo '<label>' . esc_html__('Incassodatum', 'mollie-incasso') . '<input type="date" name="date" min="' . esc_attr($min) . '" value="' . esc_attr($min) . '" required></label>';
+        $this->help(sprintf(__('De vroegste datum is %s: dat volgt uit de langste vooraankondigingstermijn van deze regelingen.', 'mollie-incasso'), Notifications::date($min)));
+        $this->end('Vooraankondigingen versturen en incasso’s inplannen', true);
+    }
+    private function runCollections(string $mode): void
+    {
+        $runId = $this->field('run_id', 36);
+        if (!preg_match('/^[a-f0-9-]{36}$/D', $runId)) {
+            throw new Failure('invalid_command');
+        }
+        $selected = array_slice(array_unique(array_map('intval', is_array($_POST['select'] ?? null) ? $_POST['select'] : [])), 0, 200);
+        if (!$selected) {
+            throw new Failure('run_empty');
+        }
+        $amounts = is_array($_POST['amount'] ?? null) ? wp_unslash($_POST['amount']) : [];
+        $description = $this->field('description', 255);
+        $date = $this->field('date', 10);
+        $results = [];
+        $planned = 0;
+        foreach ($selected as $customerId) {
+            $who = '#' . $customerId;
+            try {
+                $customer = $this->p->service->customer($customerId, $mode);
+                $who = $customer['name'];
+                $amount = Money::cents(is_scalar($amounts[$customerId] ?? null) ? (string) $amounts[$customerId] : '');
+                $command = $this->p->service->prepare($customerId, $mode, 'manual', $amount, $description, $date, self::runReference($runId, $customerId));
+                $this->p->service->confirm((int) $command['id'], $mode);
+                $results[] = [$who, sprintf(__('Ingepland: %1$s op %2$s, vooraankondiging wordt verzonden', 'mollie-incasso'), Money::eur($amount), Notifications::date($date))];
+                $planned++;
+            } catch (Failure $e) {
+                $results[] = [$who, Plugin::message($e->reason)];
+            }
+        }
+        set_transient('mi_result_' . get_current_user_id(), ['title' => sprintf(__('Incasso-run: %1$d van %2$d ingepland', 'mollie-incasso'), $planned, count($results)), 'rows' => $results], 900);
+    }
+    private function importMandates(string $mode): void
+    {
+        if (!current_user_can('manage_options')) {
+            throw new Failure('access_denied');
+        }
+        if ($this->field('confirm_import') !== '1') {
+            throw new Failure('import_confirmation_required');
+        }
+        $file = $_FILES['csv'] ?? null;
+        if (!is_array($file) || ($file['error'] ?? 1) !== UPLOAD_ERR_OK || !is_uploaded_file($file['tmp_name']) || $file['size'] > 512000) {
+            throw new Failure('import_file_invalid');
+        }
+        $rows = self::parseCsv((string) file_get_contents($file['tmp_name']));
+        $schemeId = (int) $this->field('scheme', 12);
+        $results = [];
+        $imported = 0;
+        foreach ($rows as $row) {
+            $who = $row['name'] !== '' ? $row['name'] : $row['email'];
+            try {
+                $outcome = $this->p->service->importMandate($mode, $schemeId, $row['name'], $row['email'], $row['iban'], $row['date'], $row['reference'], get_current_user_id());
+                $results[] = [$who, $outcome === 'exists' ? __('Al actief op deze regeling, overgeslagen', 'mollie-incasso') : __('Geïmporteerd: machtiging geldig, welkomstmail wordt verzonden', 'mollie-incasso')];
+                $imported += $outcome === 'imported' ? 1 : 0;
+            } catch (Failure $e) {
+                $results[] = [$who, Plugin::message($e->reason) . ($e->detail ? ' (' . $e->detail . ')' : '')];
+            }
+        }
+        set_transient('mi_result_' . get_current_user_id(), ['title' => sprintf(__('Import: %1$d van %2$d machtigingen overgezet', 'mollie-incasso'), $imported, count($results)), 'rows' => $results], 900);
+    }
+    /** CSV with a header row; separator, column names and date notation are recognised flexibly. */
+    public static function parseCsv(string $text): array
+    {
+        $text = preg_replace('/^\xEF\xBB\xBF/', '', $text);
+        $lines = array_values(array_filter(preg_split('/\r\n|\r|\n/', $text), fn($l) => trim($l) !== ''));
+        if (count($lines) < 2) {
+            throw new Failure('import_columns_missing');
+        }
+        $counts = ['semicolon' => substr_count($lines[0], ';'), 'comma' => substr_count($lines[0], ','), 'tab' => substr_count($lines[0], "\t")];
+        arsort($counts);
+        $separator = ['semicolon' => ';', 'comma' => ',', 'tab' => "\t"][array_key_first($counts)];
+        $aliases = ['name' => ['naam', 'name', 'klant', 'lid', 'tenaamstelling', 'rekeninghouder'], 'email' => ['email', 'emailadres', 'mail'], 'iban' => ['iban', 'rekeningnummer', 'reknr', 'rekening', 'account'], 'date' => ['datum', 'ondertekeningsdatum', 'startdatummachtiging', 'datummachtiging', 'mandaatdatum', 'signaturedate', 'machtigingsdatum'], 'reference' => ['kenmerk', 'machtigingskenmerk', 'mandaatkenmerk', 'mandatereference', 'mandaatid', 'kenmerkmachtiging']];
+        $columns = [];
+        foreach (str_getcsv($lines[0], $separator) as $index => $heading) {
+            $key = preg_replace('/[^a-z]/', '', strtolower(remove_accents((string) $heading)));
+            foreach ($aliases as $field => $names) {
+                if (!isset($columns[$field]) && in_array($key, $names, true)) {
+                    $columns[$field] = $index;
+                }
+            }
+        }
+        if (count(array_intersect_key($columns, array_flip(['name', 'email', 'iban', 'date']))) < 4) {
+            throw new Failure('import_columns_missing');
+        }
+        $rows = [];
+        foreach (array_slice($lines, 1, 200) as $line) {
+            $cells = str_getcsv($line, $separator);
+            $get = fn($field) => isset($columns[$field]) ? trim((string) ($cells[$columns[$field]] ?? '')) : '';
+            $date = $get('date');
+            if (preg_match('/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})$/', $date, $m)) {
+                $date = sprintf('%04d-%02d-%02d', $m[3], $m[2], $m[1]);
+            }
+            $rows[] = ['name' => $get('name'), 'email' => $get('email'), 'iban' => $get('iban'), 'date' => $date, 'reference' => $get('reference')];
+        }
+        return $rows;
     }
     private function commands(): void
     {
@@ -696,7 +907,7 @@ final class Admin
     }
     private function subscriptions(): void
     {
-        $this->help(__('Mollie voert deze vaste incassoafspraken uit. Stoppen beëindigt toekomstige termijnen; een incasso die al is ingezonden moet afzonderlijk worden behandeld.', 'mollie-incasso'));
+        $this->help(__('Mollie voert deze vaste incassoafspraken elke periode automatisch uit. Losse incasso’s staan hier niet en lopen nooit vanzelf: die start u zelf bij Klanten of met een incasso-run. Stoppen beëindigt toekomstige termijnen; een incasso die al is ingezonden moet afzonderlijk worden behandeld.', 'mollie-incasso'));
         echo '<div class="mi-scroll"><table class="widefat striped"><thead><tr>';
         foreach (['Abonnement', 'Klant', 'Bedrag / frequentie', 'Start / volgende datum', 'Status', 'Acties'] as $h) {
             echo '<th>' . esc_html__($h, 'mollie-incasso') . '</th>';
@@ -827,30 +1038,61 @@ final class Admin
         $active = count(array_filter($schemes, fn($row) => (int) $row['active'] === 1));
         $this->section(__('Regelingen', 'mollie-incasso'), sprintf(__('Actief: %d', 'mollie-incasso'), $active), $active === 0, $active === 0 ? 'attention' : '');
         $this->help(__('Een regeling beschrijft waarvoor, hoeveel en wanneer een klant toestemming geeft. De naam is zichtbaar in het aanmeldformulier. Gebruik een nieuwe versie als de afspraken veranderen.', 'mollie-incasso'));
-        echo '<div class="mi-scroll" id="mi-regelingen"><table class="widefat striped"><thead><tr><th>' . esc_html__('Naam / versie', 'mollie-incasso') . '</th><th>' . esc_html__('Bedrag / type', 'mollie-incasso') . '</th><th>Shortcode</th></tr></thead><tbody>';
+        if (isset($_GET['mi_plan'])) {
+            $this->help($_GET['mi_plan'] === 'archived' ? __('De regeling is in gebruik en daarom gearchiveerd: nieuwe aanmeldingen zijn niet meer mogelijk, bestaande afspraken blijven werken.', 'mollie-incasso') : __('De regeling is verwijderd.', 'mollie-incasso'));
+        }
+        echo '<div class="mi-scroll" id="mi-regelingen"><table class="widefat striped"><thead><tr><th>' . esc_html__('Naam / versie', 'mollie-incasso') . '</th><th>' . esc_html__('Bedrag / type', 'mollie-incasso') . '</th><th>Shortcode</th><th>' . esc_html__('Acties', 'mollie-incasso') . '</th></tr></thead><tbody>';
         foreach ($schemes as $row) {
             $data = json_decode($row['data'], true);
-            echo '<tr><td>' . esc_html($data['name'] . ' v' . $row['version'] . ($row['active'] ? '' : ' — ' . __('archief', 'mollie-incasso'))) . '</td><td>' . esc_html(Money::eur($data['amount']) . ' / ' . Plugin::kind($data['type'])) . '</td><td><code>' . esc_html('[mollie_incasso regeling="' . $row['id'] . '"]') . '</code></td></tr>';
+            echo '<tr><td>' . esc_html($data['name'] . ' v' . $row['version'] . ($row['active'] ? '' : ' — ' . __('archief', 'mollie-incasso'))) . '</td><td>' . esc_html(Money::eur($data['amount']) . ' / ' . Plugin::kind($data['type'])) . '</td><td><code>' . esc_html('[mollie_incasso regeling="' . $row['id'] . '"]') . '</code></td><td>';
+            if ($row['active']) {
+                echo '<a class="button" href="' . esc_url($this->url('settings', ['edit_plan' => $row['id']]) . '#mi-plan-form') . '">' . esc_html__('Bewerken', 'mollie-incasso') . '</a> ';
+                $this->quick('remove_plan', (int) $row['id'], 'Verwijderen');
+            } elseif (!array_filter($schemes, fn($other) => $other['slug'] === $row['slug'] && (int) $other['active'] === 1)) {
+                $this->quick('restore_plan', (int) $row['id'], 'Weer activeren');
+            }
+            echo '</td></tr>';
         }
         echo '</tbody></table></div>';
-        echo '<details class="mi-subsection"' . ($active === 0 ? ' open' : '') . '><summary>' . esc_html__('Nieuwe regeling of nieuwe versie toevoegen', 'mollie-incasso') . '</summary><p>' . esc_html__('Bestaande toestemming blijft aan de geaccepteerde versie gekoppeld. De voorbeeldteksten zijn een startpunt en moeten voor uw organisatie worden beoordeeld.', 'mollie-incasso') . '</p>';
+        $editRow = null;
+        foreach ($schemes as $row) {
+            if ((int) $row['id'] === (int) ($_GET['edit_plan'] ?? 0) && $row['active']) {
+                $editRow = $row;
+            }
+        }
+        $edit = $editRow ? json_decode($editRow['data'], true) : null;
+        $money = fn($cents) => $cents === null || $cents === '' ? '' : number_format((int) $cents / 100, 2, '.', '');
+        echo '<details class="mi-subsection" id="mi-plan-form"' . ($active === 0 || $edit ? ' open' : '') . '><summary>' . esc_html($edit ? sprintf(__('Regeling bewerken: %1$s (wordt versie %2$d)', 'mollie-incasso'), $edit['name'], (int) $editRow['version'] + 1) : __('Nieuwe regeling of nieuwe versie toevoegen', 'mollie-incasso')) . '</summary>' . ($edit ? '<p>' . esc_html__('Bestaande klanten houden de versie die zij hebben geaccepteerd. Nieuwe aanmeldingen, shortcodes en webshopproducten gebruiken na opslaan de nieuwe versie.', 'mollie-incasso') . '</p>' : '') . '<p>' . esc_html__('Bestaande toestemming blijft aan de geaccepteerde versie gekoppeld. De voorbeeldteksten zijn een startpunt en moeten voor uw organisatie worden beoordeeld.', 'mollie-incasso') . '</p>';
         $this->start('scheme');
-        echo '<label>' . esc_html__('Type', 'mollie-incasso') . '<select name="type"><option value="manual">' . esc_html__('Losse incasso’s', 'mollie-incasso') . '</option><option value="fixed">' . esc_html__('Vast abonnement', 'mollie-incasso') . '</option></select></label>';
-        foreach (['slug' => ['Vaste regelingscode (dezelfde code maakt een nieuwe versie)', ''], 'name' => ['Naam', 'Lidmaatschap'], 'purpose' => ['Doel', 'Betaling voor het afgesproken lidmaatschap.'], 'amount' => ['Vast bedrag of maximaal bedrag bij losse incasso', '10.00'], 'calculation' => ['Bedrag / berekeningswijze', 'Het vooraf aangekondigde bedrag volgens onze overeenkomst.'], 'frequency' => ['Frequentie of aanleiding', 'Maandelijks, of uitsluitend na een afzonderlijke aankondiging conform de gekozen regeling.'], 'withdrawal' => ['Hoe toestemming kan worden ingetrokken', 'Via uw persoonlijke statuslink of door contact met ons op te nemen.'], 'consent' => ['Expliciete toestemmingstekst', 'Ik geef deze organisatie toestemming om de hiervoor beschreven bedragen via SEPA Direct Debit van mijn rekening te incasseren.'], 'notice_days' => ['Vooraankondiging in kalenderdagen', '14'], 'times' => ['Maximum aantal betalingen (optioneel, maximaal 10000)', '']] as $key => [$label, $default]) {
+        if ($edit) {
+            echo '<input type="hidden" name="edit_of" value="' . (int) $editRow['id'] . '">';
+        }
+        $editType = $edit['type'] ?? 'manual';
+        echo '<label>' . esc_html__('Type', 'mollie-incasso') . '<select name="type"><option value="manual"' . selected($editType, 'manual', false) . '>' . esc_html__('Losse incasso’s', 'mollie-incasso') . '</option><option value="fixed"' . selected($editType, 'fixed', false) . '>' . esc_html__('Vast abonnement', 'mollie-incasso') . '</option></select></label>';
+        foreach (['slug' => ['Vaste regelingscode (dezelfde code maakt een nieuwe versie)', ''], 'name' => ['Naam', 'Lidmaatschap'], 'purpose' => ['Doel', 'Betaling voor het afgesproken lidmaatschap.'], 'amount' => ['Vast bedrag of maximaal bedrag bij losse incasso', '10.00'], 'default_amount' => ['Standaardbedrag per losse incasso (optioneel, vooraf ingevuld bij een incasso-run)', ''], 'calculation' => ['Bedrag / berekeningswijze', 'Het vooraf aangekondigde bedrag volgens onze overeenkomst.'], 'frequency' => ['Frequentie of aanleiding', 'Maandelijks, of uitsluitend na een afzonderlijke aankondiging conform de gekozen regeling.'], 'withdrawal' => ['Hoe toestemming kan worden ingetrokken', 'Via uw persoonlijke statuslink of door contact met ons op te nemen.'], 'consent' => ['Expliciete toestemmingstekst', 'Ik geef deze organisatie toestemming om de hiervoor beschreven bedragen via SEPA Direct Debit van mijn rekening te incasseren.'], 'notice_days' => ['Vooraankondiging in kalenderdagen', '14'], 'times' => ['Maximum aantal betalingen (optioneel, maximaal 10000)', '']] as $key => [$label, $default]) {
+            if ($edit) {
+                $default = match ($key) {
+                    'slug' => $editRow['slug'],
+                    'amount', 'default_amount' => $money($edit[$key] ?? null),
+                    'times' => (string) ($edit['times'] ?? ''),
+                    default => (string) ($edit[$key] ?? $default),
+                };
+            }
             $fixedOnly = in_array($key, ['frequency', 'times'], true);
-            echo '<label' . ($fixedOnly ? ' data-plan="fixed" hidden' : '') . '>' . esc_html__($label, 'mollie-incasso');
+            $planOnly = $fixedOnly ? 'fixed' : ($key === 'default_amount' ? 'manual' : '');
+            echo '<label' . ($planOnly ? ' data-plan="' . $planOnly . '"' . ($planOnly === 'fixed' ? ' hidden' : '') : '') . '>' . esc_html__($label, 'mollie-incasso');
             if (in_array($key, ['purpose', 'calculation', 'frequency', 'withdrawal', 'consent'], true)) {
-                echo '<textarea name="' . $key . '" rows="3"' . ($fixedOnly ? '' : ' required') . '>' . esc_textarea(__($default,'mollie-incasso')) . '</textarea>';
+                echo '<textarea name="' . $key . '" rows="3"' . ($fixedOnly ? '' : ' required') . '>' . esc_textarea($edit ? $default : __($default,'mollie-incasso')) . '</textarea>';
             } else {
-                echo '<input name="' . $key . '" value="' . esc_attr($default) . '" ' . (!in_array($key, ['slug', 'times'], true) ? 'required' : '') . '>';
+                echo '<input name="' . $key . '" value="' . esc_attr($default) . '" ' . (!in_array($key, ['slug', 'times', 'default_amount'], true) ? 'required' : '') . ($edit && $key === 'slug' ? ' readonly' : '') . '>';
             }
             echo '</label>';
         }
-        echo '<label data-plan="fixed" hidden><input type="checkbox" name="auto_start" value="1" checked> ' . esc_html__('Vast abonnement automatisch starten na verificatie en geldige machtiging (alleen bij vast bedrag).', 'mollie-incasso') . '</label>';
-        echo '<label data-plan="fixed" hidden>' . esc_html__('Vaste frequentie', 'mollie-incasso') . '<select name="interval"><option value="1 month">' . esc_html__('Maand', 'mollie-incasso') . '</option><option value="3 months">' . esc_html__('Kwartaal', 'mollie-incasso') . '</option><option value="12 months">' . esc_html__('Jaar', 'mollie-incasso') . '</option></select></label><label><input type="checkbox" name="notice_agreed" value="1">' . esc_html__('Een afwijkende vooraankondigingstermijn is expliciet met de klant afgesproken en opgenomen in deze regeling.', 'mollie-incasso') . '</label>';
+        echo '<label data-plan="fixed" hidden><input type="checkbox" name="auto_start" value="1"' . checked(!$edit || !empty($edit['auto_start']), true, false) . '> ' . esc_html__('Vast abonnement automatisch starten na verificatie en geldige machtiging (alleen bij vast bedrag).', 'mollie-incasso') . '</label>';
+        echo '<label data-plan="fixed" hidden>' . esc_html__('Vaste frequentie', 'mollie-incasso') . '<select name="interval"><option value="1 month"' . selected($edit['interval'] ?? '', '1 month', false) . '>' . esc_html__('Maand', 'mollie-incasso') . '</option><option value="3 months"' . selected($edit['interval'] ?? '', '3 months', false) . '>' . esc_html__('Kwartaal', 'mollie-incasso') . '</option><option value="12 months"' . selected($edit['interval'] ?? '', '12 months', false) . '>' . esc_html__('Jaar', 'mollie-incasso') . '</option></select></label><label><input type="checkbox" name="notice_agreed" value="1"' . checked(!empty($edit['notice_agreed']), true, false) . '>' . esc_html__('Een afwijkende vooraankondigingstermijn is expliciet met de klant afgesproken en opgenomen in deze regeling.', 'mollie-incasso') . '</label>';
         $this->end('Regeling opslaan', true);
         // Frequency, number of terms and automatic start only apply to a fixed subscription.
-        echo "<script>(function(){var t=document.querySelector('select[name=type]');if(!t)return;function sync(){t.form.querySelectorAll('[data-plan]').forEach(function(el){el.hidden=el.getAttribute('data-plan')!==t.value;});}t.addEventListener('change',sync);sync();})();</script>";
+        echo "<script>(function(){var t=document.querySelector('select[name=type]');if(!t)return;function sync(){t.form.querySelectorAll('[data-plan]').forEach(function(el){var off=el.getAttribute('data-plan')!==t.value;el.hidden=off;el.querySelectorAll('input,select,textarea').forEach(function(i){i.disabled=off;});});}t.addEventListener('change',sync);sync();})();</script>";
         echo '</details>';
         $this->sectionEnd();
     }

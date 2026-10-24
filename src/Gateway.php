@@ -12,6 +12,7 @@ interface Gateway
     public function payment(string $id): array;
     public function mandates(string $customer): array;
     public function mandate(string $customer, string $id): array;
+    public function createMandate(string $customer, array $payload, string $key): array;
     public function revoke(string $customer, string $id): void;
     public function createSubscription(string $customer, array $payload, string $key): array;
     public function subscription(string $customer, string $id): array;

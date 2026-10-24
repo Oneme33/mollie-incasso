@@ -170,7 +170,7 @@ final class Notifications
                 $text .= sprintf(__('Wij bieden op %1$s een incasso van %2$s aan voor: %3$s. De daadwerkelijke bankverwerking kan later plaatsvinden.', 'mollie-incasso'), self::date($data['date'] ?? ''), Money::eur((int) ($data['amount'] ?? 0)), $data['description'] ?? '');
             } elseif ($row['kind'] === 'consent') {
                 $consent = $this->store->select('SELECT consent_text,version FROM ' . $this->store->table('consents') . ' WHERE customer_id=%d AND mode=%s', [(int) $customer['id'], $mode]);
-                $text .= __('Uw eerste betaling is gecontroleerd en uw directdebit-mandaat is geldig.', 'mollie-incasso') . "\n\n" . ($consent[0]['consent_text'] ?? '');
+                $text .= (!empty($data['imported']) ? sprintf(__('Uw bestaande SEPA-machtiging van %s loopt voortaan via onze betaaldienst Mollie. U hoeft niets te doen: elke incasso kondigen wij vooraf aan, en via de link hieronder kunt u uw status bekijken of uw toestemming intrekken.', 'mollie-incasso'), self::date($data['imported'])) : __('Uw eerste betaling is gecontroleerd en uw directdebit-mandaat is geldig.', 'mollie-incasso')) . "\n\n" . ($consent[0]['consent_text'] ?? '');
             } elseif ($row['kind'] === 'subscription') {
                 $text .= sprintf(__('Abonnement: %1$s per %2$s, startdatum %3$s. De verificatiebetaling van € 0,01 is geen abonnementsperiode.', 'mollie-incasso'), Money::eur((int) $data['amount']), Plugin::interval($data['interval']), self::date($data['date']));
             } elseif ($row['kind'] === 'access') {

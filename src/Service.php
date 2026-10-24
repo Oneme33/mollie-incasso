@@ -60,6 +60,85 @@ final class Service
             return $this->firstPayment($customer, $mode);
         });
     }
+    /**
+     * Import an existing SEPA mandate the organisation already holds: creates the customer at Mollie and the mandate,
+     * without a verification payment. The IBAN goes to Mollie only; locally just the last four digits.
+     * Returns 'imported', 'exists' (same e-mail already on this plan) or throws.
+     */
+    public function importMandate(string $mode, int $schemeId, string $name, string $email, string $iban, string $signatureDate, string $mandateReference, int $userId): string
+    {
+        $this->config->assertRun($mode, true);
+        $name = sanitize_text_field($name);
+        $email = strtolower(sanitize_email($email));
+        $iban = strtoupper(preg_replace('/\s+/', '', $iban));
+        $mandateReference = trim(sanitize_text_field($mandateReference));
+        $signed = \DateTimeImmutable::createFromFormat('!Y-m-d', $signatureDate, new \DateTimeZone('Europe/Amsterdam'));
+        if ($name === '' || mb_strlen($name) > 190 || !is_email($email) || strlen($email) > 190) {
+            throw new Failure('import_invalid_customer');
+        }
+        if (!self::validIban($iban)) {
+            throw new Failure('import_invalid_iban');
+        }
+        if (!$signed || $signed->format('Y-m-d') !== $signatureDate || $signatureDate > wp_date('Y-m-d', null, new \DateTimeZone('Europe/Amsterdam'))) {
+            throw new Failure('import_invalid_date');
+        }
+        if (strlen($mandateReference) > 35 || $mandateReference !== '' && !preg_match('/^[A-Za-z0-9+?\/:().,\' -]+$/D', $mandateReference)) {
+            throw new Failure('import_invalid_reference');
+        }
+        $scheme = $this->schemes->get($schemeId, $mode);
+        if (!$this->config->settings()['organization'] || !$this->config->settings()['contact']) {
+            throw new Failure('organization_missing');
+        }
+        $this->methods($mode, $scheme['type'] === 'fixed' ? $scheme['amount'] : 1);
+        return $this->store->lock('import:' . $mode . ':' . $schemeId . ':' . $email, function () use ($mode, $scheme, $name, $email, $iban, $signatureDate, $mandateReference, $userId) {
+            $existing = $this->store->select('SELECT id,status FROM ' . $this->store->table('customers') . ' WHERE mode=%s AND email=%s AND scheme_id=%d ORDER BY id DESC LIMIT 1', [$mode, $email, (int) $scheme['id']]);
+            if ($existing && $existing[0]['status'] === 'active') {
+                return 'exists';
+            }
+            if ($existing) {
+                $id = (int) $existing[0]['id'];
+                $consent = $this->consent($this->customer($id, $mode));
+                if (empty($consent['import'])) {
+                    // A normal sign-up in progress for this address: leave it alone.
+                    throw new Failure('import_signup_in_progress');
+                }
+            } else {
+                $snapshot = $scheme + ['import' => ['signature_date' => $signatureDate, 'mandate_reference' => $mandateReference, 'account' => '•••• ' . substr($iban, -4), 'imported_at' => Store::now(), 'user' => $userId]];
+                $note = sprintf(__('Bestaande SEPA-machtiging, getekend op %1$s%2$s, overgezet naar Mollie door de organisatie.', 'mollie-incasso'), $signatureDate, $mandateReference !== '' ? ' (' . sprintf(__('kenmerk %s', 'mollie-incasso'), $mandateReference) . ')' : '');
+                $id = $this->store->transaction(function () use ($mode, $name, $email, $scheme, $snapshot, $note) {
+                    $id = $this->store->insert('customers', ['mode' => $mode, 'reference' => wp_generate_uuid4(), 'name' => $name, 'email' => $email, 'scheme_id' => $scheme['id'], 'created_at' => Store::now(), 'updated_at' => Store::now()]);
+                    $this->store->insert('consents', ['mode' => $mode, 'customer_id' => $id, 'scheme_id' => $scheme['id'], 'version' => (string) $scheme['version'], 'consent_text' => $this->schemes->disclosure($scheme) . "\n\n" . $note, 'snapshot' => wp_json_encode($snapshot), 'accepted_at' => Store::now()]);
+                    return $id;
+                });
+            }
+            $customer = $this->customer($id, $mode);
+            $customerCommand = $this->command($mode, 'customer:' . $customer['reference'], $id, 'customer', 0, ['name' => $customer['name'], 'email' => $customer['email'], 'locale' => 'nl_NL'], Store::now(), 'scheduled');
+            $this->execute((int) $customerCommand['id'], $mode);
+            $customer = $this->customer($id, $mode);
+            if (!$customer['remote_id']) {
+                throw new Failure('customer_creation_pending', true);
+            }
+            $payload = array_filter(['method' => 'directdebit', 'consumerName' => $name, 'consumerAccount' => $iban, 'signatureDate' => $signatureDate, 'mandateReference' => $mandateReference]);
+            $this->api($mode)->createMandate($customer['remote_id'], $payload, hash('sha256', 'import-mandate:' . $customer['reference'] . ':' . $iban));
+            $this->refreshMandate($id, $mode);
+            return 'imported';
+        });
+    }
+    public static function validIban(string $iban): bool
+    {
+        if (!preg_match('/^[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}$/D', $iban)) {
+            return false;
+        }
+        $digits = '';
+        foreach (str_split(substr($iban, 4) . substr($iban, 0, 4)) as $char) {
+            $digits .= ctype_alpha($char) ? (string) (ord($char) - 55) : $char;
+        }
+        $rest = 0;
+        foreach (str_split($digits, 7) as $part) {
+            $rest = (int) ($rest . $part) % 97;
+        }
+        return $rest === 1;
+    }
     private function firstPayment(array $customer, string $mode, string $redirect = ''): array
     {
         return $this->store->lock('customer:' . $mode . ':' . $customer['id'], function () use ($customer, $mode, $redirect) {
@@ -343,6 +422,7 @@ final class Service
                 throw $e;
             }
         }
+        try {
         $this->store->transaction(function () use ($kind, $remote, $command, $customer, $mode, $id) {
             if ($kind === 'customer') {
                 $this->store->update('customers', ['remote_id' => $remote['id'], 'updated_at' => Store::now()], (int) $customer['id'], $mode);
@@ -353,6 +433,11 @@ final class Service
             }
             $this->store->update('commands', ['state' => 'completed', 'remote_id' => $remote['id'], 'error' => '', 'error_detail' => '', 'updated_at' => Store::now()], $id, $mode);
         });
+        } catch (Failure $e) {
+            // The resource exists at Mollie but was not accepted here: block it visibly instead of leaving it processing.
+            $this->store->update('commands', ['state' => 'blocked', 'remote_id' => $remote['id'] ?? null, 'error' => $e->reason, 'error_detail' => mb_substr($e->detail, 0, 250), 'updated_at' => Store::now()], $id, $mode);
+            throw $e;
+        }
         if ($kind === 'first') {
             $this->queue->put($mode, 'payment', 'payment:' . $remote['id'], ['id' => $remote['id']]);
         }
@@ -364,8 +449,10 @@ final class Service
         if (in_array($customer['status'], ['revoking', 'revoked', 'stop_pending'], true)) {
             throw new Failure('consent_withdrawn');
         }
+        // Proof of the customer's account: the paid verification payment, or an existing mandate the organisation imported.
+        $imported = !empty($this->consent($customer)['import']);
         $first = $this->store->select('SELECT * FROM ' . $this->store->table('payments') . ' WHERE customer_id=%d AND mode=%s AND kind="first" ORDER BY id DESC LIMIT 1', [$id, $mode]);
-        if (!$first || $first[0]['status'] !== 'paid' || (int) $first[0]['amount'] !== 1 || (int) $first[0]['refunded'] || (int) $first[0]['charged_back']) {
+        if (!$imported && (!$first || $first[0]['status'] !== 'paid' || (int) $first[0]['amount'] !== 1 || (int) $first[0]['refunded'] || (int) $first[0]['charged_back'])) {
             throw new Failure('first_payment_not_paid');
         }
         $api = $this->api($mode);
@@ -388,7 +475,7 @@ final class Service
             throw new Failure('mandate_not_valid', true);
         }
         $this->store->update('customers', ['status' => 'active', 'mandate_id' => $valid['remote_id'], 'updated_at' => Store::now()], $id, $mode);
-        $this->mail->schedule($mode, $id, 'consent', 'consent:' . $id);
+        $this->mail->schedule($mode, $id, 'consent', 'consent:' . $id, $imported ? ['imported' => $this->consent($customer)['import']['signature_date']] : []);
         // Follow-up work only while it is still outstanding, not on every periodic mandate check.
         if (!empty($this->consent($customer)['auto_start'])) {
             $auto = $this->store->find('commands', 'reference', $this->autoReference($customer), $mode);
@@ -404,19 +491,21 @@ final class Service
     private function validatePayment(array $customer, ?array $command, array $p, ?array $subscription): void
     {
         $mode = $customer['mode'];
+        // What Mollie returned, without personal data, so a rejected payment is explainable in the admin.
+        $seen = sprintf('mode=%s, sequenceType=%s, method=%s, currency=%s, status=%s', $p['mode'] ?? '-', $p['sequenceType'] ?? '-', $p['method'] ?? '-', $p['amount']['currency'] ?? '-', $p['status'] ?? '-');
         if (($p['mode'] ?? '') !== $mode || ($p['customerId'] ?? '') !== $customer['remote_id'] || ($p['amount']['currency'] ?? '') !== 'EUR') {
-            throw new Failure('payment_mismatch');
+            throw new Failure('payment_mismatch', false, false, $seen . (($p['customerId'] ?? '') !== $customer['remote_id'] ? ', customer differs' : ''));
         }
         $expected = $command ? (int) $command['amount'] : (int) $subscription['amount'];
         if (Money::cents((string) $p['amount']['value']) !== $expected) {
-            throw new Failure('payment_amount_mismatch');
+            throw new Failure('payment_amount_mismatch', false, false, $seen . ', amount=' . ($p['amount']['value'] ?? '-'));
         }
         $first = $command && $command['kind'] === 'first';
         if (($p['sequenceType'] ?? '') !== ($first ? 'first' : 'recurring') || ($p['method'] ?? '') !== ($first ? 'ideal' : 'directdebit')) {
-            throw new Failure('payment_method_mismatch');
+            throw new Failure('payment_method_mismatch', false, false, $seen);
         }
         if ($command && (($p['metadata']['mi_command'] ?? '') !== $command['reference'] || ($p['metadata']['mi_instance'] ?? '') !== (string) get_option('mi_instance'))) {
-            throw new Failure('payment_reference_mismatch');
+            throw new Failure('payment_reference_mismatch', false, false, $seen . ', metadata does not match this website');
         }
         if ($subscription && ($p['subscriptionId'] ?? '') !== $subscription['remote_id']) {
             throw new Failure('subscription_mismatch');
@@ -430,8 +519,13 @@ final class Service
         $checkout = $p['checkout'] ?? '';
         if ($checkout) {
             $host = wp_parse_url($checkout, PHP_URL_HOST);
-            if (!str_starts_with($checkout, 'https://') || $host !== 'mollie.com' && !str_ends_with((string) $host, '.mollie.com')) {
-                throw new Failure('invalid_checkout_url');
+            // Customers are only sent to Mollie or, for iDEAL in live mode, straight to the official iDEAL payment pages.
+            $allowed = false;
+            foreach (['mollie.com', 'ideal.nl'] as $domain) {
+                $allowed = $allowed || $host === $domain || str_ends_with((string) $host, '.' . $domain);
+            }
+            if (!str_starts_with($checkout, 'https://') || !$allowed) {
+                throw new Failure('invalid_checkout_url', false, false, 'host=' . sanitize_text_field((string) $host));
             }
         }
         $data = ['mode' => $mode, 'remote_id' => $p['id'], 'customer_id' => (int) $customer['id'], 'command_id' => $command ? (int) $command['id'] : null, 'subscription_id' => $subscription['remote_id'] ?? null, 'kind' => $command ? $command['kind'] === 'first' ? 'first' : 'manual' : 'subscription', 'amount' => Money::cents((string) $p['amount']['value']), 'status' => sanitize_key($p['status']), 'refunded' => !empty($p['amountRefunded']['value']) ? Money::cents($p['amountRefunded']['value'], true) : 0, 'charged_back' => !empty($p['amountChargedBack']['value']) ? Money::cents($p['amountChargedBack']['value'], true) : 0, 'failure' => sanitize_text_field($p['failure'] ?? ''), 'checkout_url' => $checkout ?: null, 'created_at' => $existing['created_at'] ?? Store::now(), 'checked_at' => Store::now()];

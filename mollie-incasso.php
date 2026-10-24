@@ -3,7 +3,7 @@
 /**
  * Plugin Name: Mollie Incasso
  * Description: Toestemming, losse SEPA-incasso’s en vaste Mollie-abonnementen zonder WooCommerce.
- * Version: 1.0.1
+ * Version: 1.0.2
  * Requires at least: 6.5
  * Requires PHP: 8.2
  * Text Domain: mollie-incasso
@@ -13,7 +13,7 @@
 if (!defined('ABSPATH')) {
     exit;
 }
-define('MOLLIE_INCASSO_VERSION', '1.0.1');
+define('MOLLIE_INCASSO_VERSION', '1.0.2');
 define('MOLLIE_INCASSO_FILE', __FILE__);
 spl_autoload_register(static function ($class) {
     $prefix = 'Lukraak\MollieIncasso\\';

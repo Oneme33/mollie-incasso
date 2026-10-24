@@ -34,6 +34,11 @@ final class WooCommerceGateway extends \WC_Payment_Gateway
             $hash=$_POST['mi_disclosure_hash']??'';
             if(!is_string($hash)||!preg_match('/^[a-f0-9]{64}$/D',$hash))throw new Failure('scheme_changed');
             return WooCommerceBridge::instance()->checkout((int)$order_id,($_POST['mi_consent']??'')==='1',$hash);
-        }catch(Failure $e){wc_add_notice(Plugin::message($e->reason),'error');return ['result'=>'failure','message'=>Plugin::message($e->reason)];}
+        }catch(Failure $e){
+            // Keep the reason with the order, so the shop owner can see why the sign-up stopped.
+            $order=wc_get_order($order_id);
+            if($order){$order->add_order_note(sprintf(__('Mollie Incasso: aanmelding gestopt (%1$s). %2$s','mollie-incasso'),sanitize_key($e->reason),$e->detail));}
+            wc_add_notice(Plugin::message($e->reason),'error');return ['result'=>'failure','message'=>Plugin::message($e->reason)];
+        }
     }
 }

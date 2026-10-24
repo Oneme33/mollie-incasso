@@ -9,6 +9,7 @@ final class FakeGateway implements Gateway
     public bool $timeout = false, $cancelFails = false, $revokeFails = false, $hideFind = false, $readFails = false, $rejectSubscription = false, $methodsMissing = false;
     public ?\Closure $duringPreflight = null;
     public ?\Closure $duringCreate = null;
+    public array $alterCreated = [];
     public function methods(string $sequence, int $cents = 1): array
     {
         if ($this->methodsMissing) {
@@ -55,6 +56,10 @@ final class FakeGateway implements Gateway
         if ($kind === 'payment' && $body['sequenceType'] === 'first') {
             $row['checkout'] = 'https://www.mollie.com/checkout/' . $id;
         }
+        if ($kind === 'payment' && $this->alterCreated) {
+            $row = array_replace($row, $this->alterCreated);
+            $this->alterCreated = [];
+        }
         if ($kind === 'subscription') {
             $row['nextPaymentDate'] = $body['startDate'];
             $this->subs[$id] = $row;
@@ -95,6 +100,22 @@ final class FakeGateway implements Gateway
             throw new Failure('resource_not_found');
         }
         return $this->mandateRows[$id];
+    }
+    public bool $mandateRejected = false;
+    public function createMandate(string $customer, array $payload, string $key): array
+    {
+        $this->calls['mandate'] = ($this->calls['mandate'] ?? 0) + 1;
+        if ($this->mandateRejected) {
+            throw new Failure('mollie_rejected', false, false, 'Unprocessable Entity: The consumer account is invalid.');
+        }
+        if (isset($this->keys[$key])) {
+            return $this->keys[$key]['resource'];
+        }
+        $id = 'mdt_import' . count($this->mandateRows);
+        $row = ['id' => $id, 'status' => 'valid', 'method' => 'directdebit', 'customerId' => $customer, 'masked' => '•••• ' . substr($payload['consumerAccount'], -4), 'payload' => $payload];
+        $this->mandateRows[$id] = $row;
+        $this->keys[$key] = ['hash' => '', 'resource' => $row];
+        return $row;
     }
     public function revoke(string $customer, string $id): void
     {

@@ -45,7 +45,9 @@ try{
  ok((int)$product->get_meta('_mi_scheme_test')===$schemeId,'product linked to exact scheme and mode');
  $second=$input;$second['name']='GCC jaarabonnement';$second['interval']='12 months';$second['amount']='200.00';$secondId=$schemes->save($second,'test');FixtureOptions::scope('mi_woo_product_test_'.$secondId,0);$pid2=$bridge->createProduct($secondId);$products[]=$pid2;
  ok($pid2!==$pid && $schemes->get($schemeId,'test')['amount']===2000,'multiple plans have independent products and preserve existing plan');
- $manual=$input;$manual['type']='manual';$manualId=$schemes->save($manual,'test');deny(fn()=>$bridge->createProduct($manualId),'woo_scheme_automatic');
+ $manual=$input;$manual['type']='manual';$manual['name']='Losse incasso via webshop';$manualId=$schemes->save($manual,'test');FixtureOptions::scope('mi_woo_product_test_'.$manualId,0);$manualPid=$bridge->createProduct($manualId);$products[]=$manualPid;$manualProduct=wc_get_product($manualPid);
+ ok($bridge->productScheme($manualProduct)['type']==='manual'&&str_contains($bridge->priceHtml('',$manualProduct),'Machtiging'),'a plan for one-off direct debits can be a sign-up product, shown as a mandate without a period');
+ $noAuto=$input;$noAuto['auto_start']='';$noAuto['name']='Vast zonder automatisch';$noAutoId=$schemes->save($noAuto,'test');deny(fn()=>$bridge->createProduct($noAutoId),'woo_scheme_automatic');
  $product->set_status('publish');$product->save();
  WC()->cart->empty_cart();$cartKey=WC()->cart->add_to_cart($pid);ok((bool)$cartKey,'virtual subscription added to real WooCommerce cart');WC()->cart->calculate_totals();
  ok($bridge->cartScheme()['id']===$schemeId && abs((float)WC()->cart->get_total('edit')-.01)<.00001,'cart uses verification cent and server-side plan');
@@ -147,10 +149,24 @@ try{
  $newPlan=$method->invoke($admin,$_POST,'test');ok($newPlan===$method->invoke($admin,$_POST,'test')&&$schemes->get($newPlan,'test')['auto_start'],'wizard repeated submit creates one automatic plan');
  $manualRef=wp_generate_uuid4();FixtureOptions::scope('mi_wizard_plan_test_'.$manualRef,[]);$_POST=['plan_type'=>'manual','plan_reference'=>$manualRef,'name'=>'Losse levering','amount'=>'75.00','purpose'=>'Geleverde producten','withdrawal'=>'Via statuslink','consent'=>'Ik ga akkoord met losse incassos.'];
  $manualPlan=$schemes->get($method->invoke($admin,$_POST,'test'),'test');ok($manualPlan['type']==='manual'&&$manualPlan['amount']===7500&&empty($manualPlan['auto_start'])&&$manualPlan['frequency']===''&&!str_contains($schemes->disclosure($manualPlan),'Frequentie'),'wizard creates a plan for one-off direct debits up to a maximum, without a frequency');
+ $_POST['plan_reference']=wp_generate_uuid4();$_POST['notice_days']='1';$_POST['default_amount']='54.00';FixtureOptions::scope('mi_wizard_plan_test_'.$_POST['plan_reference'],[]);try{$method->invoke($admin,$_POST,'test');ok(false,'short notice without agreement refused');}catch(Lukraak\MollieIncasso\Failure $e){ok($e->reason==='notice_agreement_required','short notice without agreement refused');}
+ $_POST['notice_agreed']='1';$shortPlan=$schemes->get($method->invoke($admin,$_POST,'test'),'test');ok($shortPlan['notice_days']===1&&$shortPlan['default_amount']===5400,'wizard sets a one-day pre-notification when agreed, and a default amount');
+ unset($_POST['notice_agreed'],$_POST['notice_days'],$_POST['default_amount']);
  $_POST['consent']='';$_POST['plan_reference']=wp_generate_uuid4();try{$method->invoke($admin,$_POST,'test');ok(false,'one-off plan without consent text refused');}catch(Lukraak\MollieIncasso\Failure $e){ok($e->reason==='invalid_scheme','one-off plan without consent text refused');}
  ok($schemes->get($schemeId,'test')['amount']===2000&&$schemes->get($secondId,'test')['amount']===20000,'adding plan leaves existing monthly and yearly plans intact');
  WC()->cart->empty_cart();ok(!isset($bridge->availableGateways(['mollie_incasso'=>$gateway,'other'=>(object)[]])['mollie_incasso']),'gateway hidden on ordinary carts');
  $hpos=Automattic\WooCommerce\Utilities\OrderUtil::custom_orders_table_usage_is_enabled();ok($hpos===(getenv('MI_WOO_HPOS')==='1'),'requested WooCommerce storage mode actually used');
+ // One-off plan via the webshop: verification and mandate only, never an automatic subscription.
+ $subsBefore=count($api->subs);$manualOrder=orderFor($manualProduct);$manualHash=hash('sha256',$schemes->disclosure($schemes->get($manualId,'test')));$bridge->checkout($manualOrder->get_id(),true,$manualHash);
+ $manualReceipt=$store->select('SELECT * FROM '.$store->table('checkouts').' WHERE order_id=%d',[$manualOrder->get_id()])[0];$manualCustomer=$service->customer((int)$manualReceipt['customer_id'],'test');$manualPayment=$store->select('SELECT * FROM '.$store->table('payments').' WHERE customer_id=%d',[(int)$manualCustomer['id']])[0];
+ $api->payments[$manualPayment['remote_id']]['status']='paid';$service->syncPayment($manualPayment['remote_id'],'test');$api->mandateRows['mdt_manual_shop']=['id'=>'mdt_manual_shop','customerId'=>$manualCustomer['remote_id'],'status'=>'valid','method'=>'directdebit','masked'=>'•••• 9999'];$service->refreshMandate((int)$manualCustomer['id'],'test');
+ ok($service->customer((int)$manualCustomer['id'],'test')['status']==='active'&&count($api->subs)===$subsBefore&&!$store->select('SELECT id FROM '.$store->table('jobs').' WHERE dedup=%s',['auto-subscription:'.$manualCustomer['id']]),'a webshop sign-up for one-off debits gives an active mandate and never starts a subscription');
+ // Editing a plan moves its products to the new version, so re-saving a product never unlinks it.
+ $_POST=array_replace($manual,['amount'=>'250.00','edit_of'=>(string)$manualId]);
+ $slugRow=$store->one('schemes',$manualId,'test');$_POST['slug']=$slugRow['slug'];
+ $editedId=$schemes->save($_POST,'test');Lukraak\MollieIncasso\WooCommerceBridge::relinkProducts([$manualId],$editedId,'test');clean_post_cache($manualPid);
+ ok((int)get_post_meta($manualPid,'_mi_scheme_test',true)===$editedId&&$bridge->productScheme(wc_get_product($manualPid))['amount']===25000,'editing a plan relinks its webshop product to the new version');
+ $_POST=[];
  echo 'RESULT '.$checks.' WooCommerce checks passed; storage='.($hpos?'HPOS':'posts').'; no Mollie network requests or delivered mail.'."\n";
 }finally{
  WC()->cart->empty_cart();foreach($orders as$id){$order=wc_get_order($id);if($order)$order->delete(true);}foreach($products as$id){$product=wc_get_product($id);if($product)$product->delete(true);else wp_delete_post($id,true);}

@@ -43,14 +43,29 @@ final class WooCommerceBridge
     }
     public function plugin(): Plugin { return $this->plugin; }
     public function mode(): string { return $this->plugin->config->mode(); }
+    /** A product signs customers up for a fixed subscription that starts automatically, or for one-off direct debits (mandate only). */
+    public static function linkable(array $scheme): bool
+    {
+        return ($scheme['type'] ?? '') === 'manual' || ($scheme['type'] ?? '') === 'fixed' && !empty($scheme['auto_start']);
+    }
+    /** After a plan edit: point products from older versions to the new version, so saving a product never unlinks it. */
+    public static function relinkProducts(array $oldIds, int $newId, string $mode): void
+    {
+        if (!$oldIds || !post_type_exists('product')) {
+            return;
+        }
+        foreach (get_posts(['post_type' => 'product', 'post_status' => 'any', 'numberposts' => -1, 'fields' => 'ids', 'meta_query' => [['key' => '_mi_scheme_' . $mode, 'value' => array_map('strval', $oldIds), 'compare' => 'IN']]]) as $productId) {
+            update_post_meta($productId, '_mi_scheme_' . $mode, $newId);
+        }
+    }
     public function isProduct(object $product): bool { return (int)$product->get_meta('_mi_scheme_test',true)>0 || (int)$product->get_meta('_mi_scheme_live',true)>0; }
     public function productScheme(object $product): array
     {
         if (!$product->is_type('simple') || !$product->is_virtual()) throw new Failure('woo_product_invalid');
         $id=(int)$product->get_meta('_mi_scheme_'.$this->mode(),true);
         if (!$id) throw new Failure('woo_product_mode');
-        $scheme=$this->plugin->schemes->get($id,$this->mode());
-        if ($scheme['type']!=='fixed' || empty($scheme['auto_start'])) throw new Failure('woo_scheme_automatic');
+        $scheme=$this->plugin->schemes->current($id,$this->mode());
+        if(!self::linkable($scheme))throw new Failure('woo_scheme_automatic');
         return $scheme;
     }
     public function hasCartProduct(): bool
@@ -111,6 +126,7 @@ final class WooCommerceBridge
         if (!$this->isProduct($product)) return $html;
         try { $scheme=$this->productScheme($product); }
         catch(Failure $e) { return esc_html__('Aanmelding niet beschikbaar in deze betaalmodus.','mollie-incasso'); }
+        if($scheme['type']==='manual')return esc_html(sprintf(__('Machtiging voor losse incasso’s, maximaal %s per incasso','mollie-incasso'),Money::eur((int)$scheme['amount']))).'<small style="display:block">'.esc_html__('Eenmalig € 0,01 ter verificatie. Daarna betaalt u alleen na een vooraankondiging.','mollie-incasso').'</small>';
         return esc_html(Money::eur((int)$scheme['amount']).' / '.Plugin::interval($scheme['interval'])).'<small style="display:block">'.esc_html__('Eenmalig € 0,01 ter verificatie; dit is geen abonnementsperiode.','mollie-incasso').'</small>';
     }
     public function checkout(int $orderId,bool $accepted,string $disclosureHash): array
@@ -258,7 +274,7 @@ final class WooCommerceBridge
     {
         if (!current_user_can('manage_options') || !current_user_can('edit_products')) throw new Failure('access_denied');
         $scheme=$this->plugin->schemes->get($schemeId,$this->mode());
-        if($scheme['type']!=='fixed' || empty($scheme['auto_start']))throw new Failure('woo_scheme_automatic');
+        if(!self::linkable($scheme))throw new Failure('woo_scheme_automatic');
         return $this->plugin->store->lock('woo-product:'.$this->mode().':'.$schemeId,function()use($scheme,$schemeId){
             $option='mi_woo_product_'.$this->mode().'_'.$schemeId;$existing=(int)get_option($option);
             if($existing && ($product=wc_get_product($existing)) && $product->get_status()!=='trash')return $existing;
@@ -271,11 +287,11 @@ final class WooCommerceBridge
     {
         if(!current_user_can('manage_options'))return;
         echo '<div class="options_group"><p class="form-field">'.esc_html__('Optionele incassoaanmelding: gebruik een eenvoudig virtueel product. Het afrekenbedrag is € 0,01; vervolgbetalingen lopen via Mollie Incasso.','mollie-incasso').'</p>';
-        foreach(['test','live']as$mode){$options=[''=>__('Niet gekoppeld','mollie-incasso')];foreach($this->plugin->store->rows('schemes',$mode,500)as$row){$data=json_decode($row['data'],true);if($row['active']&&$data['type']==='fixed'&&!empty($data['auto_start']))$options[$row['id']]=$data['name'];}woocommerce_wp_select(['id'=>'_mi_scheme_'.$mode,'label'=>sprintf(__('Incassoregeling (%s)','mollie-incasso'),$mode),'options'=>$options]);}echo '</div>';
+        foreach(['test','live']as$mode){$options=[''=>__('Niet gekoppeld','mollie-incasso')];foreach($this->plugin->store->rows('schemes',$mode,500)as$row){$data=json_decode($row['data'],true);if($row['active']&&self::linkable($data))$options[$row['id']]=Plugin::planLabel($data);}woocommerce_wp_select(['id'=>'_mi_scheme_'.$mode,'label'=>sprintf(__('Incassoregeling (%s)','mollie-incasso'),$mode),'options'=>$options]);}echo '</div>';
     }
     public function saveProduct(object $product): void
     {
         if(!current_user_can('manage_options'))return;
-        foreach(['test','live']as$mode){$raw=$_POST['_mi_scheme_'.$mode]??null;if($raw===null)continue;if(!is_scalar($raw))throw new Failure('scheme_unavailable');$id=absint($raw);if($id){$scheme=$this->plugin->schemes->get($id,$mode);if($scheme['type']!=='fixed'||empty($scheme['auto_start']))throw new Failure('woo_scheme_automatic');}$product->update_meta_data('_mi_scheme_'.$mode,$id);}
+        foreach(['test','live']as$mode){$raw=$_POST['_mi_scheme_'.$mode]??null;if($raw===null)continue;if(!is_scalar($raw))throw new Failure('scheme_unavailable');$id=absint($raw);if($id){$scheme=$this->plugin->schemes->get($id,$mode);if(!self::linkable($scheme))throw new Failure('woo_scheme_automatic');}$product->update_meta_data('_mi_scheme_'.$mode,$id);}
     }
 }
