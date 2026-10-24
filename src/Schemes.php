@@ -25,9 +25,18 @@ final class Schemes
         $data['auto_start'] = $type === 'fixed' && in_array($input['auto_start'] ?? null, ['1', 1, true], true);
         if($data['times']!==null&&!preg_match('/^[1-9][0-9]{0,4}$/D',trim((string)$input['times']))){throw new Failure('invalid_scheme');}
         // One-off direct debits have no frequency: each collection is announced separately.
+        // They can have a default amount, prefilled in the collection run; never above the maximum.
+        $data['default_amount'] = null;
         if ($type === 'manual') {
             $data['frequency'] = '';
             $data['times'] = null;
+            $default = trim((string) ($input['default_amount'] ?? ''));
+            if ($default !== '') {
+                $data['default_amount'] = Money::cents($default);
+                if ($data['default_amount'] > $data['amount']) {
+                    throw new Failure('default_above_maximum');
+                }
+            }
         }
         if (in_array('', array_intersect_key($data, array_flip(array_merge(['name', 'purpose', 'calculation', 'withdrawal', 'consent'], $type === 'fixed' ? ['frequency'] : []))), true) || $data['times'] !== null && ($data['times'] < 1 || $data['times'] > 10000)) {
             throw new Failure('invalid_scheme');

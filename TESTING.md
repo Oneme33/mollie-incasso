@@ -1,4 +1,4 @@
-# Testrapport — Mollie Incasso 1.0.1
+# Testrapport — Mollie Incasso 1.0.2
 
 Lokaal uitgevoerd op 13 en 14 oktober 2026: PHP 8.2.29, WordPress 6.8.1, bestaande Docker MySQL/InnoDB. Geen live geld, echte incasso of echte klantmail gebruikt. Dit rapport is geen productiecertificering.
 
@@ -124,3 +124,14 @@ Engelse vertaling (`en_US` en `en_GB`) toegevoegd, met een taalkeuze onder Inste
 Gevonden op geertruida.net: wie in de testfase de live-key invulde en tegelijk live koos, kreeg een weigering waarbij de key niet werd bewaard; Live activeren vroeg daarna om een key die er niet was. Opgelost: Opslaan bewaart de key altijd en houdt de huidige modus tot live is geactiveerd (met een duidelijke melding en het live-blok open), en Live activeren vraagt zelf om de live-key als die nog ontbreekt, zodat invullen, bevestigen en activeren één stap is.
 
 Installatiehulp: stap 3 biedt naast een vast abonnement nu ook een regeling voor **losse incasso's** (u start zelf elke incasso, tot een maximum per keer; Mollie incasseert via het mandaat). Een regeling voor losse incasso's heeft geen frequentie: die staat niet in de installatiehulp, niet in het regelingformulier (frequentie, aantal termijnen, automatisch starten en vaste periode verschijnen alleen bij een vast abonnement) en niet in de afspraaktekst voor de klant. Getest: de hulp maakt een losse regeling met maximumbedrag, zonder frequentie en zonder automatisch starten, en weigert er een zonder toestemmingstekst; een vast abonnement houdt zijn frequentie; in Chrome gecontroleerd dat de velden en voorbeeldteksten meewisselen met de gekozen soort. Lokaal: `integration.php` **175**, `sdk.php` **26**, `secrets.php` **23**, `woocommerce.php` **75 klassiek en 75 HPOS**.
+
+## 1.0.2: incasso-run, import van machtigingen, vooraankondiging en standaardbedrag
+
+Aanleiding: een vereniging die nu via de ING 10 à 15 leden incasseert (zonder vaste dag, tabel met naam, IBAN, bedrag, machtigingsdatum en omschrijving) en leden niet opnieuw wil laten aanmelden. Getest:
+- **Standaardbedrag** per regeling voor losse incasso's; hoger dan het maximum wordt geweigerd; een vast abonnement heeft er geen.
+- **Vooraankondiging** in de installatiehulp instelbaar (minimaal 1 dag); afwijkend van 14 dagen alleen met het vinkje dat het in de afspraak staat; een leeg veld blijft 14 dagen.
+- **Import**: IBAN-controlecijfers; CSV met Nederlandse kopjes, `;` en dag-maand-jaar wordt herkend; kolommen ontbreken wordt geweigerd; een geïmporteerde klant is actief met een Mollie-mandaat met IBAN, ondertekeningsdatum en kenmerk, zonder verificatiebetaling; het volledige IBAN staat nergens lokaal; welkomstmail met uitleg; dubbele import maakt geen tweede mandaat; ongeldig IBAN of datum in de toekomst wordt geweigerd; een door Mollie geweigerd mandaat maakt de klant nooit incasseerbaar en kan opnieuw; het echte SDK-verzoek voor een mandaat wordt met idempotency-key verstuurd en het rekeningnummer gemaskeerd.
+- **Incasso-run**: per klant een opdracht met vooraankondiging; een bedrag boven het maximum wordt per klant geweigerd en gemeld; hetzelfde formulier twee keer versturen plant niets dubbel; zonder aangevinkte klant geweigerd.
+- Pagina Abonnementen legt uit dat losse incasso's daar niet staan en nooit vanzelf lopen.
+
+Lokaal: `integration.php` **195**, `sdk.php` **27**, `secrets.php` **23**, `woocommerce.php` **77 klassiek en 77 HPOS**.

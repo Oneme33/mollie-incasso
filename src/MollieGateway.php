@@ -141,6 +141,14 @@ final class MollieGateway implements Gateway
     {
         return $this->call(fn() => $this->mandateData($this->client->mandates->getForId($customer, $id)));
     }
+    /** An existing SEPA mandate the organisation already holds (import); Mollie validates IBAN and dates. */
+    public function createMandate(string $customer, array $payload, string $key): array
+    {
+        return $this->call(function () use ($customer, $payload, $key) {
+            $this->client->setIdempotencyKey($key);
+            return $this->mandateData($this->client->mandates->createForId($customer, $payload));
+        }, true);
+    }
     public function revoke(string $customer, string $id): void
     {
         $this->call(fn() => $this->client->mandates->revokeForId($customer, $id), true);

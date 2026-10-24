@@ -96,6 +96,22 @@ final class FakeGateway implements Gateway
         }
         return $this->mandateRows[$id];
     }
+    public bool $mandateRejected = false;
+    public function createMandate(string $customer, array $payload, string $key): array
+    {
+        $this->calls['mandate'] = ($this->calls['mandate'] ?? 0) + 1;
+        if ($this->mandateRejected) {
+            throw new Failure('mollie_rejected', false, false, 'Unprocessable Entity: The consumer account is invalid.');
+        }
+        if (isset($this->keys[$key])) {
+            return $this->keys[$key]['resource'];
+        }
+        $id = 'mdt_import' . count($this->mandateRows);
+        $row = ['id' => $id, 'status' => 'valid', 'method' => 'directdebit', 'customerId' => $customer, 'masked' => '•••• ' . substr($payload['consumerAccount'], -4), 'payload' => $payload];
+        $this->mandateRows[$id] = $row;
+        $this->keys[$key] = ['hash' => '', 'resource' => $row];
+        return $row;
+    }
     public function revoke(string $customer, string $id): void
     {
         if ($this->revokeFails) {
