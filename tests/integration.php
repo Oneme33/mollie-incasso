@@ -7,6 +7,8 @@ require getenv('MI_WP_ROOT') ?: '/var/www/html/wp-load.php';
 require dirname(__DIR__) . '/mollie-incasso.php';
 require __DIR__ . '/FakeGateway.php';
 require __DIR__ . '/FixtureOptions.php';
+// The suite loads the plugin file directly, so the activation hook never ran: give administrators the plugin capability.
+get_role('administrator')?->add_cap('manage_mollie_incasso');
 use Lukraak\MollieIncasso\Tests\FixtureOptions;
 FixtureOptions::start();
 use Lukraak\MollieIncasso\{Plugin, Store, Config, Schemes, Tokens, Queue, Notifications, Service, Frontend, Failure, Privacy, Money};
