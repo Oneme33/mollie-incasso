@@ -2,8 +2,6 @@
 
 Zelfstandige WordPress-plugin voor één organisatie en één Mollie-profiel. Nederlandse, vertaalbare interface, werkt zelfstandig, met een optionele WooCommerce-checkout; geen WooCommerce Subscriptions of externe abonnementendienst nodig. Eerste iDEAL-betaling: **€ 0,01**, expliciet `sequenceType=first` bij een nieuwe, lokaal gekoppelde Mollie Customer. Alleen een betaald verificatieverzoek en een geldig `directdebit`-mandaat activeren toestemming. De eurocent blijft bij de organisatie, is geen abonnementsperiode en wordt niet stilzwijgend verrekend of terugbetaald.
 
-**Dit is een eerste testversie.** De lokale mocktests bewijzen niet dat uw profiel, hosting, bankverwerking of juridische afspraken geschikt zijn voor livegebruik. Er zijn tijdens ontwikkeling geen live betalingen of echte incasso’s uitgevoerd. De WooCommerce-route is wel online getest met een Mollie-testkey, echte webhooks en mail; zie TESTING.md voor wat daarmee is aangetoond en wat nog open staat.
-
 ## Vereisten en aannames
 
 - WordPress **6.5+**, PHP **8.2+**, extensies curl, json en openssl, MySQL 5.7+/MariaDB 10.5+ met InnoDB, utf8mb4 en named locks. PHP 8.2.29 en WordPress 6.8.1 zijn lokaal getest. Zip/Composer zijn alleen voor de build nodig.
