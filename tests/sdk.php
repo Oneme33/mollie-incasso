@@ -110,6 +110,7 @@ try {
         $other = new \Mollie\Api\MollieApiClient();
         expect(get_class($other) !== get_class($mock), 'unscoped Mollie SDK coexists in same process');
     }
+    echo "RESULT official SDK checks passed. Mock HTTP only, no Mollie network requests.\n";
 } finally {
     foreach ($options as $key => $value) {
         FixtureOptions::set($key, $value, false);

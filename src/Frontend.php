@@ -80,7 +80,7 @@ final class Frontend
                 $rows = $this->store->select('SELECT id FROM ' . $this->store->table('schemes') . ' WHERE mode=%s AND active=1 ORDER BY id DESC LIMIT 1', [$mode]);
                 $id = (int) ($rows[0]['id'] ?? 0);
             }
-            $scheme = $this->schemes->get($id, $mode);
+            $scheme = $this->schemes->current($id, $mode);
             if (empty($_COOKIE['mi_form']) && !headers_sent()) {
                 $this->cookie('mi_form', bin2hex(random_bytes(32)), DAY_IN_SECONDS);
             }

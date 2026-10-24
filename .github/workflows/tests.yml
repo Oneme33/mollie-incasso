@@ -74,12 +74,12 @@ jobs:
           wp eval 'if (!wc_get_container()->get(Automattic\WooCommerce\Internal\DataStores\Orders\DataSynchronizer::class)->check_orders_table_exists()) { fwrite(STDERR, "HPOS tables missing\n"); exit(1); } echo "HPOS tables present\n";' --path="$WP_PATH"
           wp plugin list --path="$WP_PATH" --fields=name,status,version
       - name: Integration
-        run: php tests/integration.php
+        run: sh tests/run.sh tests/integration.php
       - name: Official SDK
-        run: php tests/sdk.php
+        run: sh tests/run.sh tests/sdk.php
       - name: Secret storage
-        run: php tests/secrets.php
+        run: sh tests/run.sh tests/secrets.php
       - name: WooCommerce (posts storage)
-        run: php tests/woocommerce.php
+        run: sh tests/run.sh tests/woocommerce.php
       - name: WooCommerce (HPOS)
-        run: MI_WOO_HPOS=1 php tests/woocommerce.php
+        run: MI_WOO_HPOS=1 sh tests/run.sh tests/woocommerce.php

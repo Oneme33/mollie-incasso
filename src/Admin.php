@@ -91,6 +91,7 @@ final class Admin
         echo $operation === 'prepare' ? ' mi-command-form' : '';
         ?>"<?php
         echo $operation === 'import_mandates' ? ' enctype="multipart/form-data"' : '';
+        echo $operation === 'remove_plan' ? ' onsubmit="return confirm(\'' . esc_js(__('Deze regeling verwijderen? Is hij al in gebruik, dan wordt hij gearchiveerd en blijven bestaande afspraken werken.', 'mollie-incasso')) . '\')"' : '';
         ?>><input type="hidden" name="action" value="mi_admin"><input type="hidden" name="operation" value="<?php
         echo esc_attr($operation);
         ?>"><input type="hidden" name="id" value="<?php
@@ -121,7 +122,7 @@ final class Admin
         if ($mode !== $this->p->config->mode() || !wp_verify_nonce($this->field('mi_nonce', 128), 'mi_admin_' . $operation . '_' . $id . '_' . $mode)) {
             wp_die(esc_html(Plugin::message('csrf_failed')), '', 403);
         }
-        $view = str_starts_with($operation, 'setup_') ? 'setup' : (in_array($operation, ['settings', 'scheme', 'bind', 'activate_live', 'deactivate_live'], true) ? 'settings' : (in_array($operation, ['test_mail', 'wipe_test', 'diagnose', 'queue', 'recover', 'mail_retry', 'mail_sent'], true) ? 'diagnostics' : 'customers'));
+        $view = str_starts_with($operation, 'setup_') ? 'setup' : (in_array($operation, ['settings', 'scheme', 'remove_plan', 'restore_plan', 'bind', 'activate_live', 'deactivate_live'], true) ? 'settings' : (in_array($operation, ['test_mail', 'wipe_test', 'diagnose', 'queue', 'recover', 'mail_retry', 'mail_sent'], true) ? 'diagnostics' : 'customers'));
         if ($operation === 'run') {
             $view = 'run';
         }
@@ -138,7 +139,21 @@ final class Admin
                     if (!current_user_can('manage_options')) {
                         throw new Failure('access_denied');
                     }
-                    $this->p->schemes->save($_POST, $mode);
+                    $previous = (int) $this->field('edit_of', 12);
+                    $oldIds = $previous ? $this->p->schemes->versions($previous, $mode) : [];
+                    $newId = $this->p->schemes->save($_POST, $mode);
+                    WooCommerceBridge::relinkProducts(array_diff($oldIds, [$newId]), $newId, $mode);
+                    break;
+                case 'remove_plan':
+                case 'restore_plan':
+                    if (!current_user_can('manage_options')) {
+                        throw new Failure('access_denied');
+                    }
+                    if ($operation === 'restore_plan') {
+                        $this->p->schemes->restore($id, $mode);
+                    } else {
+                        $args = ['mi_saved' => 1, 'mi_plan' => $this->p->schemes->remove($id, $mode)];
+                    }
                     break;
                 case 'bind':
                     if (!current_user_can('manage_options')) {
@@ -1023,28 +1038,58 @@ final class Admin
         $active = count(array_filter($schemes, fn($row) => (int) $row['active'] === 1));
         $this->section(__('Regelingen', 'mollie-incasso'), sprintf(__('Actief: %d', 'mollie-incasso'), $active), $active === 0, $active === 0 ? 'attention' : '');
         $this->help(__('Een regeling beschrijft waarvoor, hoeveel en wanneer een klant toestemming geeft. De naam is zichtbaar in het aanmeldformulier. Gebruik een nieuwe versie als de afspraken veranderen.', 'mollie-incasso'));
-        echo '<div class="mi-scroll" id="mi-regelingen"><table class="widefat striped"><thead><tr><th>' . esc_html__('Naam / versie', 'mollie-incasso') . '</th><th>' . esc_html__('Bedrag / type', 'mollie-incasso') . '</th><th>Shortcode</th></tr></thead><tbody>';
+        if (isset($_GET['mi_plan'])) {
+            $this->help($_GET['mi_plan'] === 'archived' ? __('De regeling is in gebruik en daarom gearchiveerd: nieuwe aanmeldingen zijn niet meer mogelijk, bestaande afspraken blijven werken.', 'mollie-incasso') : __('De regeling is verwijderd.', 'mollie-incasso'));
+        }
+        echo '<div class="mi-scroll" id="mi-regelingen"><table class="widefat striped"><thead><tr><th>' . esc_html__('Naam / versie', 'mollie-incasso') . '</th><th>' . esc_html__('Bedrag / type', 'mollie-incasso') . '</th><th>Shortcode</th><th>' . esc_html__('Acties', 'mollie-incasso') . '</th></tr></thead><tbody>';
         foreach ($schemes as $row) {
             $data = json_decode($row['data'], true);
-            echo '<tr><td>' . esc_html($data['name'] . ' v' . $row['version'] . ($row['active'] ? '' : ' — ' . __('archief', 'mollie-incasso'))) . '</td><td>' . esc_html(Money::eur($data['amount']) . ' / ' . Plugin::kind($data['type'])) . '</td><td><code>' . esc_html('[mollie_incasso regeling="' . $row['id'] . '"]') . '</code></td></tr>';
+            echo '<tr><td>' . esc_html($data['name'] . ' v' . $row['version'] . ($row['active'] ? '' : ' — ' . __('archief', 'mollie-incasso'))) . '</td><td>' . esc_html(Money::eur($data['amount']) . ' / ' . Plugin::kind($data['type'])) . '</td><td><code>' . esc_html('[mollie_incasso regeling="' . $row['id'] . '"]') . '</code></td><td>';
+            if ($row['active']) {
+                echo '<a class="button" href="' . esc_url($this->url('settings', ['edit_plan' => $row['id']]) . '#mi-plan-form') . '">' . esc_html__('Bewerken', 'mollie-incasso') . '</a> ';
+                $this->quick('remove_plan', (int) $row['id'], 'Verwijderen');
+            } elseif (!array_filter($schemes, fn($other) => $other['slug'] === $row['slug'] && (int) $other['active'] === 1)) {
+                $this->quick('restore_plan', (int) $row['id'], 'Weer activeren');
+            }
+            echo '</td></tr>';
         }
         echo '</tbody></table></div>';
-        echo '<details class="mi-subsection"' . ($active === 0 ? ' open' : '') . '><summary>' . esc_html__('Nieuwe regeling of nieuwe versie toevoegen', 'mollie-incasso') . '</summary><p>' . esc_html__('Bestaande toestemming blijft aan de geaccepteerde versie gekoppeld. De voorbeeldteksten zijn een startpunt en moeten voor uw organisatie worden beoordeeld.', 'mollie-incasso') . '</p>';
+        $editRow = null;
+        foreach ($schemes as $row) {
+            if ((int) $row['id'] === (int) ($_GET['edit_plan'] ?? 0) && $row['active']) {
+                $editRow = $row;
+            }
+        }
+        $edit = $editRow ? json_decode($editRow['data'], true) : null;
+        $money = fn($cents) => $cents === null || $cents === '' ? '' : number_format((int) $cents / 100, 2, '.', '');
+        echo '<details class="mi-subsection" id="mi-plan-form"' . ($active === 0 || $edit ? ' open' : '') . '><summary>' . esc_html($edit ? sprintf(__('Regeling bewerken: %1$s (wordt versie %2$d)', 'mollie-incasso'), $edit['name'], (int) $editRow['version'] + 1) : __('Nieuwe regeling of nieuwe versie toevoegen', 'mollie-incasso')) . '</summary>' . ($edit ? '<p>' . esc_html__('Bestaande klanten houden de versie die zij hebben geaccepteerd. Nieuwe aanmeldingen, shortcodes en webshopproducten gebruiken na opslaan de nieuwe versie.', 'mollie-incasso') . '</p>' : '') . '<p>' . esc_html__('Bestaande toestemming blijft aan de geaccepteerde versie gekoppeld. De voorbeeldteksten zijn een startpunt en moeten voor uw organisatie worden beoordeeld.', 'mollie-incasso') . '</p>';
         $this->start('scheme');
-        echo '<label>' . esc_html__('Type', 'mollie-incasso') . '<select name="type"><option value="manual">' . esc_html__('Losse incasso’s', 'mollie-incasso') . '</option><option value="fixed">' . esc_html__('Vast abonnement', 'mollie-incasso') . '</option></select></label>';
+        if ($edit) {
+            echo '<input type="hidden" name="edit_of" value="' . (int) $editRow['id'] . '">';
+        }
+        $editType = $edit['type'] ?? 'manual';
+        echo '<label>' . esc_html__('Type', 'mollie-incasso') . '<select name="type"><option value="manual"' . selected($editType, 'manual', false) . '>' . esc_html__('Losse incasso’s', 'mollie-incasso') . '</option><option value="fixed"' . selected($editType, 'fixed', false) . '>' . esc_html__('Vast abonnement', 'mollie-incasso') . '</option></select></label>';
         foreach (['slug' => ['Vaste regelingscode (dezelfde code maakt een nieuwe versie)', ''], 'name' => ['Naam', 'Lidmaatschap'], 'purpose' => ['Doel', 'Betaling voor het afgesproken lidmaatschap.'], 'amount' => ['Vast bedrag of maximaal bedrag bij losse incasso', '10.00'], 'default_amount' => ['Standaardbedrag per losse incasso (optioneel, vooraf ingevuld bij een incasso-run)', ''], 'calculation' => ['Bedrag / berekeningswijze', 'Het vooraf aangekondigde bedrag volgens onze overeenkomst.'], 'frequency' => ['Frequentie of aanleiding', 'Maandelijks, of uitsluitend na een afzonderlijke aankondiging conform de gekozen regeling.'], 'withdrawal' => ['Hoe toestemming kan worden ingetrokken', 'Via uw persoonlijke statuslink of door contact met ons op te nemen.'], 'consent' => ['Expliciete toestemmingstekst', 'Ik geef deze organisatie toestemming om de hiervoor beschreven bedragen via SEPA Direct Debit van mijn rekening te incasseren.'], 'notice_days' => ['Vooraankondiging in kalenderdagen', '14'], 'times' => ['Maximum aantal betalingen (optioneel, maximaal 10000)', '']] as $key => [$label, $default]) {
+            if ($edit) {
+                $default = match ($key) {
+                    'slug' => $editRow['slug'],
+                    'amount', 'default_amount' => $money($edit[$key] ?? null),
+                    'times' => (string) ($edit['times'] ?? ''),
+                    default => (string) ($edit[$key] ?? $default),
+                };
+            }
             $fixedOnly = in_array($key, ['frequency', 'times'], true);
             $planOnly = $fixedOnly ? 'fixed' : ($key === 'default_amount' ? 'manual' : '');
             echo '<label' . ($planOnly ? ' data-plan="' . $planOnly . '"' . ($planOnly === 'fixed' ? ' hidden' : '') : '') . '>' . esc_html__($label, 'mollie-incasso');
             if (in_array($key, ['purpose', 'calculation', 'frequency', 'withdrawal', 'consent'], true)) {
-                echo '<textarea name="' . $key . '" rows="3"' . ($fixedOnly ? '' : ' required') . '>' . esc_textarea(__($default,'mollie-incasso')) . '</textarea>';
+                echo '<textarea name="' . $key . '" rows="3"' . ($fixedOnly ? '' : ' required') . '>' . esc_textarea($edit ? $default : __($default,'mollie-incasso')) . '</textarea>';
             } else {
-                echo '<input name="' . $key . '" value="' . esc_attr($default) . '" ' . (!in_array($key, ['slug', 'times', 'default_amount'], true) ? 'required' : '') . '>';
+                echo '<input name="' . $key . '" value="' . esc_attr($default) . '" ' . (!in_array($key, ['slug', 'times', 'default_amount'], true) ? 'required' : '') . ($edit && $key === 'slug' ? ' readonly' : '') . '>';
             }
             echo '</label>';
         }
-        echo '<label data-plan="fixed" hidden><input type="checkbox" name="auto_start" value="1" checked> ' . esc_html__('Vast abonnement automatisch starten na verificatie en geldige machtiging (alleen bij vast bedrag).', 'mollie-incasso') . '</label>';
-        echo '<label data-plan="fixed" hidden>' . esc_html__('Vaste frequentie', 'mollie-incasso') . '<select name="interval"><option value="1 month">' . esc_html__('Maand', 'mollie-incasso') . '</option><option value="3 months">' . esc_html__('Kwartaal', 'mollie-incasso') . '</option><option value="12 months">' . esc_html__('Jaar', 'mollie-incasso') . '</option></select></label><label><input type="checkbox" name="notice_agreed" value="1">' . esc_html__('Een afwijkende vooraankondigingstermijn is expliciet met de klant afgesproken en opgenomen in deze regeling.', 'mollie-incasso') . '</label>';
+        echo '<label data-plan="fixed" hidden><input type="checkbox" name="auto_start" value="1"' . checked(!$edit || !empty($edit['auto_start']), true, false) . '> ' . esc_html__('Vast abonnement automatisch starten na verificatie en geldige machtiging (alleen bij vast bedrag).', 'mollie-incasso') . '</label>';
+        echo '<label data-plan="fixed" hidden>' . esc_html__('Vaste frequentie', 'mollie-incasso') . '<select name="interval"><option value="1 month"' . selected($edit['interval'] ?? '', '1 month', false) . '>' . esc_html__('Maand', 'mollie-incasso') . '</option><option value="3 months"' . selected($edit['interval'] ?? '', '3 months', false) . '>' . esc_html__('Kwartaal', 'mollie-incasso') . '</option><option value="12 months"' . selected($edit['interval'] ?? '', '12 months', false) . '>' . esc_html__('Jaar', 'mollie-incasso') . '</option></select></label><label><input type="checkbox" name="notice_agreed" value="1"' . checked(!empty($edit['notice_agreed']), true, false) . '>' . esc_html__('Een afwijkende vooraankondigingstermijn is expliciet met de klant afgesproken en opgenomen in deze regeling.', 'mollie-incasso') . '</label>';
         $this->end('Regeling opslaan', true);
         // Frequency, number of terms and automatic start only apply to a fixed subscription.
         echo "<script>(function(){var t=document.querySelector('select[name=type]');if(!t)return;function sync(){t.form.querySelectorAll('[data-plan]').forEach(function(el){var off=el.getAttribute('data-plan')!==t.value;el.hidden=off;el.querySelectorAll('input,select,textarea').forEach(function(i){i.disabled=off;});});}t.addEventListener('change',sync);sync();})();</script>";

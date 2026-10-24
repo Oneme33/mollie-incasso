@@ -65,6 +65,8 @@ Onder Klanten kiest de beheerder de klant en geaccepteerde regeling, een positie
 
 Een losse incasso loopt nooit vanzelf: de beheerder start hem altijd zelf. Een regeling voor losse incasso's heeft geen frequentie, wel een maximum per incasso, een optioneel **standaardbedrag** en een eigen vooraankondigingstermijn (standaard 14 dagen; korter, minimaal 1 dag, alleen als dat in de afspraak met de klant staat).
 
+Regelingen zijn te **bewerken** (Instellingen → Regelingen → Bewerken): dat maakt een nieuwe versie; klanten die al toestemming gaven houden hun versie, nieuwe aanmeldingen, shortcodes en webshopproducten gebruiken de nieuwe. **Verwijderen** haalt een ongebruikte regeling weg; een regeling in gebruik wordt gearchiveerd (geen nieuwe aanmeldingen, bestaande afspraken blijven werken) en kan weer worden geactiveerd.
+
 ### Incasso-run
 
 Onder **Incasso-run** incasseert de beheerder meerdere klanten tegelijk: klanten aanvinken (met het standaardbedrag van hun regeling vooraf ingevuld), per klant het bedrag controleren, één omschrijving voor het afschrift en één datum kiezen, en in één keer bevestigen. Elke klant krijgt een eigen vooraankondiging en een eigen opdracht; een bedrag boven het maximum wordt per klant geweigerd en gemeld. Hetzelfde formulier twee keer versturen maakt geen tweede opdracht.

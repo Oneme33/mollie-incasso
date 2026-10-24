@@ -18,6 +18,46 @@ final class Schemes
         $data['version'] = (int) $row['version'];
         return $data;
     }
+    /** The plan behind a shortcode or product: after an edit, the newest active version of the same plan. */
+    public function current(int $id, string $mode): array
+    {
+        $row = $this->store->one('schemes', $id, $mode);
+        if ($row && !$row['active']) {
+            $newer = $this->store->select('SELECT id FROM ' . $this->store->table('schemes') . ' WHERE mode=%s AND slug=%s AND active=1 ORDER BY version DESC LIMIT 1', [$mode, $row['slug']]);
+            $id = $newer ? (int) $newer[0]['id'] : $id;
+        }
+        return $this->get($id, $mode);
+    }
+    /** All version ids of the plan that $id belongs to. */
+    public function versions(int $id, string $mode): array
+    {
+        $row = $this->store->one('schemes', $id, $mode);
+        if (!$row) {
+            throw new Failure('scheme_unavailable');
+        }
+        return array_map('intval', array_column($this->store->select('SELECT id FROM ' . $this->store->table('schemes') . ' WHERE mode=%s AND slug=%s', [$mode, $row['slug']]), 'id'));
+    }
+    /** Unused plans are removed; a plan customers accepted is archived, so their agreement keeps working. */
+    public function remove(int $id, string $mode): string
+    {
+        $ids = $this->versions($id, $mode);
+        $in = implode(',', $ids);
+        $used = $this->store->select('SELECT COUNT(*) AS n FROM ' . $this->store->table('consents') . ' WHERE mode=%s AND scheme_id IN (' . $in . ')', [$mode])[0]['n'] ?? 0;
+        if ((int) $used > 0) {
+            $this->store->query('UPDATE ' . $this->store->table('schemes') . ' SET active=0 WHERE mode=%s AND id IN (' . $in . ')', [$mode]);
+            return 'archived';
+        }
+        $this->store->query('DELETE FROM ' . $this->store->table('schemes') . ' WHERE mode=%s AND id IN (' . $in . ')', [$mode]);
+        return 'deleted';
+    }
+    public function restore(int $id, string $mode): void
+    {
+        $in = implode(',', $this->versions($id, $mode));
+        $this->store->transaction(function () use ($id, $mode, $in) {
+            $this->store->query('UPDATE ' . $this->store->table('schemes') . ' SET active=0 WHERE mode=%s AND id IN (' . $in . ')', [$mode]);
+            $this->store->query('UPDATE ' . $this->store->table('schemes') . ' SET active=1 WHERE mode=%s AND id=%d', [$mode, $id]);
+        });
+    }
     public function save(array $input, string $mode): int
     {
         $type = ($input['type'] ?? 'manual') === 'fixed' ? 'fixed' : 'manual';

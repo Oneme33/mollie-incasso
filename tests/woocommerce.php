@@ -161,6 +161,12 @@ try{
  $manualReceipt=$store->select('SELECT * FROM '.$store->table('checkouts').' WHERE order_id=%d',[$manualOrder->get_id()])[0];$manualCustomer=$service->customer((int)$manualReceipt['customer_id'],'test');$manualPayment=$store->select('SELECT * FROM '.$store->table('payments').' WHERE customer_id=%d',[(int)$manualCustomer['id']])[0];
  $api->payments[$manualPayment['remote_id']]['status']='paid';$service->syncPayment($manualPayment['remote_id'],'test');$api->mandateRows['mdt_manual_shop']=['id'=>'mdt_manual_shop','customerId'=>$manualCustomer['remote_id'],'status'=>'valid','method'=>'directdebit','masked'=>'•••• 9999'];$service->refreshMandate((int)$manualCustomer['id'],'test');
  ok($service->customer((int)$manualCustomer['id'],'test')['status']==='active'&&count($api->subs)===$subsBefore&&!$store->select('SELECT id FROM '.$store->table('jobs').' WHERE dedup=%s',['auto-subscription:'.$manualCustomer['id']]),'a webshop sign-up for one-off debits gives an active mandate and never starts a subscription');
+ // Editing a plan moves its products to the new version, so re-saving a product never unlinks it.
+ $_POST=array_replace($manual,['amount'=>'250.00','edit_of'=>(string)$manualId]);
+ $slugRow=$store->one('schemes',$manualId,'test');$_POST['slug']=$slugRow['slug'];
+ $editedId=$schemes->save($_POST,'test');Lukraak\MollieIncasso\WooCommerceBridge::relinkProducts([$manualId],$editedId,'test');clean_post_cache($manualPid);
+ ok((int)get_post_meta($manualPid,'_mi_scheme_test',true)===$editedId&&$bridge->productScheme(wc_get_product($manualPid))['amount']===25000,'editing a plan relinks its webshop product to the new version');
+ $_POST=[];
  echo 'RESULT '.$checks.' WooCommerce checks passed; storage='.($hpos?'HPOS':'posts').'; no Mollie network requests or delivered mail.'."\n";
 }finally{
  WC()->cart->empty_cart();foreach($orders as$id){$order=wc_get_order($id);if($order)$order->delete(true);}foreach($products as$id){$product=wc_get_product($id);if($product)$product->delete(true);else wp_delete_post($id,true);}

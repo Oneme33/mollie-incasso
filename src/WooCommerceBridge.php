@@ -48,13 +48,23 @@ final class WooCommerceBridge
     {
         return ($scheme['type'] ?? '') === 'manual' || ($scheme['type'] ?? '') === 'fixed' && !empty($scheme['auto_start']);
     }
+    /** After a plan edit: point products from older versions to the new version, so saving a product never unlinks it. */
+    public static function relinkProducts(array $oldIds, int $newId, string $mode): void
+    {
+        if (!$oldIds || !post_type_exists('product')) {
+            return;
+        }
+        foreach (get_posts(['post_type' => 'product', 'post_status' => 'any', 'numberposts' => -1, 'fields' => 'ids', 'meta_query' => [['key' => '_mi_scheme_' . $mode, 'value' => array_map('strval', $oldIds), 'compare' => 'IN']]]) as $productId) {
+            update_post_meta($productId, '_mi_scheme_' . $mode, $newId);
+        }
+    }
     public function isProduct(object $product): bool { return (int)$product->get_meta('_mi_scheme_test',true)>0 || (int)$product->get_meta('_mi_scheme_live',true)>0; }
     public function productScheme(object $product): array
     {
         if (!$product->is_type('simple') || !$product->is_virtual()) throw new Failure('woo_product_invalid');
         $id=(int)$product->get_meta('_mi_scheme_'.$this->mode(),true);
         if (!$id) throw new Failure('woo_product_mode');
-        $scheme=$this->plugin->schemes->get($id,$this->mode());
+        $scheme=$this->plugin->schemes->current($id,$this->mode());
         if(!self::linkable($scheme))throw new Failure('woo_scheme_automatic');
         return $scheme;
     }

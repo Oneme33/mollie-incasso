@@ -762,6 +762,27 @@ try {
     check($piet['status'] !== 'active', 'a mandate Mollie rejects never makes the customer collectable');
     $fake->mandateRejected = false;
     check($service->importMandate('test', $club, 'Piet', 'piet@example.invalid', 'NL91ABNA0417164300', '2024-02-01', '', 1) === 'imported' && $service->customer((int) $piet['id'], 'test')['status'] === 'active', 'a rejected import can be retried for the same customer');
+    // Editing and removing plans: a new version for new sign-ups, accepted versions keep working.
+    $planV1 = $schemes->save(array_replace($base, ['slug' => 'club-edit', 'name' => 'Club']), 'test');
+    $planV2 = $schemes->save(array_replace($base, ['slug' => 'club-edit', 'name' => 'Club', 'amount' => '100.00']), 'test');
+    check($schemes->current($planV1, 'test')['id'] === $planV2 && $schemes->current($planV1, 'test')['amount'] === 10000 && $schemes->versions($planV2, 'test') === [$planV1, $planV2], 'after an edit, shortcodes and products of the old version use the newest version');
+    $unused = $schemes->save($base + ['slug' => 'club-unused'], 'test');
+    check($schemes->remove($unused, 'test') === 'deleted' && !$store->one('schemes', $unused, 'test'), 'an unused plan is really removed');
+    check($schemes->remove($club, 'test') === 'archived' && !(int) $store->one('schemes', $club, 'test')['active'] && $service->consent($service->customer((int) $jan['id'], 'test'))['id'] === $club, 'a plan in use is archived and the accepted agreement keeps working');
+    rejects(fn() => $schemes->current($club, 'test'), 'scheme_unavailable');
+    $schemes->restore($club, 'test');
+    check((int) $store->one('schemes', $club, 'test')['active'] === 1, 'an archived plan can be activated again');
+    $adminScreenEdit = new \Lukraak\MollieIncasso\Admin($p);
+    $renderGet = $_GET;
+    $_GET = ['page' => 'mollie-incasso-settings', 'edit_plan' => $planV2];
+    $userBeforeEdit = get_current_user_id();
+    wp_set_current_user(get_users(['role' => 'administrator', 'number' => 1])[0]->ID);
+    ob_start();
+    $adminScreenEdit->render();
+    $editHtml = ob_get_clean();
+    wp_set_current_user($userBeforeEdit);
+    $_GET = $renderGet;
+    check(str_contains($editHtml, 'name="edit_of" value="' . $planV2 . '"') && str_contains($editHtml, 'value="100.00"') && str_contains($editHtml, 'value="club-edit"  readonly') && str_contains($editHtml, 'name="remove_plan"') === false && str_contains($editHtml, 'value="remove_plan"'), 'edit form is prefilled with the current version and every plan can be removed');
     // Collection run: amounts per customer, one date, never above the maximum, no duplicates on resubmit.
     $runner = new ReflectionMethod(\Lukraak\MollieIncasso\Admin::class, 'runCollections');
     $runScreen = new \Lukraak\MollieIncasso\Admin($p);
