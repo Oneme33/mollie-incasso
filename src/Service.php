@@ -827,6 +827,37 @@ final class Service
             $this->mail->schedule($mode, $id, 'ended', 'stop:' . $row['remote_id']);
         });
     }
+    /** Remove every local record of a customer; callers check erasure and retention first. */
+    public function eraseCustomer(array $customer): void
+    {
+        $id = (int) $customer['id'];
+        $mode = $customer['mode'];
+        $this->store->transaction(function () use ($id, $mode) {
+            foreach (['tokens', 'notifications', 'consents', 'payments', 'subscriptions', 'mandates', 'commands', 'checkouts'] as $table) {
+                $this->store->query('DELETE FROM ' . $this->store->table($table) . ' WHERE customer_id=%d AND mode=%s', [$id, $mode]);
+            }
+            $this->store->query('DELETE FROM ' . $this->store->table('customers') . ' WHERE id=%d AND mode=%s', [$id, $mode]);
+        });
+    }
+    /**
+     * Admin removal of a customer whose consent is withdrawn. Paid direct debits are financial records:
+     * those customers stay until the retention period after the last payment has passed.
+     */
+    public function deleteCustomer(int $id, string $mode): void
+    {
+        $this->store->lock('customer:' . $mode . ':' . $id, function () use ($id, $mode) {
+            $customer = $this->customer($id, $mode);
+            if ($customer['status'] !== 'revoked') {
+                throw new Failure('delete_requires_withdrawal');
+            }
+            $paid = $this->store->select('SELECT MAX(created_at) AS latest FROM ' . $this->store->table('payments') . ' WHERE customer_id=%d AND mode=%s AND status="paid"', [$id, $mode])[0]['latest'] ?? null;
+            if ($paid && time() - strtotime($paid . ' UTC') < (int) $this->config->settings()['retention_days'] * DAY_IN_SECONDS) {
+                throw new Failure('retention_required');
+            }
+            $this->assertErasure($customer);
+            $this->eraseCustomer($customer);
+        });
+    }
     public function assertErasure(array $customer): void
     {
         if ($customer['status'] !== 'revoked') {

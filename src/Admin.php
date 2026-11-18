@@ -91,6 +91,7 @@ final class Admin
         echo $operation === 'prepare' ? ' mi-command-form' : '';
         ?>"<?php
         echo $operation === 'import_mandates' ? ' enctype="multipart/form-data"' : '';
+        echo $operation === 'delete_customer' ? ' onsubmit="return confirm(\'' . esc_js(__('Deze klant en alle gegevens bij deze plugin definitief verwijderen? Dit kan niet ongedaan worden gemaakt.', 'mollie-incasso')) . '\')"' : '';
         echo $operation === 'remove_plan' ? ' onsubmit="return confirm(\'' . esc_js(__('Deze regeling verwijderen? Is hij al in gebruik, dan wordt hij gearchiveerd en blijven bestaande afspraken werken.', 'mollie-incasso')) . '\')"' : '';
         ?>><input type="hidden" name="action" value="mi_admin"><input type="hidden" name="operation" value="<?php
         echo esc_attr($operation);
@@ -253,6 +254,13 @@ final class Admin
                     break;
                 case 'withdraw':
                     $this->p->service->withdraw($id, $mode);
+                    break;
+                case 'delete_customer':
+                    if (!current_user_can('manage_options')) {
+                        throw new Failure('access_denied');
+                    }
+                    $this->p->service->deleteCustomer($id, $mode);
+                    $args = ['mi_saved' => 1, 'mi_deleted' => 1];
                     break;
                 case 'stop':
                     $this->p->service->stop($id, $mode);
@@ -625,6 +633,9 @@ final class Admin
     {
         $mode = $this->p->config->mode();
         $this->showResult();
+        if (isset($_GET['mi_deleted'])) {
+            $this->help(__('De klant is verwijderd.', 'mollie-incasso'));
+        }
         $this->help(__('Een machtiging is de toestemming bij Mollie om van de rekening te incasseren. Pas bij een geldige machtiging en bevestigde eerste betaling wordt een klant actief.', 'mollie-incasso'));
         $this->quick('export', 0, 'Beperkte CSV-export (maximaal 500 klanten)');
         echo '<div class="mi-scroll"><table class="widefat striped"><thead><tr>';
@@ -645,6 +656,8 @@ final class Admin
             $this->quick('mail_link', (int) $c['id'], 'Persoonlijke link mailen');
             if ($c['status'] !== 'revoked') {
                 $this->quick('withdraw', (int) $c['id'], 'Toestemming intrekken');
+            } elseif (current_user_can('manage_options')) {
+                $this->quick('delete_customer', (int) $c['id'], 'Verwijderen');
             }
             echo '</td></tr>';
         }

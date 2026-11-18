@@ -788,6 +788,20 @@ try {
     $odd = $store->select('SELECT * FROM ' . $store->table('commands') . " WHERE mode='test' AND kind='first' ORDER BY id DESC LIMIT 1")[0];
     check($odd['state'] === 'blocked' && $odd['error'] === 'payment_method_mismatch' && str_contains($odd['error_detail'], 'method=wero') && str_contains($odd['error_detail'], 'sequenceType=first') && !str_contains($odd['error_detail'], 'afwijkend'), 'a payment Mollie returns differently is blocked with what Mollie returned, without personal data');
     check(str_contains(Plugin::message('some_new_reason'), 'some_new_reason'), 'an unknown failure shows its code instead of only a generic text');
+    // Deleting customers: only after withdrawal, never with open payments or paid debits within retention.
+    rejects(fn() => $service->deleteCustomer((int) $jan['id'], 'test'), 'delete_requires_withdrawal');
+    $gone = signup($club, 'mislukt@example.invalid');
+    $goneId = (int) $gone['customer']['id'];
+    $store->update('customers', ['status' => 'revoked', 'updated_at' => Store::now()], $goneId, 'test');
+    rejects(fn() => $service->deleteCustomer($goneId, 'test'), 'unknown_requires_review');
+    $fake->payments[$gone['payment']['remote_id']]['status'] = 'expired';
+    $service->syncPayment($gone['payment']['remote_id'], 'test');
+    $service->deleteCustomer($goneId, 'test');
+    check(!$store->one('customers', $goneId, 'test') && !$store->select('SELECT id FROM ' . $store->table('consents') . ' WHERE customer_id=%d', [$goneId]) && !$store->select('SELECT id FROM ' . $store->table('payments') . ' WHERE customer_id=%d', [$goneId]), 'a withdrawn sign-up without payments is deleted with all its records');
+    $kept = activate(signup($club, 'betaald@example.invalid'));
+    $store->update('customers', ['status' => 'revoked', 'updated_at' => Store::now()], (int) $kept['id'], 'test');
+    rejects(fn() => $service->deleteCustomer((int) $kept['id'], 'test'), 'retention_required');
+    check((bool) $store->one('customers', (int) $kept['id'], 'test'), 'a withdrawn customer with paid debits is kept during the retention period');
     // Editing and removing plans: a new version for new sign-ups, accepted versions keep working.
     $planV1 = $schemes->save(array_replace($base, ['slug' => 'club-edit', 'name' => 'Club']), 'test');
     $planV2 = $schemes->save(array_replace($base, ['slug' => 'club-edit', 'name' => 'Club', 'amount' => '100.00']), 'test');

@@ -165,6 +165,8 @@ HTTPS is vereist voor live POST’s en voor alle webhookadressen. Een sitebindin
 
 ## Privacy en opruimen
 
+Onder **Klanten** kan een klant van wie de toestemming is ingetrokken worden **verwijderd**, met al zijn gegevens in de plugin. Dat kan niet zolang er een open of onzekere betaling is of bij Mollie nog een machtiging of abonnement loopt, en een klant met betaalde incasso's blijft bewaard tot de bewaartermijn (Instellingen) na de laatste betaling voorbij is.
+
 WordPress **Gereedschap → Persoonsgegevens exporteren/verwijderen** is ondersteund. Export bevat klant, toestemming en gerelateerde betaal-, abonnements- en gemaskeerde mandaatgegevens. Bewaartermijn is configureerbaar, standaard 2555 dagen. De termijn begint conservatief na de meest recente klantwijziging of betaling. Er is geen automatische bulkverwijdering: verwijderen volgt een expliciet WordPress-privacyverzoek. Beoordeel bewaarplicht, grondslag en beleid voor uw organisatie.
 
 Een verwijderverzoek behoudt gegevens bij actieve/onzekere afspraken, onbekende betaaluitkomsten, lopende termijn of onbereikbare externe verificatie. Beëindig eerst extern; pas na de termijn en een actuele API-controle worden klant en bijbehorende gegevens daadwerkelijk verwijderd. Betalingen bij Mollie blijven onder hun eigen bewaarbeleid vallen. Een lege lokale status stopt geen extern abonnement.
