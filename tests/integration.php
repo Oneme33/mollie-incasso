@@ -763,6 +763,8 @@ try {
     check(!str_contains($stored, '0417164300') && str_contains($stored, '4300'), 'the full IBAN goes to Mollie only; locally just the last four digits');
     $welcome = $store->select('SELECT data FROM ' . $store->table('notifications') . " WHERE mode='test' AND event_key=%s", ['consent:' . $jan['id']]);
     check($welcome && json_decode($welcome[0]['data'], true)['imported'] === '2024-01-31', 'imported customers get a welcome mail that explains the transfer');
+    $importedConsent = $store->select('SELECT consent_text FROM ' . $store->table('consents') . ' WHERE customer_id=%d', [(int) $jan['id']])[0]['consent_text'];
+    check(!str_contains($importedConsent, '0,01') && str_contains($importedConsent, '2024-01-31'), 'an imported agreement does not mention a verification payment the customer never made');
     check($service->importMandate('test', $club, 'Jan Jansen', 'JAN@example.invalid', 'NL91ABNA0417164300', '2024-01-31', 'LID-007', 1) === 'exists' && ($fake->calls['mandate'] ?? 0) === $mandateCalls + 1, 'importing the same file twice does not create a second mandate');
     rejects(fn() => $service->importMandate('test', $club, 'Piet', 'piet@example.invalid', 'NL91ABNA0417164301', '2024-01-31', '', 1), 'import_invalid_iban');
     rejects(fn() => $service->importMandate('test', $club, 'Piet', 'piet@example.invalid', 'NL91ABNA0417164300', gmdate('Y-m-d', time() + 3 * DAY_IN_SECONDS), '', 1), 'import_invalid_date');

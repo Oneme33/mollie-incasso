@@ -107,7 +107,7 @@ final class Service
                 $note = sprintf(__('Bestaande SEPA-machtiging, getekend op %1$s%2$s, overgezet naar Mollie door de organisatie.', 'mollie-incasso'), $signatureDate, $mandateReference !== '' ? ' (' . sprintf(__('kenmerk %s', 'mollie-incasso'), $mandateReference) . ')' : '');
                 $id = $this->store->transaction(function () use ($mode, $name, $email, $scheme, $snapshot, $note) {
                     $id = $this->store->insert('customers', ['mode' => $mode, 'reference' => wp_generate_uuid4(), 'name' => $name, 'email' => $email, 'scheme_id' => $scheme['id'], 'created_at' => Store::now(), 'updated_at' => Store::now()]);
-                    $this->store->insert('consents', ['mode' => $mode, 'customer_id' => $id, 'scheme_id' => $scheme['id'], 'version' => (string) $scheme['version'], 'consent_text' => $this->schemes->disclosure($scheme) . "\n\n" . $note, 'snapshot' => wp_json_encode($snapshot), 'accepted_at' => Store::now()]);
+                    $this->store->insert('consents', ['mode' => $mode, 'customer_id' => $id, 'scheme_id' => $scheme['id'], 'version' => (string) $scheme['version'], 'consent_text' => $this->schemes->disclosure($scheme, true, false) . "\n\n" . $note, 'snapshot' => wp_json_encode($snapshot), 'accepted_at' => Store::now()]);
                     return $id;
                 });
             }
