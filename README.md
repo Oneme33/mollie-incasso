@@ -1,4 +1,4 @@
-# Mollie Incasso — versie 1.0.2
+# Mollie Incasso — versie 1.0.3
 
 Zelfstandige WordPress-plugin voor één organisatie en één Mollie-profiel. Nederlandse, vertaalbare interface, werkt zelfstandig, met een optionele WooCommerce-checkout; geen WooCommerce Subscriptions of externe abonnementendienst nodig. Eerste iDEAL-betaling: **€ 0,01**, expliciet `sequenceType=first` bij een nieuwe, lokaal gekoppelde Mollie Customer. Alleen een betaald verificatieverzoek en een geldig `directdebit`-mandaat activeren toestemming. De eurocent blijft bij de organisatie, is geen abonnementsperiode en wordt niet stilzwijgend verrekend of terugbetaald.
 
@@ -13,7 +13,7 @@ Zelfstandige WordPress-plugin voor één organisatie en één Mollie-profiel. Ne
 
 ## Installeren
 
-1. Upload `mollie-incasso-1.0.2.zip` via **Plugins → Nieuwe plugin → Plugin uploaden**. Bij een update kiest u de bestaande plugin te vervangen; verwijderen is niet nodig.
+1. Upload `mollie-incasso-1.0.3.zip` via **Plugins → Nieuwe plugin → Plugin uploaden**. Bij een update kiest u de bestaande plugin te vervangen; verwijderen is niet nodig.
 2. Open **Mollie Incasso → Installatiehulp**. Stap 1: organisatie en contactgegevens. Stap 2: plak uw `live_…` API-key uit Mollie Dashboard → Developers → API keys en klik op **Live activeren** (de plugin controleert eerst bij Mollie of iDEAL en SEPA-incasso live beschikbaar zijn). **Eerst risicoloos testen?** Zet onder **Instellingen → Geavanceerd → Testfase gebruiken** aan; dan kunt u een `test_…`-key gebruiken, naar testmodus schakelen en testgegevens wissen.
 3. Stap 3: geef het eerste abonnement een naam (bijvoorbeeld ‘GCC doorlopend abonnement’), bedrag en maand/kwartaal/jaar. Controleer de zichtbare voorbeeldtekst van de incassoafspraak en pas die aan. De wizard kiest automatisch starten met 14 dagen vooraankondiging. U kunt meerdere abonnementen toevoegen; bestaande afspraken blijven aan hun eigen versie gekoppeld.
 4. Stap 4: kies **aanmelden op een gewone pagina** of **via een WooCommerce-product**. Voor een pagina kunt u de shortcode kopiëren of een conceptpagina maken. Voor de winkel kunt u per regeling een eenvoudig virtueel product als concept klaarzetten. Herhaald klikken opent dezelfde pagina/product. Controleer het concept en publiceer het daarna.
@@ -73,7 +73,7 @@ Een WooCommerce-product kan ook aan een regeling voor losse incasso's hangen: de
 
 ### Bestaande machtigingen importeren
 
-Onder **Klanten → Bestaande machtigingen importeren** zet de beheerder SEPA-machtigingen die al bij de eigen bank zijn getekend over naar Mollie, zodat klanten zich niet opnieuw hoeven aan te melden. CSV met kopregel: naam, e-mail, IBAN, datum (ondertekeningsdatum) en optioneel kenmerk; `;` of `,` en datums als `2024-01-31` of `31-01-2024` worden herkend, maximaal 200 regels per keer. De plugin maakt per regel een Mollie-klant en een directdebit-mandaat (IBAN, naam, ondertekeningsdatum, kenmerk), zonder verificatiebetaling. Het IBAN gaat alleen naar Mollie; lokaal blijven de laatste vier cijfers. Elke klant krijgt een welkomstmail met uitleg en zijn statuslink. Dezelfde regel opnieuw importeren maakt geen tweede machtiging; een door Mollie geweigerde regel kan na correctie opnieuw worden geïmporteerd. **Vraag Mollie vooraf** of u bestaande machtigingen mag overzetten en of klanten bericht moeten krijgen over de nieuwe incassant.
+Onder **Klanten → Bestaande machtigingen importeren** zet de beheerder SEPA-machtigingen die al bij de eigen bank zijn getekend over naar Mollie, zodat klanten zich niet opnieuw hoeven aan te melden. CSV met kopregel: naam, e-mail, IBAN, datum (ondertekeningsdatum) en optioneel kenmerk (Engelse kopjes zoals `name,email,IBAN,date` werken ook); `;` of `,` en datums als `2024-01-31` of `31-01-2024` worden herkend, maximaal 200 regels per keer. De plugin maakt per regel een Mollie-klant en een directdebit-mandaat (IBAN, naam, ondertekeningsdatum, kenmerk), zonder verificatiebetaling. Het IBAN gaat alleen naar Mollie; lokaal blijven de laatste vier cijfers. Elke klant krijgt een welkomstmail met uitleg en zijn statuslink. Dezelfde regel opnieuw importeren maakt geen tweede machtiging; een door Mollie geweigerde regel kan na correctie opnieuw worden geïmporteerd. **Vraag Mollie vooraf** of u bestaande machtigingen mag overzetten en of klanten bericht moeten krijgen over de nieuwe incassant.
 
 ### Vast abonnement
 
@@ -183,10 +183,10 @@ Ontwikkelmachine: PHP 8.2+, curl/openssl/zip, Composer. Hosting heeft **geen Com
 
 ```sh
 cd mollie-incasso
-php tools/build.php /absoluut/pad/composer.phar ../artifacts/mollie-incasso-1.0.2.zip
+php tools/build.php /absoluut/pad/composer.phar ../artifacts/mollie-incasso-1.0.3.zip
 ```
 
-Met Composer op PATH: `php tools/build.php composer` (standaarduitvoer: `dist/mollie-incasso-1.0.2.zip`). De build gebruikt uitsluitend locks (`install`, geen `update`), scoped alle productiecode, controleert de SDK/CA-bundle en PHP-syntax en maakt een ZIP met gesorteerde bestanden en vaste tijdstempels/rechten. De ZIP bevat geen devtools, eigen testfixtures, secrets of ongescopete autoloaders. Zelfde bron, locks en toolomgeving produceren dezelfde ZIP. Dependencies en `.build/` zijn gegenereerd en staan niet in Git.
+Met Composer op PATH: `php tools/build.php composer` (standaarduitvoer: `dist/mollie-incasso-1.0.3.zip`). De build gebruikt uitsluitend locks (`install`, geen `update`), scoped alle productiecode, controleert de SDK/CA-bundle en PHP-syntax en maakt een ZIP met gesorteerde bestanden en vaste tijdstempels/rechten. De ZIP bevat geen devtools, eigen testfixtures, secrets of ongescopete autoloaders. Zelfde bron, locks en toolomgeving produceren dezelfde ZIP. Dependencies en `.build/` zijn gegenereerd en staan niet in Git.
 
 In dit repository is de build getest in de bestaande PHP 8.2.29 Docker-omgeving. Kopieer de pluginbron naar een tijdelijke map onder de lokaal gemounte `plugins/`, voer daar het bovenstaande PHP-buildcommando uit en kopieer de ZIP terug naar `artifacts/`. Composer 2.10.3 is daarvoor lokaal gebruikt. De bronmap buiten `plugins/` is leidend.
 

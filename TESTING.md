@@ -1,4 +1,4 @@
-# Testrapport — Mollie Incasso 1.0.2
+# Testrapport — Mollie Incasso 1.0.3
 
 Lokaal uitgevoerd op 13 en 14 oktober 2026: PHP 8.2.29, WordPress 6.8.1, bestaande Docker MySQL/InnoDB. Geen live geld, echte incasso of echte klantmail gebruikt. Dit rapport is geen productiecertificering.
 
@@ -140,3 +140,7 @@ Aanleiding: een vereniging die nu via de ING 10 à 15 leden incasseert (zonder v
 - **Testrunner strenger**: een suite telt alleen als geslaagd als hij zijn slotregel `RESULT` haalt (lokaal en in CI). Aanleiding: een render zonder beheerder stopte via `wp_die()` met exitcode 0 en leek geslaagd.
 
 Lokaal: `integration.php` **208**, `sdk.php` **27**, `secrets.php` **23**, `woocommerce.php` **80 klassiek en 80 HPOS**.
+
+## 1.0.3: kopregel bij het importeren
+
+Gevonden bij de eerste echte import (geertruida.net): een CSV met de kopregel `name,email,IBAN,date` werd geweigerd, omdat `date` niet als datumkolom werd herkend — terwijl het Engelse scherm de kolom zelf zo noemt. Opgelost: gangbare Nederlandse en Engelse kopjes worden herkend (zonder hoofdletters, spaties, streepjes of accenten), en bij een ontbrekende kolom noemt de melding welke kolom niet gevonden is en welke kopregel in het bestand staat. Getest met precies die kopregel (met nepgegevens). Lokaal: `integration.php` **210**, `sdk.php` **27**, `secrets.php` **23**, `woocommerce.php` **80 klassiek en 80 HPOS**.

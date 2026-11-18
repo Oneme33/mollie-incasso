@@ -746,6 +746,14 @@ try {
     $csv = \Lukraak\MollieIncasso\Admin::parseCsv("\xEF\xBB\xBFNaam;E-mail;Reknr;Startdatum machtiging;Kenmerk\nJan Jansen;jan@example.invalid;NL91 ABNA 0417 1643 00;31-01-2024;LID-007\n");
     check($csv === [['name' => 'Jan Jansen', 'email' => 'jan@example.invalid', 'iban' => 'NL91 ABNA 0417 1643 00', 'date' => '2024-01-31', 'reference' => 'LID-007']], 'bank CSV with Dutch headings, semicolons and day-month-year dates is recognised');
     rejects(fn() => \Lukraak\MollieIncasso\Admin::parseCsv("naam,iban\nJan,NL91ABNA0417164300\n"), 'import_columns_missing');
+    $english = \Lukraak\MollieIncasso\Admin::parseCsv("name,email,IBAN,date\nJan Jansen,jan@example.invalid,NL91ABNA0417164300,15-09-2017\n\n");
+    check($english === [['name' => 'Jan Jansen', 'email' => 'jan@example.invalid', 'iban' => 'NL91ABNA0417164300', 'date' => '2017-09-15', 'reference' => '']], 'English headings name, email, IBAN, date (as the English screen names them) are recognised');
+    try {
+        \Lukraak\MollieIncasso\Admin::parseCsv("naam;mail;rekening;wanneer\nJan;jan@example.invalid;NL91ABNA0417164300;15-09-2017\n");
+        check(false, 'a missing column is named in the error');
+    } catch (Failure $e) {
+        check($e->reason === 'import_columns_missing' && str_contains($e->detail, 'datum') && str_contains($e->detail, 'naam;mail;rekening;wanneer'), 'a missing column is named in the error, with the heading that was found');
+    }
     $mandateCalls = $fake->calls['mandate'] ?? 0;
     check($service->importMandate('test', $club, 'Jan Jansen', 'jan@example.invalid', 'NL91 ABNA 0417 1643 00', '2024-01-31', 'LID-007', 1) === 'imported', 'an existing mandate is imported');
     $jan = $store->select('SELECT * FROM ' . $store->table('customers') . " WHERE mode='test' AND email='jan@example.invalid'")[0];
