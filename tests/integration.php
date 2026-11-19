@@ -746,6 +746,14 @@ try {
     $csv = \Lukraak\MollieIncasso\Admin::parseCsv("\xEF\xBB\xBFNaam;E-mail;Reknr;Startdatum machtiging;Kenmerk\nJan Jansen;jan@example.invalid;NL91 ABNA 0417 1643 00;31-01-2024;LID-007\n");
     check($csv === [['name' => 'Jan Jansen', 'email' => 'jan@example.invalid', 'iban' => 'NL91 ABNA 0417 1643 00', 'date' => '2024-01-31', 'reference' => 'LID-007']], 'bank CSV with Dutch headings, semicolons and day-month-year dates is recognised');
     rejects(fn() => \Lukraak\MollieIncasso\Admin::parseCsv("naam,iban\nJan,NL91ABNA0417164300\n"), 'import_columns_missing');
+    $english = \Lukraak\MollieIncasso\Admin::parseCsv("name,email,IBAN,date\nJan Jansen,jan@example.invalid,NL91ABNA0417164300,15-09-2017\n\n");
+    check($english === [['name' => 'Jan Jansen', 'email' => 'jan@example.invalid', 'iban' => 'NL91ABNA0417164300', 'date' => '2017-09-15', 'reference' => '']], 'English headings name, email, IBAN, date (as the English screen names them) are recognised');
+    try {
+        \Lukraak\MollieIncasso\Admin::parseCsv("naam;mail;rekening;wanneer\nJan;jan@example.invalid;NL91ABNA0417164300;15-09-2017\n");
+        check(false, 'a missing column is named in the error');
+    } catch (Failure $e) {
+        check($e->reason === 'import_columns_missing' && str_contains($e->detail, 'datum') && str_contains($e->detail, 'naam;mail;rekening;wanneer'), 'a missing column is named in the error, with the heading that was found');
+    }
     $mandateCalls = $fake->calls['mandate'] ?? 0;
     check($service->importMandate('test', $club, 'Jan Jansen', 'jan@example.invalid', 'NL91 ABNA 0417 1643 00', '2024-01-31', 'LID-007', 1) === 'imported', 'an existing mandate is imported');
     $jan = $store->select('SELECT * FROM ' . $store->table('customers') . " WHERE mode='test' AND email='jan@example.invalid'")[0];
@@ -755,6 +763,8 @@ try {
     check(!str_contains($stored, '0417164300') && str_contains($stored, '4300'), 'the full IBAN goes to Mollie only; locally just the last four digits');
     $welcome = $store->select('SELECT data FROM ' . $store->table('notifications') . " WHERE mode='test' AND event_key=%s", ['consent:' . $jan['id']]);
     check($welcome && json_decode($welcome[0]['data'], true)['imported'] === '2024-01-31', 'imported customers get a welcome mail that explains the transfer');
+    $importedConsent = $store->select('SELECT consent_text FROM ' . $store->table('consents') . ' WHERE customer_id=%d', [(int) $jan['id']])[0]['consent_text'];
+    check(!str_contains($importedConsent, '0,01') && str_contains($importedConsent, '2024-01-31'), 'an imported agreement does not mention a verification payment the customer never made');
     check($service->importMandate('test', $club, 'Jan Jansen', 'JAN@example.invalid', 'NL91ABNA0417164300', '2024-01-31', 'LID-007', 1) === 'exists' && ($fake->calls['mandate'] ?? 0) === $mandateCalls + 1, 'importing the same file twice does not create a second mandate');
     rejects(fn() => $service->importMandate('test', $club, 'Piet', 'piet@example.invalid', 'NL91ABNA0417164301', '2024-01-31', '', 1), 'import_invalid_iban');
     rejects(fn() => $service->importMandate('test', $club, 'Piet', 'piet@example.invalid', 'NL91ABNA0417164300', gmdate('Y-m-d', time() + 3 * DAY_IN_SECONDS), '', 1), 'import_invalid_date');
@@ -778,6 +788,20 @@ try {
     $odd = $store->select('SELECT * FROM ' . $store->table('commands') . " WHERE mode='test' AND kind='first' ORDER BY id DESC LIMIT 1")[0];
     check($odd['state'] === 'blocked' && $odd['error'] === 'payment_method_mismatch' && str_contains($odd['error_detail'], 'method=wero') && str_contains($odd['error_detail'], 'sequenceType=first') && !str_contains($odd['error_detail'], 'afwijkend'), 'a payment Mollie returns differently is blocked with what Mollie returned, without personal data');
     check(str_contains(Plugin::message('some_new_reason'), 'some_new_reason'), 'an unknown failure shows its code instead of only a generic text');
+    // Deleting customers: only after withdrawal, never with open payments or paid debits within retention.
+    rejects(fn() => $service->deleteCustomer((int) $jan['id'], 'test'), 'delete_requires_withdrawal');
+    $gone = signup($club, 'mislukt@example.invalid');
+    $goneId = (int) $gone['customer']['id'];
+    $store->update('customers', ['status' => 'revoked', 'updated_at' => Store::now()], $goneId, 'test');
+    rejects(fn() => $service->deleteCustomer($goneId, 'test'), 'unknown_requires_review');
+    $fake->payments[$gone['payment']['remote_id']]['status'] = 'expired';
+    $service->syncPayment($gone['payment']['remote_id'], 'test');
+    $service->deleteCustomer($goneId, 'test');
+    check(!$store->one('customers', $goneId, 'test') && !$store->select('SELECT id FROM ' . $store->table('consents') . ' WHERE customer_id=%d', [$goneId]) && !$store->select('SELECT id FROM ' . $store->table('payments') . ' WHERE customer_id=%d', [$goneId]), 'a withdrawn sign-up without payments is deleted with all its records');
+    $kept = activate(signup($club, 'betaald@example.invalid'));
+    $store->update('customers', ['status' => 'revoked', 'updated_at' => Store::now()], (int) $kept['id'], 'test');
+    rejects(fn() => $service->deleteCustomer((int) $kept['id'], 'test'), 'retention_required');
+    check((bool) $store->one('customers', (int) $kept['id'], 'test'), 'a withdrawn customer with paid debits is kept during the retention period');
     // Editing and removing plans: a new version for new sign-ups, accepted versions keep working.
     $planV1 = $schemes->save(array_replace($base, ['slug' => 'club-edit', 'name' => 'Club']), 'test');
     $planV2 = $schemes->save(array_replace($base, ['slug' => 'club-edit', 'name' => 'Club', 'amount' => '100.00']), 'test');

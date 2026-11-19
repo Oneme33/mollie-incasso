@@ -95,12 +95,7 @@ final class Privacy
                 }
                 $this->plugin->store->lock('customer:' . $c['mode'] . ':' . $id, function () use ($c, $id) {
                     $this->plugin->service->assertErasure($c);
-                    $this->plugin->store->transaction(function () use ($c, $id) {
-                        foreach (['tokens', 'notifications', 'consents', 'payments', 'subscriptions', 'mandates', 'commands', 'checkouts'] as $table) {
-                            $this->plugin->store->query('DELETE FROM ' . $this->plugin->store->table($table) . ' WHERE customer_id=%d AND mode=%s', [(int) $id, $c['mode']]);
-                        }
-                        $this->plugin->store->query('DELETE FROM ' . $this->plugin->store->table('customers') . ' WHERE id=%d AND mode=%s', [(int) $id, $c['mode']]);
-                    });
+                    $this->plugin->service->eraseCustomer($c);
                 });
                 $removed = true;
             } catch (Failure $e) {

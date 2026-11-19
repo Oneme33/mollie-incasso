@@ -107,7 +107,7 @@ final class Service
                 $note = sprintf(__('Bestaande SEPA-machtiging, getekend op %1$s%2$s, overgezet naar Mollie door de organisatie.', 'mollie-incasso'), $signatureDate, $mandateReference !== '' ? ' (' . sprintf(__('kenmerk %s', 'mollie-incasso'), $mandateReference) . ')' : '');
                 $id = $this->store->transaction(function () use ($mode, $name, $email, $scheme, $snapshot, $note) {
                     $id = $this->store->insert('customers', ['mode' => $mode, 'reference' => wp_generate_uuid4(), 'name' => $name, 'email' => $email, 'scheme_id' => $scheme['id'], 'created_at' => Store::now(), 'updated_at' => Store::now()]);
-                    $this->store->insert('consents', ['mode' => $mode, 'customer_id' => $id, 'scheme_id' => $scheme['id'], 'version' => (string) $scheme['version'], 'consent_text' => $this->schemes->disclosure($scheme) . "\n\n" . $note, 'snapshot' => wp_json_encode($snapshot), 'accepted_at' => Store::now()]);
+                    $this->store->insert('consents', ['mode' => $mode, 'customer_id' => $id, 'scheme_id' => $scheme['id'], 'version' => (string) $scheme['version'], 'consent_text' => $this->schemes->disclosure($scheme, true, false) . "\n\n" . $note, 'snapshot' => wp_json_encode($snapshot), 'accepted_at' => Store::now()]);
                     return $id;
                 });
             }
@@ -825,6 +825,37 @@ final class Service
                 }
             }
             $this->mail->schedule($mode, $id, 'ended', 'stop:' . $row['remote_id']);
+        });
+    }
+    /** Remove every local record of a customer; callers check erasure and retention first. */
+    public function eraseCustomer(array $customer): void
+    {
+        $id = (int) $customer['id'];
+        $mode = $customer['mode'];
+        $this->store->transaction(function () use ($id, $mode) {
+            foreach (['tokens', 'notifications', 'consents', 'payments', 'subscriptions', 'mandates', 'commands', 'checkouts'] as $table) {
+                $this->store->query('DELETE FROM ' . $this->store->table($table) . ' WHERE customer_id=%d AND mode=%s', [$id, $mode]);
+            }
+            $this->store->query('DELETE FROM ' . $this->store->table('customers') . ' WHERE id=%d AND mode=%s', [$id, $mode]);
+        });
+    }
+    /**
+     * Admin removal of a customer whose consent is withdrawn. Paid direct debits are financial records:
+     * those customers stay until the retention period after the last payment has passed.
+     */
+    public function deleteCustomer(int $id, string $mode): void
+    {
+        $this->store->lock('customer:' . $mode . ':' . $id, function () use ($id, $mode) {
+            $customer = $this->customer($id, $mode);
+            if ($customer['status'] !== 'revoked') {
+                throw new Failure('delete_requires_withdrawal');
+            }
+            $paid = $this->store->select('SELECT MAX(created_at) AS latest FROM ' . $this->store->table('payments') . ' WHERE customer_id=%d AND mode=%s AND status="paid"', [$id, $mode])[0]['latest'] ?? null;
+            if ($paid && time() - strtotime($paid . ' UTC') < (int) $this->config->settings()['retention_days'] * DAY_IN_SECONDS) {
+                throw new Failure('retention_required');
+            }
+            $this->assertErasure($customer);
+            $this->eraseCustomer($customer);
         });
     }
     public function assertErasure(array $customer): void
